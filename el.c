@@ -371,8 +371,6 @@ generate_masm_source(void) {
 }
 
 int main(void) {
-	printf("Hello\n");
-	
 	Expr *program = hardcode_an_expression();
 	generate_pseudocode_for_expression(program);
 	String masm_source = generate_masm_source();

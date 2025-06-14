@@ -372,6 +372,52 @@ static String string_skip_chop_whitespace(String s);
 static String string_chop_past_last_slash(String s);
 
 ////////////////////////////////
+//~ String List
+
+typedef Strings_Concat_Params String_List_Join_Params;
+
+//- String List types
+
+typedef struct String_Node String_Node;
+struct String_Node {
+	String       str;
+	String_Node *next;
+	String_Node *prev;
+};
+
+typedef struct String_List String_List;
+struct String_List {
+	i64          total_len;
+	i64          node_count;
+	String_Node *first;
+	String_Node *last;
+};
+
+//- String List functions
+
+static void string_list_push_first(Arena *arena, String_List *list, String s);
+static void string_list_push_last(Arena *arena, String_List *list, String s);
+static void string_list_pushf_first(Arena *arena, String_List *list, char *fmt, ...);
+static void string_list_pushf_last(Arena *arena, String_List *list, char *fmt, ...);
+static void string_list_pushf_first_va_list(Arena *arena, String_List *list, char *fmt, va_list args);
+static void string_list_pushf_last_va_list(Arena *arena, String_List *list, char *fmt, va_list args);
+
+#define string_list_push(arena, list, s) string_list_push_last(arena, list, s)
+#define string_list_pushf(arena, list, fmt, ...) string_list_pushf_last(arena, list, fmt, __VA_ARGS__)
+#define string_list_pushf_va_list(arena, list, fmt, args) string_list_pushf_last_va_list(arena, list, fmt, args)
+
+#define string_list_join(arena, list, ...) \
+string_list_join_(arena, list, (String_List_Join_Params){\
+.pre = string_from_lit_const(""),\
+.sep = string_from_lit_const(""),\
+.suf = string_from_lit_const(""),\
+__VA_ARGS__\
+})
+static String string_list_join_(Arena *arena, String_List list, String_List_Join_Params params);
+
+#define string_from_list(arena, list, ...) string_list_join(arena, list, __VA_ARGS__)
+
+////////////////////////////////
 //~ String Builder
 
 //- String builder types

@@ -623,6 +623,101 @@ string_chop_past_last_slash(String s) {
 }
 
 ////////////////////////////////
+//~ String List
+
+//- String List functions
+
+static void
+string_list_push_first(Arena *arena, String_List *list, String s) {
+	String_Node *node = push_type(arena, String_Node);
+	
+	if (node != NULL) {
+		node->str = s;
+		dll_push_front(list->first, list->last, node);
+		list->total_len  += s.len;
+		list->node_count += 1;
+	}
+}
+
+static void
+string_list_push_last(Arena *arena, String_List *list, String s) {
+	String_Node *node = push_type(arena, String_Node);
+	
+	if (node != NULL) {
+		node->str = s;
+		dll_push_back(list->first, list->last, node);
+		list->total_len  += s.len;
+		list->node_count += 1;
+	}
+}
+
+static void
+string_list_pushf_first(Arena *arena, String_List *list, char *fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	string_list_pushf_first_va_list(arena, list, fmt, args);
+	va_end(args);
+}
+
+static void
+string_list_pushf_last(Arena *arena, String_List *list, char *fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	string_list_pushf_last_va_list(arena, list, fmt, args);
+	va_end(args);
+}
+
+static void
+string_list_pushf_first_va_list(Arena *arena, String_List *list, char *fmt, va_list args) {
+	String s = push_stringf_va_list(arena, fmt, args);
+	string_list_push_first(arena, list, s);
+}
+
+static void
+string_list_pushf_last_va_list(Arena *arena, String_List *list, char *fmt, va_list args) {
+	String s = push_stringf_va_list(arena, fmt, args);
+	string_list_push_last(arena, list, s);
+}
+
+static String
+string_list_join_(Arena *arena, String_List list, String_List_Join_Params params) {
+	i64 total_len = list.total_len;
+	
+	total_len += params.pre.len;
+	total_len += params.sep.len * (list.node_count - 1);
+	total_len += params.suf.len;
+	
+	String result = {
+		.data = push_nozero(arena, total_len),
+		.len  = total_len,
+	};
+	
+	if (result.data) {
+		i64 offset = 0;
+		
+		memcpy(result.data + offset, params.pre.data, params.pre.len);
+		offset += params.pre.len;
+		
+		for (String_Node *node = list.first; node != NULL; node = node->next) {
+			memcpy(result.data + offset, node->str.data, node->str.len);
+			offset += node->str.len;
+			
+			if (node->next != NULL) {
+				memcpy(result.data + offset, params.sep.data, params.sep.len);
+				offset += params.sep.len;
+			}
+		}
+		
+		memcpy(result.data + offset, params.suf.data, params.suf.len);
+		offset += params.suf.len;
+	} else {
+		result.len = 0;
+	}
+	
+	return result;
+}
+
+////////////////////////////////
 //~ String Builder
 
 static void

@@ -211,15 +211,12 @@ generate_pseudocode_for_expression(Expr *expr) {
 
 // MASM source
 
-Arena masm_arena;
-
-String masm_lines[1024] = {0};
-int masm_line_count = 0;
+static Arena masm_arena;
+static String_List masm_lines;
 
 static void
 append_masm_line(String line) {
-	masm_lines[masm_line_count] = string_clone(&masm_arena, line);
-	masm_line_count += 1;
+	string_list_push(&masm_arena, &masm_lines, string_clone(&masm_arena, line));
 }
 
 static String
@@ -297,11 +294,9 @@ generate_masm_source(void) {
 	
 	append_masm_line(string_from_lit("end"));
 	
-	allow_break();
-	
-	return strings_concat(&masm_arena, masm_lines, masm_line_count,
-						  .sep = string_from_lit("\n"),
-						  .suf = string_from_lit("\n"));
+	return string_from_list(&masm_arena, masm_lines,
+							.sep = string_from_lit("\n"),
+							.suf = string_from_lit("\n"));
 }
 
 int main(void) {

@@ -1,0 +1,8 @@
+*.lnk
+*.rdi
+*.pdb
+*.ilk
+*.exe
+*.obj
+*.raddbg_project*
+*.txt

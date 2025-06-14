@@ -1,77 +1,7 @@
-#include <stdlib.h>
-#include <stdio.h>
+#include "el_ctx_crack.h"
+#include "el_base.h"
 
-// Base
-
-#define array_count(a) (sizeof(a)/sizeof((a)[0]))
-
-#define allow_break() do { int _x_ = 0; (void)_x_; } while (0)
-
-typedef struct String String;
-struct String {
-	char *data;
-	int   len;
-};
-
-#define string_from_lit(s) string(s, sizeof(s)-1)
-#define string_from_cstring(s) string(s, strlen(s))
-
-static String
-string(char *data, int len) {
-	String result = {
-		.data = data,
-		.len  = len,
-	};
-	return result;
-}
-
-static String
-string_clone(String s) {
-	String result = {
-		.data = malloc(s.len),
-		.len  = s.len,
-	};
-	
-	if (result.data != NULL) {
-		memcpy(result.data, s.data, s.len);
-	} else {
-		result.len = 0;
-	}
-	
-	return result;
-}
-
-static String
-strings_concat(String *strs, int str_count, String sep) {
-	int total_len = 0;
-	for (int i = 0; i < str_count; i += 1) {
-		total_len += strs[i].len;
-	}
-	
-	total_len += (str_count-1)*sep.len;
-	
-	String result = {
-		.data = malloc(total_len * sizeof(char)),
-		.len  = total_len,
-	};
-	
-	if (result.data != NULL) {
-		int offset = 0;
-		for (int i = 0; i < str_count; i += 1) {
-			memcpy(result.data + offset, strs[i].data, strs[i].len);
-			offset += strs[i].len;
-			
-			if (i < str_count-1) {
-				memcpy(result.data + offset, sep.data, sep.len);
-				offset += sep.len;
-			}
-		}
-	} else {
-		result.len = 0;
-	}
-	
-	return result;
-}
+#include "el_base.c"
 
 // Tree
 
@@ -281,12 +211,14 @@ generate_pseudocode_for_expression(Expr *expr) {
 
 // MASM source
 
+Arena masm_arena;
+
 String masm_lines[1024] = {0};
 int masm_line_count = 0;
 
 static void
 append_masm_line(String line) {
-	masm_lines[masm_line_count] = string_clone(line);
+	masm_lines[masm_line_count] = string_clone(&masm_arena, line);
 	masm_line_count += 1;
 }
 
@@ -367,20 +299,36 @@ generate_masm_source(void) {
 	
 	allow_break();
 	
-	return strings_concat(masm_lines, masm_line_count, string_from_lit("\n"));
+	return strings_concat(&masm_arena, masm_lines, masm_line_count,
+						  .sep = string_from_lit("\n"),
+						  .suf = string_from_lit("\n"));
 }
 
 int main(void) {
+	arena_init(&masm_arena);
+	
 	Expr *program = hardcode_an_expression();
 	generate_pseudocode_for_expression(program);
 	String masm_source = generate_masm_source();
 	
-	FILE *sf = fopen("generated.asm", "wb+");
-	if (sf) {
+	FILE *sf = fopen("generated/generated.asm", "wb+");
+	FILE *bs = fopen("build_generated.bat", "wb+");
+	if (sf && bs) {
 		fwrite(masm_source.data, sizeof(char), masm_source.len, sf);
 		fclose(sf);
 		
-		system("ml64 generated.asm -Zi");
+		char buf[1024] = {0};
+		int buf_len = snprintf(buf, array_count(buf), "@echo off\n"
+							   "del *.pdb > NUL 2> NUL\n"
+							   "del *.rdi > NUL 2> NUL\n"
+							   "ml64 generated/generated.asm /nologo /Fegenerated/generated.exe /W4 /WX /Zi /link /incremental:no /opt:ref\n"
+							   "del *.obj > NUL 2> NUL\n"
+							   "del *.ilk > NUL 2> NUL\n"
+							   "del mllink$* > NUL 2> NUL\n");
+		
+		fwrite(buf, sizeof(char), buf_len, bs);
+		fclose(bs);
+		system("build_generated.bat");
 	}
 	
 	return 0;

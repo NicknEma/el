@@ -379,6 +379,8 @@ int main(void) {
 	if (sf) {
 		fwrite(masm_source.data, sizeof(char), masm_source.len, sf);
 		fclose(sf);
+		
+		system("ml64 generated.asm -Zi");
 	}
 	
 	return 0;

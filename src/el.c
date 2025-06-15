@@ -443,7 +443,10 @@ generate_masm_source(void) {
 				append_masm_line(string_from_lit("ret"));
 			} break;
 			
-			default: break;
+			default: {
+				String line = push_stringf(scratch.arena, "; Unimplemented instruction '%d'", instr->operation);
+				append_masm_line(line);
+			} break;
 		}
 	}
 	

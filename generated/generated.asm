@@ -16,6 +16,7 @@ main proc
 	mov rcx, 4
 	mov rdx, 1
 	add rcx, rdx
+	; Unimplemented instruction '4'
 	add rax, rbx
 	mov rax, rax
 	pop r15

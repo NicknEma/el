@@ -43,6 +43,7 @@ struct Expr {
 //- Statements
 
 typedef enum Statement_Kind {
+	Statement_Kind_EXPR,
 	Statement_Kind_RETURN,
 	Statement_Kind_COUNT,
 } Statement_Kind;
@@ -154,6 +155,7 @@ hardcode_an_expression(void) {
 		}
 	}
 	
+#if 0
 	Expr *minus = cmalloc(sizeof(Expr));
 	minus->kind = Expr_Kind_BINARY;
 	minus->operation = Expr_Operation_SUB;
@@ -180,17 +182,21 @@ hardcode_an_expression(void) {
 	}
 	
 	plus->next = minus;
+#endif
 	
 	return plus;
 }
 
 static Statement *
-hardcode_a_return_statement(void) {
+hardcode_a_statement(void) {
 	Statement *statement = malloc(sizeof(Statement));
-	statement->kind = Statement_Kind_RETURN;
-	statement->next = NULL;
-	
+	statement->kind = Statement_Kind_EXPR;
 	statement->expr = hardcode_an_expression();
+	
+	statement->next = malloc(sizeof(Statement));
+	statement->next->kind = Statement_Kind_RETURN;
+	statement->next->expr = statement->expr;
+	statement->next->next = NULL;
 	
 	return statement;
 }
@@ -296,6 +302,12 @@ bytecode_register_from_index(int index) {
 static void
 generate_bytecode_for_statement(Statement *statement) {
 	switch (statement->kind) {
+		case Statement_Kind_EXPR: {
+			for (Expr *expr = statement->expr; expr != NULL; expr = expr->next) {
+				generate_bytecode_for_expression(expr);
+			}
+		} break;
+		
 		case Statement_Kind_RETURN: {
 #if 0
 			int i = 0;
@@ -321,35 +333,28 @@ generate_bytecode_for_statement(Statement *statement) {
 			}
 #endif
 			
-			int i = 0;
-			for (Expr *expr = statement->expr; expr != NULL; expr = expr->next) {
-				Instr *retval = generate_bytecode_for_expression(expr);
-				
-				i += 1;
+			Instr ret = {0};
+			
+			{
+				// Remember the destination register of each of the returned expressions,
+				// as well as how many there are.
+				int i = 0;
+				for (Expr *expr = statement->expr; expr != NULL; expr = expr->next) {
+					Instr *retval = generate_bytecode_for_expression(expr);
+					
+					assert(ret.ret_reg_count < array_count(ret.ret_regs));
+					ret.ret_regs[ret.ret_reg_count] = retval->dest;
+					ret.ret_reg_count += 1;
+					
+					i += 1;
+				}
 			}
+			
+			ret.operation = Instr_Operation_RETURN;
 			
 			// Return from the procedure
-			Instr *ret = &instructions[instruction_count];
+			instructions[instruction_count] = ret;
 			instruction_count += 1;
-			
-			ret->label     = string_from_lit("");
-			ret->operation = Instr_Operation_RETURN;
-			ret->mode      = 0;
-			ret->dest      = 0;
-			ret->source    = 0;
-			
-			ret->ret_reg_count = i;
-			
-			i = 0;
-			for (Expr *expr = statement->expr; expr != NULL; expr = expr->next) {
-				int return_register = bytecode_register_from_index(i);
-				
-				assert(ret->ret_reg_count < array_count(ret->ret_regs));
-				ret->ret_regs[i] = return_register;
-				
-				i += 1;
-			}
-			
 		} break;
 		
 		default: break;
@@ -437,12 +442,14 @@ generate_masm_source(void) {
 	{
 		// Push callee-saved registers
 		// TODO: Only do this if necessary
+		append_masm_line(string_from_lit("; Procedure prologue"));
 		append_masm_line(string_from_lit("push rbx"));
 		append_masm_line(string_from_lit("push rbp"));
 		append_masm_line(string_from_lit("push r12"));
 		append_masm_line(string_from_lit("push r13"));
 		append_masm_line(string_from_lit("push r14"));
 		append_masm_line(string_from_lit("push r15"));
+		append_masm_line(string_from_lit("; Procedure body"));
 	}
 	
 	Scratch scratch = scratch_begin(0, 0);
@@ -450,7 +457,7 @@ generate_masm_source(void) {
 	for (int i = 0; i < instruction_count; i += 1) {
 		arena_reset(scratch.arena);
 		
-		Instr  *instr = &instructions[i];
+		Instr *instr = &instructions[i];
 		
 		switch (instr->operation) {
 			case Instr_Operation_SET:
@@ -512,6 +519,7 @@ generate_masm_source(void) {
 					// Pop callee-saved registers
 					// NOTE: Remember that the stack is FILO! Do this in reverse push order.
 					// TODO: Only do this if necessary
+					append_masm_line(string_from_lit("; Procedure epilogue"));
 					append_masm_line(string_from_lit("pop r15"));
 					append_masm_line(string_from_lit("pop r14"));
 					append_masm_line(string_from_lit("pop r13"));
@@ -547,7 +555,7 @@ int main(void) {
 	
 	arena_init(&masm_arena);
 	
-	Statement *program = hardcode_a_return_statement();
+	Statement *program = hardcode_a_statement();
 	generate_bytecode_for_statement(program);
 	String masm_source = generate_masm_source();
 	

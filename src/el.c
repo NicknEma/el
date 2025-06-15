@@ -319,6 +319,36 @@ append_masm_line(String line) {
 }
 
 static String
+masm_register_from_bytecode_register(int bytecode_reg) {
+	String register_names[] = {
+		string_from_lit_const("rax"),
+		string_from_lit_const("rbx"),
+		string_from_lit_const("rcx"),
+		string_from_lit_const("rdx"),
+		string_from_lit_const("rdi"),
+		string_from_lit_const("rsi"),
+		string_from_lit_const("rbp"),
+		string_from_lit_const("rsp"),
+		string_from_lit_const("r8"),
+		string_from_lit_const("r9"),
+		string_from_lit_const("r10"),
+		string_from_lit_const("r11"),
+		string_from_lit_const("r12"),
+		string_from_lit_const("r13"),
+		string_from_lit_const("r14"),
+		string_from_lit_const("r15"),
+	};
+	assert(array_count(register_names) == 16);
+	
+	// Temporarily shift all registers from rsp to r15 up by 1, so rsp isn't used in
+	// normal calculations. This doesn't seem like a good way to do it but it's fine for now.
+	if (bytecode_reg >= 7) bytecode_reg += 1;
+	assert(bytecode_reg < array_count(register_names));
+	
+	return register_names[bytecode_reg];
+}
+
+static String
 generate_masm_source(void) {
 	
 	append_masm_line(string_from_lit("; Generated"));
@@ -340,69 +370,63 @@ generate_masm_source(void) {
 		append_masm_line(string_from_lit("push r15"));
 	}
 	
+	Scratch scratch = scratch_begin(0, 0);
+	
 	for (int i = 0; i < instruction_count; i += 1) {
-		Instr *instr = &instructions[i];
+		arena_reset(scratch.arena);
+		
+		Instr  *instr = &instructions[i];
+		
 		switch (instr->operation) {
-			case Instr_Operation_SET: {
-				char buf[256] = {0};
-				int buf_len = 0;
-				if (instr->mode == Addressing_Mode_CONSTANT) {
-					buf_len = snprintf(buf, array_count(buf), "mov r%d, %d", instr->dest+8, instr->source);
-				} else {
-					buf_len = snprintf(buf, array_count(buf), "mov r%d, r%d", instr->dest+8, instr->source+8);
-				}
-				
-				append_masm_line(string(buf, buf_len));
-			} break;
-			
-			case Instr_Operation_ADD: {
-				char buf[256] = {0};
-				int buf_len = 0;
-				
-				if (instr->mode == Addressing_Mode_CONSTANT) {
-					buf_len = snprintf(buf, array_count(buf), "add r%d, %d", instr->dest+8, instr->source);
-				} else {
-					buf_len = snprintf(buf, array_count(buf), "add r%d, r%d", instr->dest+8, instr->source+8);
-				}
-				
-				append_masm_line(string(buf, buf_len));
-			} break;
-			
-			case Instr_Operation_SUB: {
-				char buf[256] = {0};
-				int buf_len = 0;
-				
-				if (instr->mode == Addressing_Mode_CONSTANT) {
-					buf_len = snprintf(buf, array_count(buf), "sub r%d, %d", instr->dest+8, instr->source);
-				} else {
-					buf_len = snprintf(buf, array_count(buf), "sub r%d, r%d", instr->dest+8, instr->source+8);
-				}
-				
-				append_masm_line(string(buf, buf_len));
-			} break;
-			
+			case Instr_Operation_SET:
+			case Instr_Operation_ADD:
+			case Instr_Operation_SUB:
 			case Instr_Operation_MUL: {
-				char buf[256] = {0};
-				int buf_len = 0;
 				
-				if (instr->mode == Addressing_Mode_CONSTANT) {
-					buf_len = snprintf(buf, array_count(buf), "imul r%d, %d", instr->dest+8, instr->source);
-				} else {
-					buf_len = snprintf(buf, array_count(buf), "imul r%d, r%d", instr->dest+8, instr->source+8);
+				String source = {0};
+				String dest   = {0};
+				
+				switch (instr->mode) {
+					case Addressing_Mode_CONSTANT: {
+						source = push_stringf(scratch.arena, "%d", instr->source);
+						dest   = masm_register_from_bytecode_register(instr->dest);
+					} break;
+					
+					case Addressing_Mode_REGISTER: {
+						source = masm_register_from_bytecode_register(instr->source);
+						dest   = masm_register_from_bytecode_register(instr->dest);
+					} break;
+					
+					default: break;
 				}
 				
-				append_masm_line(string(buf, buf_len));
+				String mnemonic = {0};
+				switch (instr->operation) {
+					case Instr_Operation_SET: { mnemonic = string_from_lit("mov"); } break;
+					case Instr_Operation_ADD: { mnemonic = string_from_lit("add"); } break;
+					case Instr_Operation_SUB: { mnemonic = string_from_lit("sub"); } break;
+					case Instr_Operation_MUL: { mnemonic = string_from_lit("imul"); } break;
+					default: break;
+				}
+				
+				String line = push_stringf(scratch.arena, "%.*s %.*s, %.*s", string_expand(mnemonic),
+										   string_expand(dest), string_expand(source));
+				append_masm_line(line);
 			} break;
 			
 			case Instr_Operation_RETURN: {
-				char buf[256] = {0};
-				int buf_len = 0;
 				
 				{
-					buf_len = snprintf(buf, array_count(buf), "mov r%d, r%d", instr->dest+8, instr->source+8);
+					// Convert the bytecode calling convention to the platform calling convention:
+					// For now, just map BYTECODE_RETURN_REGISTER_0 to rax
+					
+					String source = masm_register_from_bytecode_register(BYTECODE_RETURN_REGISTER_0);
+					String dest   = string_from_lit("rax");
+					
+					String line = push_stringf(scratch.arena, "mov %.*s, %.*s", string_expand(dest),
+											   string_expand(source));
+					append_masm_line(line);
 				}
-				
-				append_masm_line(string_from_lit("mov rax, r8"));
 				
 				{
 					// Pop callee-saved registers
@@ -427,6 +451,8 @@ generate_masm_source(void) {
 	append_masm_line(string_from_lit("main endp"));
 	
 	append_masm_line(string_from_lit("end"));
+	
+	scratch_end(scratch);
 	
 	return string_from_list(&masm_arena, masm_lines,
 							.sep = string_from_lit("\n"),

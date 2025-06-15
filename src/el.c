@@ -5,6 +5,11 @@
 
 #include "el_x64.c"
 
+static void *
+cmalloc(size_t size) {
+	return calloc(1, size);
+}
+
 ////////////////////////////////
 //~ Program Tree
 
@@ -31,6 +36,7 @@ struct Expr {
 	Expr_Operation operation;
 	Expr *left;
 	Expr *right;
+	Expr *next;
 	int value;
 };
 
@@ -60,22 +66,28 @@ hardcode_an_expression(void) {
     ** ** ** { 10 }
     ** ** ** { Plus }
       ** ** ** ** { 4 }
-      ** ** ** ** { 1 }
+** ** ** ** { 1 }
 */
 	
-	Expr *plus = malloc(sizeof(Expr));
+	/*
+** { Sub }
+** ** { 7 }
+** ** { 0 }
+*/
+	
+	Expr *plus = cmalloc(sizeof(Expr));
 	plus->kind = Expr_Kind_BINARY;
 	plus->operation = Expr_Operation_ADD;
-	plus->left = malloc(sizeof(Expr));
-	plus->right = malloc(sizeof(Expr));
+	plus->left = cmalloc(sizeof(Expr));
+	plus->right = cmalloc(sizeof(Expr));
 	plus->value = 0;
 	
 	{
 		Expr *times = plus->left;
 		times->kind = Expr_Kind_BINARY;
 		times->operation = Expr_Operation_MUL;
-		times->left = malloc(sizeof(Expr));
-		times->right = malloc(sizeof(Expr));
+		times->left = cmalloc(sizeof(Expr));
+		times->right = cmalloc(sizeof(Expr));
 		times->value = 0;
 		
 		{
@@ -101,8 +113,8 @@ hardcode_an_expression(void) {
 		Expr *div = plus->right;
 		div->kind = Expr_Kind_BINARY;
 		div->operation = Expr_Operation_DIV;
-		div->left = malloc(sizeof(Expr));
-		div->right = malloc(sizeof(Expr));
+		div->left = cmalloc(sizeof(Expr));
+		div->right = cmalloc(sizeof(Expr));
 		div->value = 0;
 		
 		{
@@ -118,8 +130,8 @@ hardcode_an_expression(void) {
 			Expr *plus2 = div->right;
 			plus2->kind = Expr_Kind_BINARY;
 			plus2->operation = Expr_Operation_ADD;
-			plus2->left = malloc(sizeof(Expr));
-			plus2->right = malloc(sizeof(Expr));
+			plus2->left = cmalloc(sizeof(Expr));
+			plus2->right = cmalloc(sizeof(Expr));
 			plus2->value = 0;
 			
 			{
@@ -141,6 +153,33 @@ hardcode_an_expression(void) {
 			}
 		}
 	}
+	
+	Expr *minus = cmalloc(sizeof(Expr));
+	minus->kind = Expr_Kind_BINARY;
+	minus->operation = Expr_Operation_SUB;
+	minus->left = cmalloc(sizeof(Expr));
+	minus->right = cmalloc(sizeof(Expr));
+	minus->value = 0;
+	
+	{
+		Expr *seven = minus->left;
+		seven->kind = Expr_Kind_LITERAL;
+		seven->operation = 0;
+		seven->left = 0;
+		seven->right = 0;
+		seven->value = 7;
+	}
+	
+	{
+		Expr *zero = minus->right;
+		zero->kind = Expr_Kind_LITERAL;
+		zero->operation = 0;
+		zero->left = 0;
+		zero->right = 0;
+		zero->value = 0;
+	}
+	
+	plus->next = minus;
 	
 	return plus;
 }
@@ -186,6 +225,9 @@ struct Instr {
 	Addressing_Mode mode;
 	int source; // Register
 	int dest;   // Register
+	
+	int ret_regs[8]; // Arbitrary number for now
+	int ret_reg_count;
 };
 
 static Instr instructions[256];
@@ -246,24 +288,44 @@ generate_bytecode_for_expression(Expr *expr) {
 	return instr;
 }
 
+static int
+bytecode_register_from_index(int index) {
+	return index; // For now, expression indices are mapped 1:1 to register indices
+}
+
 static void
 generate_bytecode_for_statement(Statement *statement) {
 	switch (statement->kind) {
 		case Statement_Kind_RETURN: {
-			Instr *retval = generate_bytecode_for_expression(statement->expr);
+#if 0
+			int i = 0;
+			for (Expr *expr = statement->expr; expr != NULL; expr = expr->next) {
+				Instr *retval = generate_bytecode_for_expression(expr);
+				
+				// If the return value isn't already in the correct return register, move it there
+				int return_register = bytecode_register_from_index(i);
+				if (retval->dest != return_register) {
+					Instr *set = &instructions[instruction_count];
+					instruction_count += 1;
+					
+					set->label     = string_from_lit("");
+					set->operation = Instr_Operation_SET;
+					set->mode      = Addressing_Mode_REGISTER;
+					set->dest      = return_register;
+					set->source    = retval->dest;
+					
+					registers_used -= 1;
+				}
+				
+				i += 1;
+			}
+#endif
 			
-			// If the return value isn't already in the correct return register, move it there
-			if (retval->dest != BYTECODE_RETURN_REGISTER_0) {
-				Instr *set = &instructions[instruction_count];
-				instruction_count += 1;
+			int i = 0;
+			for (Expr *expr = statement->expr; expr != NULL; expr = expr->next) {
+				Instr *retval = generate_bytecode_for_expression(expr);
 				
-				set->label     = string_from_lit("");
-				set->operation = Instr_Operation_SET;
-				set->mode      = Addressing_Mode_REGISTER;
-				set->dest      = BYTECODE_RETURN_REGISTER_0;
-				set->source    = retval->dest;
-				
-				registers_used -= 1;
+				i += 1;
 			}
 			
 			// Return from the procedure
@@ -275,6 +337,19 @@ generate_bytecode_for_statement(Statement *statement) {
 			ret->mode      = 0;
 			ret->dest      = 0;
 			ret->source    = 0;
+			
+			ret->ret_reg_count = i;
+			
+			i = 0;
+			for (Expr *expr = statement->expr; expr != NULL; expr = expr->next) {
+				int return_register = bytecode_register_from_index(i);
+				
+				assert(ret->ret_reg_count < array_count(ret->ret_regs));
+				ret->ret_regs[i] = return_register;
+				
+				i += 1;
+			}
+			
 		} break;
 		
 		default: break;
@@ -420,12 +495,17 @@ generate_masm_source(void) {
 					// Convert the bytecode calling convention to the platform calling convention:
 					// For now, just map BYTECODE_RETURN_REGISTER_0 to rax
 					
-					String source = masm_register_from_bytecode_register(BYTECODE_RETURN_REGISTER_0);
-					String dest   = string_from_lit("rax");
-					
-					String line = push_stringf(scratch.arena, "mov %.*s, %.*s", string_expand(dest),
-											   string_expand(source));
-					append_masm_line(line);
+					if (instr->ret_reg_count == 1) {
+						String source = masm_register_from_bytecode_register(instr->ret_regs[0]);
+						String dest   = string_from_lit("rax");
+						
+						String line = push_stringf(scratch.arena, "mov %.*s, %.*s", string_expand(dest),
+												   string_expand(source));
+						append_masm_line(line);
+					} else if (instr->ret_reg_count > 1) {
+						String line = push_stringf(scratch.arena, "; Unimplemented returning of multiple values");
+						append_masm_line(line);
+					}
 				}
 				
 				{

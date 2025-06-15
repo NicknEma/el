@@ -18,7 +18,10 @@ main proc
 	add rcx, rdx
 	; Unimplemented instruction '4'
 	add rax, rbx
-	mov rax, rax
+	mov rbx, 7
+	mov rcx, 0
+	sub rbx, rcx
+	; Unimplemented returning of multiple values
 	pop r15
 	pop r14
 	pop r13

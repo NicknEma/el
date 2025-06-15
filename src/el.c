@@ -174,7 +174,7 @@ instr_operation_from_expr_operation(Expr_Operation expr_op) {
 }
 
 static Instr *
-generate_pseudocode_for_expression(Expr *expr) {
+generate_bytecode_for_expression(Expr *expr) {
 	Instr *instr = NULL;
 	
 	switch (expr->kind) {
@@ -191,8 +191,8 @@ generate_pseudocode_for_expression(Expr *expr) {
 		} break;
 		
 		case Expr_Kind_BINARY: {
-			Instr *left  = generate_pseudocode_for_expression(expr->left);
-			Instr *right = generate_pseudocode_for_expression(expr->right);
+			Instr *left  = generate_bytecode_for_expression(expr->left);
+			Instr *right = generate_bytecode_for_expression(expr->right);
 			
 			instr = &instructions[instruction_count];
 			instruction_count += 1;
@@ -230,6 +230,17 @@ generate_masm_source(void) {
 	append_masm_line(string_from_lit(".code")); // Not .text, aparently
 	
 	append_masm_line(string_from_lit("main proc"));
+	
+	{
+		// Push callee-saved registers
+		// TODO: Only do this if necessary
+		append_masm_line(string_from_lit("push rbx"));
+		append_masm_line(string_from_lit("push rbp"));
+		append_masm_line(string_from_lit("push r12"));
+		append_masm_line(string_from_lit("push r13"));
+		append_masm_line(string_from_lit("push r14"));
+		append_masm_line(string_from_lit("push r15"));
+	}
 	
 	for (int i = 0; i < instruction_count; i += 1) {
 		Instr *instr = &instructions[i];
@@ -291,6 +302,18 @@ generate_masm_source(void) {
 	
 	append_masm_line(string_from_lit("mov rax, r8"));
 	
+	{
+		// Pop callee-saved registers
+		// NOTE: Remember that the stack is FILO! Do this in reverse push order.
+		// TODO: Only do this if necessary
+		append_masm_line(string_from_lit("pop r15"));
+		append_masm_line(string_from_lit("pop r14"));
+		append_masm_line(string_from_lit("pop r13"));
+		append_masm_line(string_from_lit("pop r12"));
+		append_masm_line(string_from_lit("pop rbp"));
+		append_masm_line(string_from_lit("pop rbx"));
+	}
+	
 	append_masm_line(string_from_lit("ret"));
 	append_masm_line(string_from_lit("main endp"));
 	
@@ -307,7 +330,7 @@ int main(void) {
 	arena_init(&masm_arena);
 	
 	Expr *program = hardcode_an_expression();
-	generate_pseudocode_for_expression(program);
+	generate_bytecode_for_expression(program);
 	String masm_source = generate_masm_source();
 	
 	FILE *sf = fopen("generated/generated.asm", "wb+");

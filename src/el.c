@@ -5,7 +5,10 @@
 
 #include "el_x64.c"
 
-// Tree
+////////////////////////////////
+//~ Program Tree
+
+//- Expressions
 
 typedef enum Expr_Kind {
 	Expr_Kind_LITERAL,
@@ -29,6 +32,21 @@ struct Expr {
 	Expr *left;
 	Expr *right;
 	int value;
+};
+
+//- Statements
+
+typedef enum Statement_Kind {
+	Statement_Kind_RETURN,
+	Statement_Kind_COUNT,
+} Statement_Kind;
+
+typedef struct Statement Statement;
+struct Statement {
+	Statement_Kind kind;
+	Statement     *next;
+	
+	Expr *expr;
 };
 
 static Expr *
@@ -127,7 +145,19 @@ hardcode_an_expression(void) {
 	return plus;
 }
 
-// Intermediate rep
+static Statement *
+hardcode_a_return_statement(void) {
+	Statement *statement = malloc(sizeof(Statement));
+	statement->kind = Statement_Kind_RETURN;
+	statement->next = NULL;
+	
+	statement->expr = hardcode_an_expression();
+	
+	return statement;
+}
+
+////////////////////////////////
+//~ Bytecode
 
 typedef enum Instr_Operation {
 	Instr_Operation_SET,
@@ -135,6 +165,9 @@ typedef enum Instr_Operation {
 	Instr_Operation_SUB,
 	Instr_Operation_MUL,
 	Instr_Operation_DIV,
+	
+	Instr_Operation_RETURN,
+	
 	Instr_Operation_COUNT,
 } Instr_Operation;
 
@@ -143,6 +176,8 @@ typedef enum Addressing_Mode {
 	Addressing_Mode_REGISTER,
 	Addressing_Mode_COUNT,
 } Addressing_Mode;
+
+#define BYTECODE_RETURN_REGISTER_0 0
 
 typedef struct Instr Instr;
 struct Instr {
@@ -211,7 +246,47 @@ generate_bytecode_for_expression(Expr *expr) {
 	return instr;
 }
 
-// MASM source
+static void
+generate_bytecode_for_statement(Statement *statement) {
+	switch (statement->kind) {
+		case Statement_Kind_RETURN: {
+			Instr *retval = generate_bytecode_for_expression(statement->expr);
+			
+			// If the return value isn't already in the correct return register, move it there
+			if (retval->dest != BYTECODE_RETURN_REGISTER_0) {
+				Instr *set = &instructions[instruction_count];
+				instruction_count += 1;
+				
+				set->label     = string_from_lit("");
+				set->operation = Instr_Operation_SET;
+				set->mode      = Addressing_Mode_REGISTER;
+				set->dest      = BYTECODE_RETURN_REGISTER_0;
+				set->source    = retval->dest;
+				
+				registers_used -= 1;
+			}
+			
+			// Return from the procedure
+			Instr *ret = &instructions[instruction_count];
+			instruction_count += 1;
+			
+			ret->label     = string_from_lit("");
+			ret->operation = Instr_Operation_RETURN;
+			ret->mode      = 0;
+			ret->dest      = 0;
+			ret->source    = 0;
+		} break;
+		
+		default: break;
+	}
+	
+	if (statement->next != NULL) {
+		generate_bytecode_for_statement(statement->next);
+	}
+}
+
+////////////////////////////////
+//~ MASM Source
 
 static Arena masm_arena;
 static String_List masm_lines;
@@ -319,25 +394,34 @@ generate_masm_source(void) {
 				append_masm_line(string(buf, buf_len));
 			} break;
 			
+			case Instr_Operation_RETURN: {
+				char buf[256] = {0};
+				int buf_len = 0;
+				
+				{
+					buf_len = snprintf(buf, array_count(buf), "mov r%d, r%d", instr->dest+8, instr->source+8);
+				}
+				
+				append_masm_line(string_from_lit("mov rax, r8"));
+				
+				{
+					// Pop callee-saved registers
+					// NOTE: Remember that the stack is FILO! Do this in reverse push order.
+					// TODO: Only do this if necessary
+					append_masm_line(string_from_lit("pop r15"));
+					append_masm_line(string_from_lit("pop r14"));
+					append_masm_line(string_from_lit("pop r13"));
+					append_masm_line(string_from_lit("pop r12"));
+					append_masm_line(string_from_lit("pop rbp"));
+					append_masm_line(string_from_lit("pop rbx"));
+				}
+				
+				append_masm_line(string_from_lit("ret"));
+			} break;
+			
 			default: break;
 		}
 	}
-	
-	append_masm_line(string_from_lit("mov rax, r8"));
-	
-	{
-		// Pop callee-saved registers
-		// NOTE: Remember that the stack is FILO! Do this in reverse push order.
-		// TODO: Only do this if necessary
-		append_masm_line(string_from_lit("pop r15"));
-		append_masm_line(string_from_lit("pop r14"));
-		append_masm_line(string_from_lit("pop r13"));
-		append_masm_line(string_from_lit("pop r12"));
-		append_masm_line(string_from_lit("pop rbp"));
-		append_masm_line(string_from_lit("pop rbx"));
-	}
-	
-	append_masm_line(string_from_lit("ret"));
 	
 	indent_level -= 1;
 	append_masm_line(string_from_lit("main endp"));
@@ -354,8 +438,8 @@ int main(void) {
 	
 	arena_init(&masm_arena);
 	
-	Expr *program = hardcode_an_expression();
-	generate_bytecode_for_expression(program);
+	Statement *program = hardcode_a_return_statement();
+	generate_bytecode_for_statement(program);
 	String masm_source = generate_masm_source();
 	
 	FILE *sf = fopen("generated/generated.asm", "wb+");

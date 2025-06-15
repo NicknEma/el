@@ -3,6 +3,8 @@
 
 #include "el_base.c"
 
+#include "el_x64.c"
+
 // Tree
 
 typedef enum Expr_Kind {
@@ -300,6 +302,8 @@ generate_masm_source(void) {
 }
 
 int main(void) {
+	x64_test();
+	
 	arena_init(&masm_arena);
 	
 	Expr *program = hardcode_an_expression();

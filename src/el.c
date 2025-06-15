@@ -56,6 +56,24 @@ struct Statement {
 	Expr *expr;
 };
 
+//- Declarations
+
+typedef enum Declaration_Kind {
+	Declaration_Kind_PROCEDURE,
+	Declaration_Kind_COUNT,
+} Declaration_Kind;
+
+typedef struct Declaration Declaration;
+struct Declaration {
+	Declaration_Kind kind;
+	Declaration     *next;
+	String           ident;
+	
+	Statement *body;
+};
+
+//- Testing
+
 static Expr *
 hardcode_an_expression(void) {
 	/*
@@ -201,10 +219,32 @@ hardcode_a_statement(void) {
 	return statement;
 }
 
+static Declaration *
+hardcode_a_declaration(void) {
+	Declaration *main_decl = cmalloc(sizeof(Declaration));
+	main_decl->kind = Declaration_Kind_PROCEDURE;
+	main_decl->next = cmalloc(sizeof(Declaration));
+	main_decl->ident = string_from_lit("main");
+	
+	main_decl->body = hardcode_a_statement();
+	
+	{
+		Declaration *next_decl = main_decl->next;
+		next_decl->kind = Declaration_Kind_PROCEDURE;
+		next_decl->ident = string_from_lit("other");
+		
+		next_decl->body = main_decl->body;
+	}
+	
+	return main_decl;
+}
+
 ////////////////////////////////
 //~ Bytecode
 
 typedef enum Instr_Operation {
+	Instr_Operation_NULL,
+	
 	Instr_Operation_SET,
 	Instr_Operation_ADD,
 	Instr_Operation_SUB,
@@ -224,9 +264,17 @@ typedef enum Addressing_Mode {
 
 #define BYTECODE_RETURN_REGISTER_0 0
 
+typedef enum Label_Kind {
+	Label_Kind_NULL = 0,
+	Label_Kind_PROCEDURE,
+	Label_Kind_INTERNAL,
+	Label_Kind_COUNT,
+} Label_Kind;
+
 typedef struct Instr Instr;
 struct Instr {
 	String label;
+	Label_Kind label_kind;
 	Instr_Operation operation;
 	Addressing_Mode mode;
 	int source; // Register
@@ -265,7 +313,9 @@ generate_bytecode_for_expression(Expr *expr) {
 			instr = &instructions[instruction_count];
 			instruction_count += 1;
 			
-			instr->label     = string_from_lit("");
+			instr->label.len  = 0;
+			instr->label.data = NULL;
+			
 			instr->operation = Instr_Operation_SET;
 			instr->mode      = Addressing_Mode_CONSTANT;
 			instr->source    = expr->value;
@@ -280,7 +330,9 @@ generate_bytecode_for_expression(Expr *expr) {
 			instr = &instructions[instruction_count];
 			instruction_count += 1;
 			
-			instr->label     = string_from_lit("");
+			instr->label.len  = 0;
+			instr->label.data = NULL;
+			
 			instr->operation = instr_operation_from_expr_operation(expr->operation);
 			instr->mode      = Addressing_Mode_REGISTER;
 			instr->source    = right->dest;
@@ -294,11 +346,6 @@ generate_bytecode_for_expression(Expr *expr) {
 	return instr;
 }
 
-static int
-bytecode_register_from_index(int index) {
-	return index; // For now, expression indices are mapped 1:1 to register indices
-}
-
 static void
 generate_bytecode_for_statement(Statement *statement) {
 	switch (statement->kind) {
@@ -309,29 +356,6 @@ generate_bytecode_for_statement(Statement *statement) {
 		} break;
 		
 		case Statement_Kind_RETURN: {
-#if 0
-			int i = 0;
-			for (Expr *expr = statement->expr; expr != NULL; expr = expr->next) {
-				Instr *retval = generate_bytecode_for_expression(expr);
-				
-				// If the return value isn't already in the correct return register, move it there
-				int return_register = bytecode_register_from_index(i);
-				if (retval->dest != return_register) {
-					Instr *set = &instructions[instruction_count];
-					instruction_count += 1;
-					
-					set->label     = string_from_lit("");
-					set->operation = Instr_Operation_SET;
-					set->mode      = Addressing_Mode_REGISTER;
-					set->dest      = return_register;
-					set->source    = retval->dest;
-					
-					registers_used -= 1;
-				}
-				
-				i += 1;
-			}
-#endif
 			
 			Instr ret = {0};
 			
@@ -359,40 +383,69 @@ generate_bytecode_for_statement(Statement *statement) {
 		
 		default: break;
 	}
-	
-	if (statement->next != NULL) {
-		generate_bytecode_for_statement(statement->next);
+}
+
+static void
+generate_bytecode_for_declaration(Declaration *declaration) {
+	switch (declaration->kind) {
+		case Declaration_Kind_PROCEDURE: {
+			Instr instr = {0};
+			
+			instr.label      = declaration->ident;
+			instr.label_kind = Label_Kind_PROCEDURE;
+			instr.operation  = Instr_Operation_NULL;
+			
+			instructions[instruction_count] = instr;
+			instruction_count += 1;
+			
+			for (Statement *statement = declaration->body; statement != NULL; statement = statement->next) {
+				generate_bytecode_for_statement(statement);
+			}
+			
+			assert(instructions[instruction_count-1].operation == Instr_Operation_RETURN);
+		} break;
+		
+		default: break;
 	}
 }
 
 ////////////////////////////////
 //~ MASM Source
 
-static Arena masm_arena;
-static String_List masm_lines;
-static int indent_level;
-static String indent_bytes = string_from_lit_const("\t");
+typedef struct MASM_Context MASM_Context;
+struct MASM_Context {
+	Arena  arena;
+	String current_label;
+	
+	String_List lines;
+	int    indent_level;
+	String indent_string;
+};
+
+static MASM_Context masm_context = {
+	.indent_string = string_from_lit_const("\t"),
+};
 
 static void
-append_masm_line(String line) {
+masm_append_line(String line) {
 	Scratch scratch = scratch_begin(0, 0);
 	
-	int indent_cap = indent_level * indent_bytes.len;
+	int indent_cap = masm_context.indent_level * masm_context.indent_string.len;
 	u8 *indent_buf = push_array(scratch.arena, u8, indent_cap);
 	int indent_len = 0;
 	
 	if (indent_buf != NULL) {
-		for (int i = 0; i < indent_level; i += 1) {
-			memcpy(indent_buf + indent_len, indent_bytes.data, indent_bytes.len);
-			indent_len += indent_bytes.len;
+		for (int i = 0; i < masm_context.indent_level; i += 1) {
+			memcpy(indent_buf + indent_len, masm_context.indent_string.data, masm_context.indent_string.len);
+			indent_len += masm_context.indent_string.len;
 		}
 		
 		assert(indent_len == indent_cap);
 		
 		String temp[] = {string(indent_buf, indent_len), line};
-		string_list_push(&masm_arena, &masm_lines, strings_concat(&masm_arena, temp, array_count(temp)));
+		string_list_push(&masm_context.arena, &masm_context.lines, strings_concat(&masm_context.arena, temp, array_count(temp)));
 	} else {
-		string_list_push(&masm_arena, &masm_lines, string_clone(&masm_arena, line));
+		string_list_push(&masm_context.arena, &masm_context.lines, string_clone(&masm_context.arena, line));
 	}
 	
 	scratch_end(scratch);
@@ -429,28 +482,12 @@ masm_register_from_bytecode_register(int bytecode_reg) {
 }
 
 static String
-generate_masm_source(void) {
+masm_generate_source(void) {
 	
-	append_masm_line(string_from_lit("; Generated"));
-	append_masm_line(string_from_lit("includelib msvcrt.lib"));
-	append_masm_line(string_from_lit(".data"));
-	append_masm_line(string_from_lit(".code")); // Not .text, aparently
-	
-	append_masm_line(string_from_lit("main proc"));
-	indent_level += 1;
-	
-	{
-		// Push callee-saved registers
-		// TODO: Only do this if necessary
-		append_masm_line(string_from_lit("; Procedure prologue"));
-		append_masm_line(string_from_lit("push rbx"));
-		append_masm_line(string_from_lit("push rbp"));
-		append_masm_line(string_from_lit("push r12"));
-		append_masm_line(string_from_lit("push r13"));
-		append_masm_line(string_from_lit("push r14"));
-		append_masm_line(string_from_lit("push r15"));
-		append_masm_line(string_from_lit("; Procedure body"));
-	}
+	masm_append_line(string_from_lit("; Generated"));
+	masm_append_line(string_from_lit("includelib msvcrt.lib"));
+	masm_append_line(string_from_lit(".data"));
+	masm_append_line(string_from_lit(".code\n")); // Not .text, aparently
 	
 	Scratch scratch = scratch_begin(0, 0);
 	
@@ -459,7 +496,42 @@ generate_masm_source(void) {
 		
 		Instr *instr = &instructions[i];
 		
+		switch (instr->label_kind) {
+			case Label_Kind_PROCEDURE: {
+				String line = push_stringf(scratch.arena, "%.*s proc", string_expand(instr->label));
+				masm_append_line(line);
+				
+				// Remember the current label so we can write the 'endp' line
+				masm_context.current_label = instr->label;
+				
+				masm_context.indent_level += 1;
+				
+				{
+					// Push callee-saved registers
+					// TODO: Only do this if necessary
+					// TODO: Figure out why the call stack disappears from the debugger when rbx and rbp are
+					// pushed, and why it reappears when they are popped.
+					masm_append_line(string_from_lit("; Procedure prologue"));
+					masm_append_line(string_from_lit("push rbx"));
+					masm_append_line(string_from_lit("push rbp"));
+					masm_append_line(string_from_lit("push r12"));
+					masm_append_line(string_from_lit("push r13"));
+					masm_append_line(string_from_lit("push r14"));
+					masm_append_line(string_from_lit("push r15"));
+					masm_append_line(string_from_lit("; Procedure body"));
+				}
+				
+			} break;
+			
+			default: break;
+		}
+		
 		switch (instr->operation) {
+			case Instr_Operation_NULL: {
+				String line = push_stringf(scratch.arena, "; Null instruction", instr->operation);
+				masm_append_line(line);
+			} break;
+			
 			case Instr_Operation_SET:
 			case Instr_Operation_ADD:
 			case Instr_Operation_SUB:
@@ -493,7 +565,7 @@ generate_masm_source(void) {
 				
 				String line = push_stringf(scratch.arena, "%.*s %.*s, %.*s", string_expand(mnemonic),
 										   string_expand(dest), string_expand(source));
-				append_masm_line(line);
+				masm_append_line(line);
 			} break;
 			
 			case Instr_Operation_RETURN: {
@@ -508,10 +580,10 @@ generate_masm_source(void) {
 						
 						String line = push_stringf(scratch.arena, "mov %.*s, %.*s", string_expand(dest),
 												   string_expand(source));
-						append_masm_line(line);
+						masm_append_line(line);
 					} else if (instr->ret_reg_count > 1) {
 						String line = push_stringf(scratch.arena, "; Unimplemented returning of multiple values");
-						append_masm_line(line);
+						masm_append_line(line);
 					}
 				}
 				
@@ -519,33 +591,35 @@ generate_masm_source(void) {
 					// Pop callee-saved registers
 					// NOTE: Remember that the stack is FILO! Do this in reverse push order.
 					// TODO: Only do this if necessary
-					append_masm_line(string_from_lit("; Procedure epilogue"));
-					append_masm_line(string_from_lit("pop r15"));
-					append_masm_line(string_from_lit("pop r14"));
-					append_masm_line(string_from_lit("pop r13"));
-					append_masm_line(string_from_lit("pop r12"));
-					append_masm_line(string_from_lit("pop rbp"));
-					append_masm_line(string_from_lit("pop rbx"));
+					masm_append_line(string_from_lit("; Procedure epilogue"));
+					masm_append_line(string_from_lit("pop r15"));
+					masm_append_line(string_from_lit("pop r14"));
+					masm_append_line(string_from_lit("pop r13"));
+					masm_append_line(string_from_lit("pop r12"));
+					masm_append_line(string_from_lit("pop rbp"));
+					masm_append_line(string_from_lit("pop rbx"));
 				}
 				
-				append_masm_line(string_from_lit("ret"));
+				masm_append_line(string_from_lit("ret"));
+				masm_context.indent_level -= 1;
+				
+				String line = push_stringf(&masm_context.arena, "%.*s endp\n",
+										   string_expand(masm_context.current_label));
+				masm_append_line(line);
 			} break;
 			
 			default: {
 				String line = push_stringf(scratch.arena, "; Unimplemented instruction '%d'", instr->operation);
-				append_masm_line(line);
+				masm_append_line(line);
 			} break;
 		}
 	}
 	
-	indent_level -= 1;
-	append_masm_line(string_from_lit("main endp"));
-	
-	append_masm_line(string_from_lit("end"));
+	masm_append_line(string_from_lit("end"));
 	
 	scratch_end(scratch);
 	
-	return string_from_list(&masm_arena, masm_lines,
+	return string_from_list(&masm_context.arena, masm_context.lines,
 							.sep = string_from_lit("\n"),
 							.suf = string_from_lit("\n"));
 }
@@ -553,11 +627,13 @@ generate_masm_source(void) {
 int main(void) {
 	x64_test();
 	
-	arena_init(&masm_arena);
+	arena_init(&masm_context.arena);
 	
-	Statement *program = hardcode_a_statement();
-	generate_bytecode_for_statement(program);
-	String masm_source = generate_masm_source();
+	Declaration *program = hardcode_a_declaration();
+	for (Declaration *decl = program; decl != NULL; decl = decl->next) {
+		generate_bytecode_for_declaration(decl);
+	}
+	String masm_source = masm_generate_source();
 	
 	FILE *sf = fopen("generated/generated.asm", "wb+");
 	FILE *bs = fopen("build_generated.bat", "wb+");

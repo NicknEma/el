@@ -215,10 +215,32 @@ generate_bytecode_for_expression(Expr *expr) {
 
 static Arena masm_arena;
 static String_List masm_lines;
+static int indent_level;
+static String indent_bytes = string_from_lit_const("\t");
 
 static void
 append_masm_line(String line) {
-	string_list_push(&masm_arena, &masm_lines, string_clone(&masm_arena, line));
+	Scratch scratch = scratch_begin(0, 0);
+	
+	int indent_cap = indent_level * indent_bytes.len;
+	u8 *indent_buf = push_array(scratch.arena, u8, indent_cap);
+	int indent_len = 0;
+	
+	if (indent_buf != NULL) {
+		for (int i = 0; i < indent_level; i += 1) {
+			memcpy(indent_buf + indent_len, indent_bytes.data, indent_bytes.len);
+			indent_len += indent_bytes.len;
+		}
+		
+		assert(indent_len == indent_cap);
+		
+		String temp[] = {string(indent_buf, indent_len), line};
+		string_list_push(&masm_arena, &masm_lines, strings_concat(&masm_arena, temp, array_count(temp)));
+	} else {
+		string_list_push(&masm_arena, &masm_lines, string_clone(&masm_arena, line));
+	}
+	
+	scratch_end(scratch);
 }
 
 static String
@@ -230,6 +252,7 @@ generate_masm_source(void) {
 	append_masm_line(string_from_lit(".code")); // Not .text, aparently
 	
 	append_masm_line(string_from_lit("main proc"));
+	indent_level += 1;
 	
 	{
 		// Push callee-saved registers
@@ -315,6 +338,8 @@ generate_masm_source(void) {
 	}
 	
 	append_masm_line(string_from_lit("ret"));
+	
+	indent_level -= 1;
 	append_masm_line(string_from_lit("main endp"));
 	
 	append_masm_line(string_from_lit("end"));

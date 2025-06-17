@@ -306,6 +306,9 @@ struct Instr {
 	
 	int ret_regs[8]; // Arbitrary number for now
 	int ret_reg_count;
+	
+	int arg_regs[8]; // Arbitrary number for now
+	int arg_reg_count;
 };
 
 static Instr instructions[256];
@@ -365,26 +368,45 @@ generate_bytecode_for_expression(Expr *expr) {
 		// foo(x, y) => mov rdi, x; mov rsi, y; call foo
 		
 		case Expr_Kind_UNARY: {
-			int source = 0, dest = 0;
 			
-			if (expr->left) {
-				Instr *sub = generate_bytecode_for_expression(expr->left); // Only 1 argument for now
-				source = sub->source;
-				dest   = sub->dest;
+			if (expr->unary == Expr_Unary_CALL) {
+				Instr call = {0};
+				
+				for (Expr *subexpr = expr->left; subexpr != NULL; subexpr = subexpr->next) {
+					Instr *arg = generate_bytecode_for_expression(subexpr);
+					
+					assert(call.arg_reg_count < array_count(call.arg_regs));
+					call.arg_regs[call.arg_reg_count] = arg->dest;
+					call.arg_reg_count += 1;
+				}
+				
+				instructions[instruction_count] = call;
+				
+				instr = &instructions[instruction_count];
+				instruction_count += 1;
+				
+				instr->label.len  = 0;
+				instr->label.data = NULL;
+				
+				instr->operation = instr_operation_from_expr_unary(expr->unary);
+				instr->mode      = Addressing_Mode_REGISTER;
+				
+				instr->jump_dest_label = expr->ident;
+			} else {
+				Instr *sub = generate_bytecode_for_expression(expr->left);
+				
+				instr = &instructions[instruction_count];
+				instruction_count += 1;
+				
+				instr->label.len  = 0;
+				instr->label.data = NULL;
+				
+				instr->operation = instr_operation_from_expr_unary(expr->unary);
+				instr->mode      = Addressing_Mode_REGISTER;
+				instr->source    = sub->dest;
+				instr->dest      = sub->dest;
 			}
 			
-			instr = &instructions[instruction_count];
-			instruction_count += 1;
-			
-			instr->label.len  = 0;
-			instr->label.data = NULL;
-			
-			instr->operation = instr_operation_from_expr_unary(expr->unary);
-			instr->mode      = Addressing_Mode_REGISTER;
-			instr->source    = dest;
-			instr->dest      = dest; // If it's a procedure call, this is useless
-			
-			instr->jump_dest_label = expr->ident;
 		} break;
 		
 		case Expr_Kind_BINARY: {
@@ -426,7 +448,7 @@ generate_bytecode_for_statement(Statement *statement) {
 			{
 				// Remember the destination register of each of the returned expressions,
 				// as well as how many there are.
-				int i = 0;
+				// int i = 0;
 				for (Expr *expr = statement->expr; expr != NULL; expr = expr->next) {
 					Instr *retval = generate_bytecode_for_expression(expr);
 					
@@ -434,7 +456,7 @@ generate_bytecode_for_statement(Statement *statement) {
 					ret.ret_regs[ret.ret_reg_count] = retval->dest;
 					ret.ret_reg_count += 1;
 					
-					i += 1;
+					// i += 1;
 				}
 			}
 			
@@ -653,10 +675,12 @@ masm_generate_source(void) {
 				{
 					// Put arguments in the correct place
 					
-					String source = masm_register_from_bytecode_register(instr->source);
-					
-					String line = push_stringf(scratch.arena, "mov rdi, %.*s", string_expand(source));
-					masm_append_line(line);
+					for (int i = 0; i < instr->arg_reg_count; i += 1) {
+						String source = masm_register_from_bytecode_register(instr->arg_regs[instr->arg_reg_count]);
+						
+						String line = push_stringf(scratch.arena, "mov rdi, %.*s", string_expand(source));
+						masm_append_line(line);
+					}
 				}
 				
 				String line = push_stringf(scratch.arena, "call %.*s", string_expand(instr->jump_dest_label));

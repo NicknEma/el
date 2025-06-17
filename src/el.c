@@ -16,24 +16,33 @@ cmalloc(size_t size) {
 //- Expressions
 
 typedef enum Expr_Kind {
+	Expr_Kind_NULL,
 	Expr_Kind_LITERAL,
 	Expr_Kind_UNARY,
 	Expr_Kind_BINARY,
 	Expr_Kind_COUNT,
 } Expr_Kind;
 
-typedef enum Expr_Operation {
-	Expr_Operation_ADD,
-	Expr_Operation_SUB,
-	Expr_Operation_MUL,
-	Expr_Operation_DIV,
-	Expr_Operation_COUNT,
-} Expr_Operation;
+typedef enum Expr_Unary {
+	Expr_Unary_NULL,
+	Expr_Unary_CALL,
+	Expr_Unary_COUNT,
+} Expr_Unary;
+
+typedef enum Expr_Binary {
+	Expr_Binary_ADD,
+	Expr_Binary_SUB,
+	Expr_Binary_MUL,
+	Expr_Binary_DIV,
+	Expr_Binary_COUNT,
+} Expr_Binary;
 
 typedef struct Expr Expr;
 struct Expr {
 	Expr_Kind kind;
-	Expr_Operation operation;
+	Expr_Unary unary;
+	Expr_Binary binary;
+	String ident;
 	Expr *left;
 	Expr *right;
 	Expr *next;
@@ -96,7 +105,7 @@ hardcode_an_expression(void) {
 	
 	Expr *plus = cmalloc(sizeof(Expr));
 	plus->kind = Expr_Kind_BINARY;
-	plus->operation = Expr_Operation_ADD;
+	plus->binary = Expr_Binary_ADD;
 	plus->left = cmalloc(sizeof(Expr));
 	plus->right = cmalloc(sizeof(Expr));
 	plus->value = 0;
@@ -104,7 +113,7 @@ hardcode_an_expression(void) {
 	{
 		Expr *times = plus->left;
 		times->kind = Expr_Kind_BINARY;
-		times->operation = Expr_Operation_MUL;
+		times->binary = Expr_Binary_MUL;
 		times->left = cmalloc(sizeof(Expr));
 		times->right = cmalloc(sizeof(Expr));
 		times->value = 0;
@@ -112,7 +121,7 @@ hardcode_an_expression(void) {
 		{
 			Expr *two = times->left;
 			two->kind = Expr_Kind_LITERAL;
-			two->operation = 0;
+			two->binary = 0;
 			two->left = 0;
 			two->right = 0;
 			two->value = 2;
@@ -121,7 +130,7 @@ hardcode_an_expression(void) {
 		{
 			Expr *three = times->right;
 			three->kind = Expr_Kind_LITERAL;
-			three->operation = 0;
+			three->binary = 0;
 			three->left = 0;
 			three->right = 0;
 			three->value = 3;
@@ -131,7 +140,7 @@ hardcode_an_expression(void) {
 	{
 		Expr *div = plus->right;
 		div->kind = Expr_Kind_BINARY;
-		div->operation = Expr_Operation_DIV;
+		div->binary = Expr_Binary_DIV;
 		div->left = cmalloc(sizeof(Expr));
 		div->right = cmalloc(sizeof(Expr));
 		div->value = 0;
@@ -139,7 +148,7 @@ hardcode_an_expression(void) {
 		{
 			Expr *ten = div->left;
 			ten->kind = Expr_Kind_LITERAL;
-			ten->operation = 0;
+			ten->binary = 0;
 			ten->left = 0;
 			ten->right = 0;
 			ten->value = 10;
@@ -148,7 +157,7 @@ hardcode_an_expression(void) {
 		{
 			Expr *plus2 = div->right;
 			plus2->kind = Expr_Kind_BINARY;
-			plus2->operation = Expr_Operation_ADD;
+			plus2->binary = Expr_Binary_ADD;
 			plus2->left = cmalloc(sizeof(Expr));
 			plus2->right = cmalloc(sizeof(Expr));
 			plus2->value = 0;
@@ -156,7 +165,7 @@ hardcode_an_expression(void) {
 			{
 				Expr *four = plus2->left;
 				four->kind = Expr_Kind_LITERAL;
-				four->operation = 0;
+				four->binary = 0;
 				four->left = 0;
 				four->right = 0;
 				four->value = 4;
@@ -165,7 +174,7 @@ hardcode_an_expression(void) {
 			{
 				Expr *one = plus2->right;
 				one->kind = Expr_Kind_LITERAL;
-				one->operation = 0;
+				one->binary = 0;
 				one->left = 0;
 				one->right = 0;
 				one->value = 1;
@@ -176,7 +185,7 @@ hardcode_an_expression(void) {
 #if 0
 	Expr *minus = cmalloc(sizeof(Expr));
 	minus->kind = Expr_Kind_BINARY;
-	minus->operation = Expr_Operation_SUB;
+	minus->binary = Expr_Binary_SUB;
 	minus->left = cmalloc(sizeof(Expr));
 	minus->right = cmalloc(sizeof(Expr));
 	minus->value = 0;
@@ -184,7 +193,7 @@ hardcode_an_expression(void) {
 	{
 		Expr *seven = minus->left;
 		seven->kind = Expr_Kind_LITERAL;
-		seven->operation = 0;
+		seven->binary = 0;
 		seven->left = 0;
 		seven->right = 0;
 		seven->value = 7;
@@ -193,7 +202,7 @@ hardcode_an_expression(void) {
 	{
 		Expr *zero = minus->right;
 		zero->kind = Expr_Kind_LITERAL;
-		zero->operation = 0;
+		zero->binary = 0;
 		zero->left = 0;
 		zero->right = 0;
 		zero->value = 0;
@@ -226,14 +235,21 @@ hardcode_a_declaration(void) {
 	main_decl->next = cmalloc(sizeof(Declaration));
 	main_decl->ident = string_from_lit("main");
 	
-	main_decl->body = hardcode_a_statement();
+	{
+		main_decl->body = cmalloc(sizeof(Statement));
+		main_decl->body->kind = Statement_Kind_RETURN;
+		main_decl->body->expr = cmalloc(sizeof(Expr));
+		main_decl->body->expr->kind = Expr_Kind_UNARY;
+		main_decl->body->expr->unary = Expr_Unary_CALL;
+		main_decl->body->expr->ident = string_from_lit("other");
+	}
 	
 	{
 		Declaration *next_decl = main_decl->next;
 		next_decl->kind = Declaration_Kind_PROCEDURE;
 		next_decl->ident = string_from_lit("other");
 		
-		next_decl->body = main_decl->body;
+		next_decl->body = hardcode_a_statement();
 	}
 	
 	return main_decl;
@@ -251,6 +267,7 @@ typedef enum Instr_Operation {
 	Instr_Operation_MUL,
 	Instr_Operation_DIV,
 	
+	Instr_Operation_CALL,
 	Instr_Operation_RETURN,
 	
 	Instr_Operation_COUNT,
@@ -271,10 +288,17 @@ typedef enum Label_Kind {
 	Label_Kind_COUNT,
 } Label_Kind;
 
+// NOTE: jump_dest_label is only useful when translating bytecode to actual assembly, not when
+// running the bytecode directly (if we ever do that). Before running the bytecode, do an additional pass
+// over the generated instructions where each jump target name is changed to its actual address
+// (or index of the instruction in the array). There was a paper somewhere on the internet about building
+// an assembler which explained the algorithm to do just that.
+
 typedef struct Instr Instr;
 struct Instr {
 	String label;
 	Label_Kind label_kind;
+	String jump_dest_label; // For jumps and procedure calls.
 	Instr_Operation operation;
 	Addressing_Mode mode;
 	int source; // Register
@@ -290,14 +314,26 @@ static int instruction_count;
 static int registers_used;
 
 static Instr_Operation
-instr_operation_from_expr_operation(Expr_Operation expr_op) {
+instr_operation_from_expr_unary(Expr_Unary expr_op) {
 	Instr_Operation instr_op = 0;
 	
 	switch (expr_op) {
-		case Expr_Operation_ADD: { instr_op = Instr_Operation_ADD; } break;
-		case Expr_Operation_SUB: { instr_op = Instr_Operation_SUB; } break;
-		case Expr_Operation_MUL: { instr_op = Instr_Operation_MUL; } break;
-		case Expr_Operation_DIV: { instr_op = Instr_Operation_DIV; } break;
+		case Expr_Unary_CALL: { instr_op = Instr_Operation_CALL; } break;
+		default: break;
+	}
+	
+	return instr_op;
+}
+
+static Instr_Operation
+instr_operation_from_expr_binary(Expr_Binary expr_op) {
+	Instr_Operation instr_op = 0;
+	
+	switch (expr_op) {
+		case Expr_Binary_ADD: { instr_op = Instr_Operation_ADD; } break;
+		case Expr_Binary_SUB: { instr_op = Instr_Operation_SUB; } break;
+		case Expr_Binary_MUL: { instr_op = Instr_Operation_MUL; } break;
+		case Expr_Binary_DIV: { instr_op = Instr_Operation_DIV; } break;
 		default: break;
 	}
 	
@@ -323,6 +359,34 @@ generate_bytecode_for_expression(Expr *expr) {
 			registers_used  += 1;
 		} break;
 		
+		// -x        => imul x, -1
+		// -(x, y)   => 
+		// foo(x)    => mov rdi, x, call foo
+		// foo(x, y) => mov rdi, x; mov rsi, y; call foo
+		
+		case Expr_Kind_UNARY: {
+			int source = 0, dest = 0;
+			
+			if (expr->left) {
+				Instr *sub = generate_bytecode_for_expression(expr->left); // Only 1 argument for now
+				source = sub->source;
+				dest   = sub->dest;
+			}
+			
+			instr = &instructions[instruction_count];
+			instruction_count += 1;
+			
+			instr->label.len  = 0;
+			instr->label.data = NULL;
+			
+			instr->operation = instr_operation_from_expr_unary(expr->unary);
+			instr->mode      = Addressing_Mode_REGISTER;
+			instr->source    = dest;
+			instr->dest      = dest; // If it's a procedure call, this is useless
+			
+			instr->jump_dest_label = expr->ident;
+		} break;
+		
 		case Expr_Kind_BINARY: {
 			Instr *left  = generate_bytecode_for_expression(expr->left);
 			Instr *right = generate_bytecode_for_expression(expr->right);
@@ -333,7 +397,7 @@ generate_bytecode_for_expression(Expr *expr) {
 			instr->label.len  = 0;
 			instr->label.data = NULL;
 			
-			instr->operation = instr_operation_from_expr_operation(expr->operation);
+			instr->operation = instr_operation_from_expr_binary(expr->binary);
 			instr->mode      = Addressing_Mode_REGISTER;
 			instr->source    = right->dest;
 			instr->dest      = left->dest;
@@ -566,6 +630,55 @@ masm_generate_source(void) {
 				String line = push_stringf(scratch.arena, "%.*s %.*s, %.*s", string_expand(mnemonic),
 										   string_expand(dest), string_expand(source));
 				masm_append_line(line);
+			} break;
+			
+			case Instr_Operation_CALL: {
+				
+				{
+					// Push caller-saved registers
+					// TODO: Only do this if necessary
+					masm_append_line(string_from_lit("; Call prologue"));
+					masm_append_line(string_from_lit("push rax"));
+					masm_append_line(string_from_lit("push rcx"));
+					masm_append_line(string_from_lit("push rdx"));
+					masm_append_line(string_from_lit("push rdi"));
+					masm_append_line(string_from_lit("push rsi"));
+					masm_append_line(string_from_lit("push rsp"));
+					masm_append_line(string_from_lit("push r8"));
+					masm_append_line(string_from_lit("push r9"));
+					masm_append_line(string_from_lit("push r10"));
+					masm_append_line(string_from_lit("push r11"));
+				}
+				
+				{
+					// Put arguments in the correct place
+					
+					String source = masm_register_from_bytecode_register(instr->source);
+					
+					String line = push_stringf(scratch.arena, "mov rdi, %.*s", string_expand(source));
+					masm_append_line(line);
+				}
+				
+				String line = push_stringf(scratch.arena, "call %.*s", string_expand(instr->jump_dest_label));
+				masm_append_line(line);
+				
+				{
+					// Pop caller-saved registers
+					// NOTE: Remember that the stack is FILO! Do this in reverse push order.
+					// TODO: Only do this if necessary
+					masm_append_line(string_from_lit("; Call epilogue"));
+					masm_append_line(string_from_lit("pop r11"));
+					masm_append_line(string_from_lit("pop r10"));
+					masm_append_line(string_from_lit("pop r9"));
+					masm_append_line(string_from_lit("pop r8"));
+					masm_append_line(string_from_lit("pop rsp"));
+					masm_append_line(string_from_lit("pop rsi"));
+					masm_append_line(string_from_lit("pop rdi"));
+					masm_append_line(string_from_lit("pop rdx"));
+					masm_append_line(string_from_lit("pop rcx"));
+					masm_append_line(string_from_lit("pop rax"));
+				}
+				
 			} break;
 			
 			case Instr_Operation_RETURN: {

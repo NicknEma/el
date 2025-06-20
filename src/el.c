@@ -14,6 +14,70 @@ cmalloc(size_t size) {
 #include "el_x64.c"
 
 ////////////////////////////////
+//~ Database
+
+typedef struct Decl_Node Decl_Node;
+struct Decl_Node {
+	Declaration *decl;
+	Decl_Node   *prev;
+	Decl_Node   *next;
+};
+
+typedef struct Decl_List Decl_List;
+struct Decl_List {
+	Decl_Node *first;
+	Decl_Node *last;
+};
+
+static Decl_List proc_list;
+
+static void
+decl_list_push(Arena *arena, Decl_List *list, Declaration *decl) {
+	Decl_Node *node = push_type(arena, Decl_Node);
+	if (node != NULL) {
+		node->decl = decl;
+		dll_push_back(list->first, list->last, node);
+	}
+}
+
+static void
+populate_decl_lists(Arena *arena, Declaration *first) {
+	for (Declaration *decl = first; decl != NULL; decl = decl->next) {
+		if (decl->kind == Declaration_Kind_PROCEDURE) {
+			decl_list_push(arena, &proc_list, decl);
+		}
+	}
+}
+
+static Declaration *
+decl_list_find_ident(Decl_List *list, String ident) {
+	Declaration *result = NULL;
+	for (Decl_Node *node = list->first; node != NULL; node = node->next) {
+		if (string_equals(node->decl->ident, ident)) {
+			result = node->decl;
+			break;
+		}
+	}
+	return result;
+}
+
+////////////////////////////////
+//~ Tree
+
+#if 0
+static int
+count_expressions_in_list(Expression *expr, int acc) {
+	if (expr->kind == Expression_Kind_COMMA) {
+		acc += count_expressions_in_list(expr->left);
+		acc += count_expressions_in_list(expr->right);
+	} else {
+		acc += 1;
+	}
+	return acc;
+}
+#endif
+
+////////////////////////////////
 //~ Bytecode
 
 typedef enum Instr_Operation {
@@ -29,6 +93,8 @@ typedef enum Instr_Operation {
 	
 	Instr_Operation_CALL,
 	Instr_Operation_RETURN,
+	
+	Instr_Operation_SWAP,
 	
 	Instr_Operation_COUNT,
 } Instr_Operation;
@@ -70,7 +136,7 @@ struct Instr {
 	int source; // Register
 	int dest;   // Register
 	
-	int ret_regs[8]; // Arbitrary number for now
+	// int ret_regs[8]; // Arbitrary number for now
 	int ret_reg_count;
 	
 	int arg_regs[8]; // Arbitrary number for now
@@ -157,19 +223,70 @@ generate_bytecode_for_expression(Expression *expr) {
 		} break;
 		
 		case Expression_Kind_BINARY: {
-			Reg_Group left_dests  = generate_bytecode_for_expression(expr->left);
-			Reg_Group right_dests = generate_bytecode_for_expression(expr->right);
-			assert(left_dests.reg_count >= 1); // Same as above
-			assert(right_dests.reg_count >= 1);
+			Binary_Operator binary = expr->binary;
 			
-			instr.operation = instr_operation_from_expr_binary(expr->binary);
-			instr.mode      = Addressing_Mode_REGISTER;
-			instr.source    = right_dests.regs[0];
-			instr.dest      = left_dests.regs[0];
-			registers_used -= 1;         // This instruction puts the result in left.dest;  right.dest can be used by the next instruction
-			
-			dests.regs[0] = instr.dest;
-			dests.reg_count = 1;
+			if (binary == Binary_Operator_CALL) {
+				// For now only identifiers can be lhs of calls
+				assert(expr->left->kind == Expression_Kind_IDENT);
+				instr.jump_dest_label = expr->left->ident;
+				
+				Reg_Group right_dests = generate_bytecode_for_expression(expr->right);
+				// assert(right_dests.reg_count >= 1); // Could have no arguments
+				
+				instr.operation = instr_operation_from_expr_binary(expr->binary);
+				instr.mode      = Addressing_Mode_REGISTER;
+				
+				// TODO: For now do nothing: when executing the next instruction you will be
+				// inside the function call and are going to be using the saved registers.
+				// When a more robust approach to calling conventions is defined (registers vs stack),
+				// maybe some registers could be freed here.
+				// registers_used -= 1;
+				
+				// Remember which registers are used to store the evaluated arguments
+				for (int si = 0; si < right_dests.reg_count; si += 1) {
+					instr.arg_regs[si] = right_dests.regs[si];
+					instr.arg_reg_count += 1;
+				}
+				
+				Declaration *callee = decl_list_find_ident(&proc_list, instr.jump_dest_label);
+				assert(callee != NULL); // Typechecking should've failed
+				
+				instructions[instruction_count] = instr;
+				instruction_count += 1;
+				
+				// Pretend that every function has 1 return value and that it is put in register 0.
+				// TODO: This is very bad
+				dests.regs[0] = 0;
+				dests.reg_count = 1;
+			} else if (binary == Binary_Operator_COMMA) {
+				Reg_Group left_dests  = generate_bytecode_for_expression(expr->left);
+				Reg_Group right_dests = generate_bytecode_for_expression(expr->right);
+				assert(left_dests.reg_count >= 1); // Same as above
+				assert(right_dests.reg_count >= 1);
+				
+				instr.operation = instr_operation_from_expr_binary(expr->binary);
+				instr.mode      = Addressing_Mode_REGISTER;
+				instr.source    = right_dests.regs[0];
+				instr.dest      = left_dests.regs[0];
+				registers_used -= 1;         // This instruction puts the result in left.dest;  right.dest can be used by the next instruction
+				
+				dests.regs[0] = instr.dest;
+				dests.reg_count = 1;
+			} else {
+				Reg_Group left_dests  = generate_bytecode_for_expression(expr->left);
+				Reg_Group right_dests = generate_bytecode_for_expression(expr->right);
+				assert(left_dests.reg_count >= 1); // Same as above
+				assert(right_dests.reg_count >= 1);
+				
+				instr.operation = instr_operation_from_expr_binary(expr->binary);
+				instr.mode      = Addressing_Mode_REGISTER;
+				instr.source    = right_dests.regs[0];
+				instr.dest      = left_dests.regs[0];
+				registers_used -= 1;         // This instruction puts the result in left.dest;  right.dest can be used by the next instruction
+				
+				dests.regs[0] = instr.dest;
+				dests.reg_count = 1;
+			}
 		} break;
 		
 		default: break;
@@ -191,6 +308,7 @@ generate_bytecode_for_statement(Statement *statement) {
 			
 			Instr ret = {0};
 			
+#if 0
 			{
 				// Remember the destination register of each of the returned expressions,
 				// as well as how many there are.
@@ -205,10 +323,66 @@ generate_bytecode_for_statement(Statement *statement) {
 					}
 				}
 			}
+#else
+			
+			int retval_count = 0;
+			
+			{
+				// Walk the expression list and map each current destination register to
+				// the correct return register for the calling convention
+				
+				int unmapped_ret_regs[8]; // 8 arbitrary size for now, TODO
+				int unmapped_ret_reg_count = 0;
+				
+#if 0
+				typedef struct Expr_Node Expr_Node;
+				struct Expr_Node { Expression *expr; Expr_Node *next; };
+				
+				Expr_Node *expr = statement->expr;
+				
+				for (;expr != NULL;) {
+					if (expr->kind == Expression_Kind_COMMA) {
+						stack_push(expr->right);
+						stack_push(expr->left);
+					} else {
+						Reg_Group dests = generate_bytecode_for_expression(expr);
+						stack_pop(expr);
+						
+						for (int di = 0; di < dests.reg_count; di += 1) {
+							unmapped_ret_regs[unmapped_ret_reg_count] = dests.regs[di];
+							unmapped_ret_reg_count += 1;
+						}
+					}
+				}
+#else
+				Reg_Group dests = generate_bytecode_for_expression(statement->expr);
+				for (int di = 0; di < dests.reg_count; di += 1) {
+					unmapped_ret_regs[unmapped_ret_reg_count] = dests.regs[di];
+					unmapped_ret_reg_count += 1;
+				}
+#endif
+				
+				for (int i = 0; i < unmapped_ret_reg_count; i += 1) {
+					if (unmapped_ret_regs[i] != i) {
+						Instr swap = {0};
+						
+						swap.operation = Instr_Operation_SWAP;
+						swap.dest      = unmapped_ret_regs[i];
+						swap.source    = i;
+						swap.mode      = Addressing_Mode_REGISTER;
+						
+						instructions[instruction_count] = swap;
+						instruction_count += 1;
+					}
+				}
+				
+				retval_count = unmapped_ret_reg_count;
+			}
+#endif
 			
 			ret.operation = Instr_Operation_RETURN;
+			ret.ret_reg_count = retval_count; // TODO: Remove; it should be stored in the procedure defition, not here
 			
-			// Return from the procedure
 			instructions[instruction_count] = ret;
 			instruction_count += 1;
 		} break;
@@ -451,6 +625,21 @@ masm_generate_source(void) {
 				
 			} break;
 			
+			case Instr_Operation_SWAP: {
+				assert(registers_used < 14); // For now. TODO: Use memory if no more registers
+				
+				String source = masm_register_from_bytecode_register(instr->source);
+				String dest   = masm_register_from_bytecode_register(instr->dest);
+				String temp   = masm_register_from_bytecode_register(registers_used);
+				
+				masm_append_line(push_stringf(&masm_context.arena, "mov %.*s, %.*s", string_expand(temp),
+											  string_expand(source)));
+				masm_append_line(push_stringf(&masm_context.arena, "mov %.*s, %.*s", string_expand(source),
+											  string_expand(dest)));
+				masm_append_line(push_stringf(&masm_context.arena, "mov %.*s, %.*s", string_expand(dest),
+											  string_expand(temp)));
+			} break;
+			
 			case Instr_Operation_RETURN: {
 				
 				{
@@ -458,7 +647,7 @@ masm_generate_source(void) {
 					// For now, just map BYTECODE_RETURN_REGISTER_0 to rax
 					
 					if (instr->ret_reg_count == 1) {
-						String source = masm_register_from_bytecode_register(instr->ret_regs[0]);
+						String source = masm_register_from_bytecode_register(BYTECODE_RETURN_REGISTER_0);
 						String dest   = string_from_lit("rax");
 						
 						String line = push_stringf(scratch.arena, "mov %.*s, %.*s", string_expand(dest),
@@ -514,7 +703,14 @@ int main(void) {
 	
 	arena_init(&masm_context.arena);
 	
-	Declaration *program = hardcode_a_declaration();
+	Arena tree_arena = {0};
+	arena_init(&tree_arena);
+	Declaration *program = hardcode_a_declaration(&tree_arena);
+	
+	Arena decl_arena = {0};
+	arena_init(&decl_arena);
+	populate_decl_lists(&decl_arena, program);
+	
 	for (Declaration *decl = program; decl != NULL; decl = decl->next) {
 		generate_bytecode_for_declaration(decl);
 	}

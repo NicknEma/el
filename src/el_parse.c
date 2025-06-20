@@ -687,6 +687,7 @@ char *sample_expression_7 = "1++2";                   // 3
 
 char *sample_expression_8 = "1 2";
 char *sample_expression_9 = "2 (4 + 1)";
+char *sample_expression_0 = "3 * (2 (4 + 1))";
 
 static void
 test_sample_expressions(void) {
@@ -736,143 +737,21 @@ test_sample_expressions(void) {
 }
 
 static Expression *
-hardcode_an_expression(void) {
-	/*
-** { Plus }
-  ** ** { Times }
-    ** ** ** { 2 }
-    ** ** ** { 3 }
-  ** ** { Div }
-    ** ** ** { 10 }
-    ** ** ** { Plus }
-      ** ** ** ** { 4 }
-** ** ** ** { 1 }
-*/
+parse_expression_string(Arena *arena, String source) {
+	Parse_Context context = {0};
+	parse_context_init(&context, arena, source);
 	
-	/*
-** { Sub }
-** ** { 7 }
-** ** { 0 }
-*/
-	
-	Expression *plus = cmalloc(sizeof(Expression));
-	plus->kind = Expression_Kind_BINARY;
-	plus->binary = Binary_Operator_PLUS;
-	plus->left = cmalloc(sizeof(Expression));
-	plus->right = cmalloc(sizeof(Expression));
-	plus->value = 0;
-	
-	{
-		Expression *times = plus->left;
-		times->kind = Expression_Kind_BINARY;
-		times->binary = Binary_Operator_TIMES;
-		times->left = cmalloc(sizeof(Expression));
-		times->right = cmalloc(sizeof(Expression));
-		times->value = 0;
-		
-		{
-			Expression *two = times->left;
-			two->kind = Expression_Kind_LITERAL;
-			two->binary = 0;
-			two->left = 0;
-			two->right = 0;
-			two->value = 2;
-		}
-		
-		{
-			Expression *three = times->right;
-			three->kind = Expression_Kind_LITERAL;
-			three->binary = 0;
-			three->left = 0;
-			three->right = 0;
-			three->value = 3;
-		}
-	}
-	
-	{
-		Expression *div = plus->right;
-		div->kind = Expression_Kind_BINARY;
-		div->binary = Binary_Operator_DIVIDE;
-		div->left = cmalloc(sizeof(Expression));
-		div->right = cmalloc(sizeof(Expression));
-		div->value = 0;
-		
-		{
-			Expression *ten = div->left;
-			ten->kind = Expression_Kind_LITERAL;
-			ten->binary = 0;
-			ten->left = 0;
-			ten->right = 0;
-			ten->value = 10;
-		}
-		
-		{
-			Expression *plus2 = div->right;
-			plus2->kind = Expression_Kind_BINARY;
-			plus2->binary = Binary_Operator_PLUS;
-			plus2->left = cmalloc(sizeof(Expression));
-			plus2->right = cmalloc(sizeof(Expression));
-			plus2->value = 0;
-			
-			{
-				Expression *four = plus2->left;
-				four->kind = Expression_Kind_LITERAL;
-				four->binary = 0;
-				four->left = 0;
-				four->right = 0;
-				four->value = 4;
-			}
-			
-			{
-				Expression *one = plus2->right;
-				one->kind = Expression_Kind_LITERAL;
-				one->binary = 0;
-				one->left = 0;
-				one->right = 0;
-				one->value = 1;
-			}
-		}
-	}
-	
-#if 0
-	Expression *minus = cmalloc(sizeof(Expression));
-	minus->kind = Expression_Kind_BINARY;
-	minus->binary = Binary_Operator_MINUS;
-	minus->left = cmalloc(sizeof(Expression));
-	minus->right = cmalloc(sizeof(Expression));
-	minus->value = 0;
-	
-	{
-		Expression *seven = minus->left;
-		seven->kind = Expression_Kind_LITERAL;
-		seven->binary = 0;
-		seven->left = 0;
-		seven->right = 0;
-		seven->value = 7;
-	}
-	
-	{
-		Expression *zero = minus->right;
-		zero->kind = Expression_Kind_LITERAL;
-		zero->binary = 0;
-		zero->left = 0;
-		zero->right = 0;
-		zero->value = 0;
-	}
-	
-	plus->next = minus;
-#endif
-	
-	return plus;
+	return parse_expression(&context, 0);
 }
 
 static Statement *
-hardcode_a_statement(void) {
-	Statement *statement = malloc(sizeof(Statement));
+hardcode_a_statement(Arena *arena) {
+	Statement *statement = push_type(arena, Statement);
 	statement->kind = Statement_Kind_EXPR;
-	statement->expr = hardcode_an_expression();
+	statement->expr = parse_expression_string(arena, string_from_lit("2*3 + 10/(4+1)"));
+	// statement->expr = parse_expression_string("7-0");
 	
-	statement->next = malloc(sizeof(Statement));
+	statement->next = push_type(arena, Statement);
 	statement->next->kind = Statement_Kind_RETURN;
 	statement->next->expr = statement->expr;
 	statement->next->next = NULL;
@@ -881,20 +760,20 @@ hardcode_a_statement(void) {
 }
 
 static Declaration *
-hardcode_a_declaration(void) {
-	Declaration *main_decl = cmalloc(sizeof(Declaration));
+hardcode_a_declaration(Arena *arena) {
+	Declaration *main_decl = push_type(arena, Declaration);
 	main_decl->kind = Declaration_Kind_PROCEDURE;
-	main_decl->next = cmalloc(sizeof(Declaration));
+	main_decl->next = push_type(arena, Declaration);
 	main_decl->ident = string_from_lit("main");
 	
 	{
-		main_decl->body = cmalloc(sizeof(Statement));
+		main_decl->body = push_type(arena, Statement);
 		main_decl->body->kind = Statement_Kind_RETURN;
-		main_decl->body->expr = cmalloc(sizeof(Expression));
+		main_decl->body->expr = push_type(arena, Expression);
 		main_decl->body->expr->kind = Expression_Kind_BINARY;
 		main_decl->body->expr->binary = Binary_Operator_CALL;
 		main_decl->body->expr->right = &nil_expression;
-		main_decl->body->expr->left = cmalloc(sizeof(Expression));
+		main_decl->body->expr->left = push_type(arena, Expression);
 		
 		{
 			main_decl->body->expr->left->kind = Expression_Kind_IDENT;
@@ -907,7 +786,7 @@ hardcode_a_declaration(void) {
 		next_decl->kind = Declaration_Kind_PROCEDURE;
 		next_decl->ident = string_from_lit("other");
 		
-		next_decl->body = hardcode_a_statement();
+		next_decl->body = hardcode_a_statement(arena);
 	}
 	
 	return main_decl;

@@ -7,3 +7,4 @@
 *.raddbg_project*
 *.txt
 generated/
+tests/

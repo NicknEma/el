@@ -1,0 +1,916 @@
+#ifndef EL_PARSE_C
+#define EL_PARSE_C
+
+////////////////////////////////
+//~ Tokens
+
+static Token
+peek_token(Parse_Context *parse_context) {
+	if (parse_context->source_index == 0) {
+		consume_token(parse_context);
+	}
+	return parse_context->token;
+}
+
+static void
+consume_token(Parse_Context *parse_context) {
+	parse_context->token = make_token(parse_context);
+}
+
+static bool
+expect_and_consume_token(Parse_Context *parse_context, Token_Kind kind) {
+	bool kinds_match = peek_token(parse_context).kind == kind;
+	if (kinds_match) {
+		consume_token(parse_context);
+	}
+	return kinds_match;
+}
+
+// This procedure assumes that its input represents a number (aka. is in the range '0'..'9').
+static i64
+i64_from_char(u8 c) {
+	return (c - '0');
+}
+
+static Token
+make_token(Parse_Context *parse_context) {
+	Token token;
+	
+	// Skip whitespace
+	while (parse_context->source_index < parse_context->source.len && isspace(parse_context->source.data[parse_context->source_index])) {
+		parse_context->source_index += 1;
+	}
+	
+	token.b0 = parse_context->source_index;
+	
+	if (parse_context->source_index < parse_context->source.len) {
+		switch (parse_context->source.data[parse_context->source_index]) {
+			case '0':
+			case '1':
+			case '2':
+			case '3':
+			case '4':
+			case '5':
+			case '6':
+			case '7':
+			case '8':
+			case '9': {
+				i64 value = 0;
+				i64 index = parse_context->source_index;
+				
+				while (index < parse_context->source.len && (isdigit(parse_context->source.data[index]) || parse_context->source.data[index] == '_')) {
+					if (parse_context->source.data[index] != '_') {
+						i64 digit = i64_from_char(parse_context->source.data[index]);
+						
+						value *= 10;
+						value += digit;
+					}
+					
+					index += 1;
+				}
+				
+				token.kind = Token_Kind_INTEGER;
+				token.int_val = value;
+				token.b1 = index;
+				
+				parse_context->source_index = index;
+			} break;
+			
+			case '+': {
+				token.kind = Token_Kind_PLUS;
+				token.b1 = parse_context->source_index + 1;
+				
+				parse_context->source_index += 1;
+			} break;
+			
+			case '-': {
+				token.kind = Token_Kind_DASH;
+				token.b1 = parse_context->source_index + 1;
+				
+				parse_context->source_index += 1;
+			} break;
+			
+			case '*': {
+				token.kind = Token_Kind_STAR;
+				token.b1 = parse_context->source_index + 1;
+				
+				parse_context->source_index += 1;
+			} break;
+			
+			case '/': {
+				token.kind = Token_Kind_SLASH;
+				token.b1 = parse_context->source_index + 1;
+				
+				parse_context->source_index += 1;
+			} break;
+			
+			case '%': {
+				token.kind = Token_Kind_PERCENT;
+				token.b1 = parse_context->source_index + 1;
+				
+				parse_context->source_index += 1;
+			} break;
+			
+			case ':': {
+				token.kind = Token_Kind_COLON;
+				token.b1 = parse_context->source_index + 1;
+				
+				parse_context->source_index += 1;
+				
+				if (parse_context->source_index < parse_context->source.len && parse_context->source.data[parse_context->source_index] == ':') {
+					token.kind = Token_Kind_DOUBLE_COLON;
+					token.b1 = parse_context->source_index + 1;
+					
+					parse_context->source_index += 1;
+				}
+			} break;
+			
+			case '?': {
+				token.kind = Token_Kind_QMARK;
+				token.b1 = parse_context->source_index + 1;
+				
+				parse_context->source_index += 1;
+			} break;
+			
+			case '(': {
+				token.kind = Token_Kind_LPAREN;
+				token.b1 = parse_context->source_index + 1;
+				
+				parse_context->source_index += 1;
+			} break;
+			
+			case ')': {
+				token.kind = Token_Kind_RPAREN;
+				token.b1 = parse_context->source_index + 1;
+				
+				parse_context->source_index += 1;
+			} break;
+			
+			case '[': {
+				token.kind = Token_Kind_LBRACK;
+				token.b1 = parse_context->source_index + 1;
+				
+				parse_context->source_index += 1;
+			} break;
+			
+			case ']': {
+				token.kind = Token_Kind_RBRACK;
+				token.b1 = parse_context->source_index + 1;
+				
+				parse_context->source_index += 1;
+			} break;
+			
+			case '{': {
+				token.kind = Token_Kind_LBRACE;
+				token.b1 = parse_context->source_index + 1;
+				
+				parse_context->source_index += 1;
+			} break;
+			
+			case '}': {
+				token.kind = Token_Kind_RBRACE;
+				token.b1 = parse_context->source_index + 1;
+				
+				parse_context->source_index += 1;
+			} break;
+			
+			case '.': {
+				token.kind = Token_Kind_DOT;
+				token.b1 = parse_context->source_index + 1;
+				
+				parse_context->source_index += 1;
+			} break;
+			
+			case ',': {
+				token.kind = Token_Kind_COMMA;
+				token.b1 = parse_context->source_index + 1;
+				
+				parse_context->source_index += 1;
+			} break;
+			
+			case ';': {
+				token.kind = Token_Kind_SEMICOLON;
+				token.b1 = parse_context->source_index + 1;
+				
+				parse_context->source_index += 1;
+			} break;
+			
+			case '^': {
+				token.kind = Token_Kind_HAT;
+				token.b1 = parse_context->source_index + 1;
+				
+				parse_context->source_index += 1;
+			} break;
+			
+			default: {
+				token.kind = Token_Kind_INVALID;
+				token.b1 = parse_context->source_index + 1;
+				
+				parse_context->source_index += 1;
+			} break;
+		}
+	} else {
+		token.kind = Token_Kind_EOI;
+	}
+	
+	if (token.b1 == 0) {
+		token.b1 = parse_context->source_index;
+	}
+	
+	return token;
+}
+
+////////////////////////////////
+//~ AST
+
+//- Parsing helpers: Prefix/Infix/Postfix
+
+static bool
+token_is_prefix(Token token) {
+	bool result = false;
+	switch (token.kind) {
+		case Token_Kind_PLUS:
+		case Token_Kind_DASH: result = true; break;
+		default: break;
+	}
+	return result;
+}
+
+static bool
+token_is_postfix(Token token) {
+	bool result = false;
+	switch (token.kind) {
+		case Token_Kind_HAT: result = true; break;
+		default: break;
+	}
+	return result;
+}
+
+static bool
+token_is_infix(Token token) {
+	bool result = false;
+	if (token.kind == Token_Kind_QMARK || binary_from_token(token) != Binary_Operator_NONE) {
+		result = true;
+	}
+	return result;
+}
+
+//- Parsing helpers: Unary/Binary
+
+static Unary_Operator
+unary_from_token(Token token) {
+	return unary_from_token_kind(token.kind);
+}
+
+static Unary_Operator
+unary_from_token_kind(Token_Kind kind) {
+	Unary_Operator unary = Unary_Operator_NONE;
+	switch (kind) {
+		case Token_Kind_PLUS: { unary = Unary_Operator_PLUS; } break;
+		case Token_Kind_DASH: { unary = Unary_Operator_MINUS; } break;
+		case Token_Kind_HAT:  { unary = Unary_Operator_DEREFERENCE; } break;
+		default: break;
+	}
+	return unary;
+}
+
+static Binary_Operator
+binary_from_token(Token token) {
+	return binary_from_token_kind(token.kind);
+}
+
+static Binary_Operator
+binary_from_token_kind(Token_Kind kind) {
+	Binary_Operator binary = Binary_Operator_NONE;
+	switch (kind) {
+		case Token_Kind_PLUS:    { binary = Binary_Operator_PLUS; } break;
+		case Token_Kind_DASH:    { binary = Binary_Operator_MINUS; } break;
+		case Token_Kind_STAR:    { binary = Binary_Operator_TIMES; } break;
+		case Token_Kind_SLASH:   { binary = Binary_Operator_DIVIDE; } break;
+		case Token_Kind_PERCENT: { binary = Binary_Operator_MODULUS; } break;
+		case Token_Kind_COMMA: { binary = Binary_Operator_COMMA; } break;
+		case Token_Kind_DOT: { binary = Binary_Operator_MEMBER; } break;
+		case Token_Kind_LPAREN:  { binary = Binary_Operator_CALL; } break;
+		case Token_Kind_LBRACK:  { binary = Binary_Operator_ARRAY_ACCESS; } break;
+		default: break;
+	}
+	return binary;
+}
+
+//- Parsing helpers: Precedence
+
+static Precedence
+infix_precedence_from_token(Token token) {
+	Precedence precedence = Precedence_NONE;
+	switch (token.kind) {
+		case Token_Kind_COMMA: precedence = Precedence_COMMA; break;
+		
+		// case Token_Kind_EQUALS: precedence = Precedence_ASSIGNMENT; break;
+		
+		case Token_Kind_QMARK: precedence = Precedence_TERNARY; break;
+		
+		// case Token_Kind_LOGICAL_AND: precedence = Precedence_LOGICAL; break;
+		
+		// case Token_Kind_DOUBLE_EQUALS: precedence = Precedence_RELATIONAL; break;
+		
+		case Token_Kind_PLUS:
+		case Token_Kind_DASH: precedence = Precedence_ADDITIVE; break;
+		
+		case Token_Kind_STAR:
+		case Token_Kind_SLASH:
+		case Token_Kind_PERCENT: precedence = Precedence_MULTIPLICATIVE; break;
+		
+		case Token_Kind_LPAREN: precedence = Precedence_CALL_OR_ARRAY_ACCESS; break;
+		
+		// case Token_Kind_DOT: precedence = Precedence_MEMBER; break;
+		
+		default: break;
+	}
+	return precedence;
+}
+
+static Precedence
+prefix_precedence_from_token(Token token) {
+	Precedence precedence = Precedence_NONE;
+	if (token_is_prefix(token)) {
+		precedence = Precedence_UNARY_PREFIX;
+	}
+	return precedence;
+}
+
+static Precedence
+postfix_precedence_from_token(Token token) {
+	Precedence precedence = Precedence_NONE;
+	if (token_is_postfix(token)) {
+		precedence = Precedence_UNARY_POSTFIX;
+	}
+	return precedence;
+}
+
+//- Parsing helpers: Misc
+
+static bool
+token_is_expression_terminator(Token token) {
+	Token_Kind k = token.kind;
+	return (k == Token_Kind_EOI || k == Token_Kind_RPAREN || k == Token_Kind_RBRACK || k == Token_Kind_SEMICOLON);
+}
+
+static bool
+token_is_expression_atom(Token token) {
+	Token_Kind k = token.kind;
+	return k == Token_Kind_INTEGER || k == Token_Kind_STRING || k == Token_Kind_IDENT;
+}
+
+//- Node constructors
+
+static Expression *
+make_atom_expression(Parse_Context *parse_context, Token token) {
+	Expression *node = push_type(parse_context->arena, Expression);
+	
+	if (node != NULL) {
+		node->kind = Expression_Kind_LITERAL;
+		node->value = token.int_val;
+	}
+	
+	return node;
+}
+
+static Expression *
+make_unary_expression(Parse_Context *parse_context, Token unary, Expression *subexpr) {
+	Expression *node = push_type(parse_context->arena, Expression);
+	
+	if (node != NULL) {
+		node->kind  = Expression_Kind_UNARY;
+		node->unary = unary_from_token(unary);
+		node->right = subexpr;
+	}
+	
+	return node;
+}
+
+static Expression *
+make_binary_expression(Parse_Context *parse_context, Token binary, Expression *left, Expression *right) {
+	Expression *node = push_type(parse_context->arena, Expression);
+	
+	if (node != NULL) {
+		node->kind   = Expression_Kind_BINARY;
+		node->binary = binary_from_token(binary);
+		node->left   = left;
+		node->right  = right;
+	}
+	
+	return node;
+}
+
+static Expression *
+make_ternary_expression(Parse_Context *parse_context, Expression *left, Expression *middle, Expression *right) {
+	Expression *node = push_type(parse_context->arena, Expression);
+	
+	if (node != NULL) {
+		node->kind   = Expression_Kind_TERNARY;
+		node->left   = left;
+		node->middle = middle;
+		node->right  = right;
+	}
+	
+	return node;
+}
+
+//- Parser
+
+#if 0
+static Expression *
+parse_increasing_precedence(Parse_Context *parse_context, Expression *left, Precedence caller_precedence) {
+	assert(left != NULL);
+	
+	Expression *node = NULL;
+	
+	Token token = peek_token(parse_context);
+	Binary_Operator binary = binary_operator_from_token(token);
+	if (binary != Binary_Operator_NONE) {
+		Precedence precedence = get_binary_operator_precedence(binary);
+		
+		if (precedence > caller_precedence) {
+			consume_token(parse_context);
+			Expression *right = parse_expression(parse_context, precedence);
+			if (right != NULL) {
+				node = make_binary_expression(parse_context->arena, left, binary, right);
+			} else {
+				assert(parse_context->error_count > 0);
+			}
+		} else {
+			node = left;
+		}
+	} else if (token.kind == Token_Kind_INTEGER ||
+			   token.kind == Token_Kind_STRING ||
+			   token.kind == Token_Kind_IDENT) {
+#if 1
+		Scratch scratch = scratch_begin(0, 0);
+		report_parse_error(parse_context, push_stringf(scratch.arena, "Unexpected token %lli", token.int_val));
+		scratch_end(scratch);
+#else
+		report_parse_errorf(parse_context, "Unexpected token %lli", token.int_val);
+#endif
+		node = left;
+	} else {
+		node = left;
+	}
+	
+	return node;
+}
+
+static Expression *
+parse_expression(Parse_Context *parse_context, Precedence caller_precedence) {
+	Expression *left = parse_leaf(parse_context, caller_precedence);
+	
+	while (true) {
+		Expression *node = parse_increasing_precedence(parse_context, left, caller_precedence);
+		if (node == left) {
+			break;
+		}
+		
+		left = node;
+	}
+	
+	return left;
+}
+
+static Expression *
+parse_leaf(Parse_Context *parse_context, Precedence caller_precedence) {
+	Expression *node = NULL;
+	
+	Token token = peek_token(parse_context);
+	if (token.kind == Token_Kind_INTEGER) {
+		consume_token(parse_context);
+		node = make_integer_expression(parse_context->arena, token.int_val);
+	} else if (token.kind == Token_Kind_LPAREN) {
+		consume_token(parse_context);
+		
+		Expression *subexpr = parse_expression(parse_context, Precedence_NONE);
+		if (subexpr != NULL) {
+			node = subexpr;
+			
+			if (!expect_and_consume_token(parse_context, Token_Kind_RPAREN)) {
+				report_parse_errorf(parse_context, "Expected a ')'");
+			}
+		} else {
+			assert(parse_context->error_count > 0);
+		}
+	} else if (is_token_unary_operator(token)) {
+		consume_token(parse_context);
+		
+		Expression *subexpr = parse_expression(parse_context, caller_precedence);
+		if (subexpr != NULL) {
+			node = make_unary_expression(parse_context->arena, unary_operator_from_token_kind(token.kind), subexpr);
+		} else {
+			assert(parse_context->error_count > 0);
+		}
+	} else {
+		report_parse_errorf(parse_context, "Expected an expression");
+	}
+	
+	return node;
+}
+#else
+
+static read_only Expression nil_expression = {
+	.left = &nil_expression,
+	.middle = &nil_expression,
+	.right = &nil_expression,
+	.next = &nil_expression,
+};
+
+static Expression *
+parse_expression(Parse_Context *parse_context, Precedence caller_precedence) {
+	Expression *left = &nil_expression;
+	
+	Token token = peek_token(parse_context);
+	if (token_is_expression_atom(token)) {
+		consume_token(parse_context);
+		
+		left = make_atom_expression(parse_context, token);
+	} else if (token_is_prefix(token)) {
+		consume_token(parse_context);
+		Expression *right = parse_expression(parse_context, prefix_precedence_from_token(token));
+		
+		left = make_unary_expression(parse_context, token, right);
+	} else if (token.kind == Token_Kind_LPAREN) {
+		consume_token(parse_context);
+		Expression *grouped = parse_expression(parse_context, Precedence_NONE);
+		expect_token_kind(parse_context, Token_Kind_RPAREN, "Expected )");
+		
+		left = grouped;
+	} else {
+		report_parse_error(parse_context, string_from_lit("Expected an expression"));
+	}
+	
+	for (;;) {
+		token = peek_token(parse_context);
+		
+		if (token_is_postfix(token)) {
+			Precedence precedence = postfix_precedence_from_token(token);
+			if (precedence < caller_precedence)  break;
+			
+			consume_token(parse_context);
+			
+			left = make_unary_expression(parse_context, token, left);
+		} else if (token_is_infix(token)) {
+			Precedence precedence = infix_precedence_from_token(token);
+			if (precedence < caller_precedence)  break;
+			
+			consume_token(parse_context);
+			
+			if (token.kind == Token_Kind_QMARK) {
+				Expression *middle = parse_expression(parse_context, Precedence_NONE);
+				
+				expect_token_kind(parse_context, Token_Kind_COLON, "Expected :");
+				Expression *right = parse_expression(parse_context, precedence);
+				
+				left = make_ternary_expression(parse_context, left, middle, right);
+			} else {
+				if (token.kind == Token_Kind_LPAREN || token.kind == Token_Kind_LBRACK) {
+					precedence = 0;
+				}
+				
+				Expression *right = parse_expression(parse_context, precedence);
+				
+				left = make_binary_expression(parse_context, token, left, right);
+				
+				if (token.kind == Token_Kind_LPAREN)  expect_token_kind(parse_context, Token_Kind_RPAREN, "Expected )");
+				if (token.kind == Token_Kind_LBRACK)  expect_token_kind(parse_context, Token_Kind_RBRACK, "Expected ]");
+			}
+		} else if (token_is_expression_terminator(token)) {
+			break;
+		} else {
+			report_parse_error(parse_context, string_from_lit("Unexpected character"));
+			consume_token(parse_context);
+		}
+	}
+	
+	return left;
+}
+
+#endif
+
+////////////////////////////////
+//~ Context
+
+static void
+report_parse_error(Parse_Context *parse_context, String message) {
+	if (parse_context->error_count == 0) {
+		fprintf(stderr, "Error [%lli..%lli]: %.*s.\n", parse_context->token.b0, parse_context->token.b1, string_expand(message));
+	}
+	parse_context->error_count += 1;
+}
+
+static void
+report_parse_errorf(Parse_Context *parse_context, char *format, ...) {
+	va_list args;
+	va_start(args, format);
+	Scratch scratch = scratch_begin(0, 0);
+	
+	String formatted_message = push_stringf_va_list(scratch.arena, format, args);
+	report_parse_error(parse_context, formatted_message);
+	
+	scratch_end(scratch);
+	va_end(args);
+}
+
+static void
+parse_context_init(Parse_Context *parse_context, Arena *arena, String source) {
+	memset(parse_context, 0, sizeof(*parse_context));
+	parse_context->arena  = arena;
+	parse_context->source = source;
+}
+
+static void
+expect_token_kind(Parse_Context *parse_context, Token_Kind kind, char *message) {
+	if (peek_token(parse_context).kind != kind) {
+		report_parse_error(parse_context, string_from_cstring(message));
+	}
+}
+
+#if 0
+
+//- Tree printing
+
+print_tree :: proc(root: ^Expression) {
+	root_width := compute_tree_width(root);
+	
+	
+	
+	compute_tree_width :: proc(root: ^Expression) -> int {
+		assert(root != nil);
+		
+		root_width := 0;
+		
+		if root.kind == .Literal {
+			root_width  = compute_digit_count(root.value);
+		} else if root.kind == .Unary {
+			root_width  = 1;
+			
+			root_width += compute_tree_width(root.right);
+			root_width += 1;
+		} else if root.kind == .Binary {
+			root_width  = 1;
+			
+			root_width += compute_tree_width(root.left);
+			root_width += compute_tree_width(root.right);
+			root_width += 2;
+		}
+		
+		return root_width;
+	}
+	
+	
+}
+
+#endif
+
+//- Testing
+
+/*
+** TODO(ema):
+** [ ] Parser
+**     [ ] Verify results for expressions 8 and 9
+** [ ] Printer
+** [ ] Input reading
+*/
+
+char *sample_expression_1 = "1+2";                    // 3
+char *sample_expression_2 = "5 - 4";                  // 1
+char *sample_expression_3 = "(3 * 4) - (10 / 2) + 1"; // 8
+char *sample_expression_4 = "7 + (-2) - (3 - 1)";     // 3
+char *sample_expression_5 = "100_000 * 2";            // 200000
+char *sample_expression_6 = "5 + (+4)";               // 9
+char *sample_expression_7 = "1++2";                   // 3
+
+char *sample_expression_8 = "1 2";
+char *sample_expression_9 = "2 (4 + 1)";
+
+static void
+test_sample_expressions(void) {
+	Arena arena = {0};
+	arena_init(&arena);
+	
+	Parse_Context parse_context = {0};
+	Expression *sample_program_tree = NULL;
+	
+	arena_reset(&arena);
+	parse_context_init(&parse_context, &arena, string_from_cstring(sample_expression_1));
+	sample_program_tree = parse_expression(&parse_context, Precedence_NONE);
+	
+	arena_reset(&arena);
+	parse_context_init(&parse_context, &arena, string_from_cstring(sample_expression_2));
+	sample_program_tree = parse_expression(&parse_context, Precedence_NONE);
+	
+	arena_reset(&arena);
+	parse_context_init(&parse_context, &arena, string_from_cstring(sample_expression_3));
+	sample_program_tree = parse_expression(&parse_context, Precedence_NONE);
+	
+	arena_reset(&arena);
+	parse_context_init(&parse_context, &arena, string_from_cstring(sample_expression_4));
+	sample_program_tree = parse_expression(&parse_context, Precedence_NONE);
+	
+	arena_reset(&arena);
+	parse_context_init(&parse_context, &arena, string_from_cstring(sample_expression_5));
+	sample_program_tree = parse_expression(&parse_context, Precedence_NONE);
+	
+	arena_reset(&arena);
+	parse_context_init(&parse_context, &arena, string_from_cstring(sample_expression_6));
+	sample_program_tree = parse_expression(&parse_context, Precedence_NONE);
+	
+	arena_reset(&arena);
+	parse_context_init(&parse_context, &arena, string_from_cstring(sample_expression_7));
+	sample_program_tree = parse_expression(&parse_context, Precedence_NONE);
+	
+	arena_reset(&arena);
+	parse_context_init(&parse_context, &arena, string_from_cstring(sample_expression_8));
+	sample_program_tree = parse_expression(&parse_context, Precedence_NONE);
+	
+	arena_reset(&arena);
+	parse_context_init(&parse_context, &arena, string_from_cstring(sample_expression_9));
+	sample_program_tree = parse_expression(&parse_context, Precedence_NONE);
+	
+	arena_fini(&arena);
+}
+
+static Expression *
+hardcode_an_expression(void) {
+	/*
+** { Plus }
+  ** ** { Times }
+    ** ** ** { 2 }
+    ** ** ** { 3 }
+  ** ** { Div }
+    ** ** ** { 10 }
+    ** ** ** { Plus }
+      ** ** ** ** { 4 }
+** ** ** ** { 1 }
+*/
+	
+	/*
+** { Sub }
+** ** { 7 }
+** ** { 0 }
+*/
+	
+	Expression *plus = cmalloc(sizeof(Expression));
+	plus->kind = Expression_Kind_BINARY;
+	plus->binary = Binary_Operator_PLUS;
+	plus->left = cmalloc(sizeof(Expression));
+	plus->right = cmalloc(sizeof(Expression));
+	plus->value = 0;
+	
+	{
+		Expression *times = plus->left;
+		times->kind = Expression_Kind_BINARY;
+		times->binary = Binary_Operator_TIMES;
+		times->left = cmalloc(sizeof(Expression));
+		times->right = cmalloc(sizeof(Expression));
+		times->value = 0;
+		
+		{
+			Expression *two = times->left;
+			two->kind = Expression_Kind_LITERAL;
+			two->binary = 0;
+			two->left = 0;
+			two->right = 0;
+			two->value = 2;
+		}
+		
+		{
+			Expression *three = times->right;
+			three->kind = Expression_Kind_LITERAL;
+			three->binary = 0;
+			three->left = 0;
+			three->right = 0;
+			three->value = 3;
+		}
+	}
+	
+	{
+		Expression *div = plus->right;
+		div->kind = Expression_Kind_BINARY;
+		div->binary = Binary_Operator_DIVIDE;
+		div->left = cmalloc(sizeof(Expression));
+		div->right = cmalloc(sizeof(Expression));
+		div->value = 0;
+		
+		{
+			Expression *ten = div->left;
+			ten->kind = Expression_Kind_LITERAL;
+			ten->binary = 0;
+			ten->left = 0;
+			ten->right = 0;
+			ten->value = 10;
+		}
+		
+		{
+			Expression *plus2 = div->right;
+			plus2->kind = Expression_Kind_BINARY;
+			plus2->binary = Binary_Operator_PLUS;
+			plus2->left = cmalloc(sizeof(Expression));
+			plus2->right = cmalloc(sizeof(Expression));
+			plus2->value = 0;
+			
+			{
+				Expression *four = plus2->left;
+				four->kind = Expression_Kind_LITERAL;
+				four->binary = 0;
+				four->left = 0;
+				four->right = 0;
+				four->value = 4;
+			}
+			
+			{
+				Expression *one = plus2->right;
+				one->kind = Expression_Kind_LITERAL;
+				one->binary = 0;
+				one->left = 0;
+				one->right = 0;
+				one->value = 1;
+			}
+		}
+	}
+	
+#if 0
+	Expression *minus = cmalloc(sizeof(Expression));
+	minus->kind = Expression_Kind_BINARY;
+	minus->binary = Binary_Operator_MINUS;
+	minus->left = cmalloc(sizeof(Expression));
+	minus->right = cmalloc(sizeof(Expression));
+	minus->value = 0;
+	
+	{
+		Expression *seven = minus->left;
+		seven->kind = Expression_Kind_LITERAL;
+		seven->binary = 0;
+		seven->left = 0;
+		seven->right = 0;
+		seven->value = 7;
+	}
+	
+	{
+		Expression *zero = minus->right;
+		zero->kind = Expression_Kind_LITERAL;
+		zero->binary = 0;
+		zero->left = 0;
+		zero->right = 0;
+		zero->value = 0;
+	}
+	
+	plus->next = minus;
+#endif
+	
+	return plus;
+}
+
+static Statement *
+hardcode_a_statement(void) {
+	Statement *statement = malloc(sizeof(Statement));
+	statement->kind = Statement_Kind_EXPR;
+	statement->expr = hardcode_an_expression();
+	
+	statement->next = malloc(sizeof(Statement));
+	statement->next->kind = Statement_Kind_RETURN;
+	statement->next->expr = statement->expr;
+	statement->next->next = NULL;
+	
+	return statement;
+}
+
+static Declaration *
+hardcode_a_declaration(void) {
+	Declaration *main_decl = cmalloc(sizeof(Declaration));
+	main_decl->kind = Declaration_Kind_PROCEDURE;
+	main_decl->next = cmalloc(sizeof(Declaration));
+	main_decl->ident = string_from_lit("main");
+	
+	{
+		main_decl->body = cmalloc(sizeof(Statement));
+		main_decl->body->kind = Statement_Kind_RETURN;
+		main_decl->body->expr = cmalloc(sizeof(Expression));
+		main_decl->body->expr->kind = Expression_Kind_BINARY;
+		main_decl->body->expr->binary = Binary_Operator_CALL;
+		main_decl->body->expr->right = &nil_expression;
+		main_decl->body->expr->left = cmalloc(sizeof(Expression));
+		
+		{
+			main_decl->body->expr->left->kind = Expression_Kind_IDENT;
+			main_decl->body->expr->left->ident = string_from_lit("other");
+		}
+	}
+	
+	{
+		Declaration *next_decl = main_decl->next;
+		next_decl->kind = Declaration_Kind_PROCEDURE;
+		next_decl->ident = string_from_lit("other");
+		
+		next_decl->body = hardcode_a_statement();
+	}
+	
+	return main_decl;
+}
+
+#endif

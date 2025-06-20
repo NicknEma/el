@@ -3,257 +3,15 @@
 
 #include "el_base.c"
 
-#include "el_x64.c"
-
 static void *
 cmalloc(size_t size) {
 	return calloc(1, size);
 }
 
-////////////////////////////////
-//~ Program Tree
+#include "el_parse.h"
+#include "el_parse.c"
 
-//- Expressions
-
-typedef enum Expr_Kind {
-	Expr_Kind_NULL,
-	Expr_Kind_LITERAL,
-	Expr_Kind_UNARY,
-	Expr_Kind_BINARY,
-	Expr_Kind_COUNT,
-} Expr_Kind;
-
-typedef enum Expr_Unary {
-	Expr_Unary_NULL,
-	Expr_Unary_CALL,
-	Expr_Unary_COUNT,
-} Expr_Unary;
-
-typedef enum Expr_Binary {
-	Expr_Binary_ADD,
-	Expr_Binary_SUB,
-	Expr_Binary_MUL,
-	Expr_Binary_DIV,
-	Expr_Binary_COUNT,
-} Expr_Binary;
-
-typedef struct Expr Expr;
-struct Expr {
-	Expr_Kind kind;
-	Expr_Unary unary;
-	Expr_Binary binary;
-	String ident;
-	Expr *left;
-	Expr *right;
-	Expr *next;
-	int value;
-};
-
-//- Statements
-
-typedef enum Statement_Kind {
-	Statement_Kind_EXPR,
-	Statement_Kind_RETURN,
-	Statement_Kind_COUNT,
-} Statement_Kind;
-
-typedef struct Statement Statement;
-struct Statement {
-	Statement_Kind kind;
-	Statement     *next;
-	
-	Expr *expr;
-};
-
-//- Declarations
-
-typedef enum Declaration_Kind {
-	Declaration_Kind_PROCEDURE,
-	Declaration_Kind_COUNT,
-} Declaration_Kind;
-
-typedef struct Declaration Declaration;
-struct Declaration {
-	Declaration_Kind kind;
-	Declaration     *next;
-	String           ident;
-	
-	Statement *body;
-};
-
-//- Testing
-
-static Expr *
-hardcode_an_expression(void) {
-	/*
-** { Plus }
-  ** ** { Times }
-    ** ** ** { 2 }
-    ** ** ** { 3 }
-  ** ** { Div }
-    ** ** ** { 10 }
-    ** ** ** { Plus }
-      ** ** ** ** { 4 }
-** ** ** ** { 1 }
-*/
-	
-	/*
-** { Sub }
-** ** { 7 }
-** ** { 0 }
-*/
-	
-	Expr *plus = cmalloc(sizeof(Expr));
-	plus->kind = Expr_Kind_BINARY;
-	plus->binary = Expr_Binary_ADD;
-	plus->left = cmalloc(sizeof(Expr));
-	plus->right = cmalloc(sizeof(Expr));
-	plus->value = 0;
-	
-	{
-		Expr *times = plus->left;
-		times->kind = Expr_Kind_BINARY;
-		times->binary = Expr_Binary_MUL;
-		times->left = cmalloc(sizeof(Expr));
-		times->right = cmalloc(sizeof(Expr));
-		times->value = 0;
-		
-		{
-			Expr *two = times->left;
-			two->kind = Expr_Kind_LITERAL;
-			two->binary = 0;
-			two->left = 0;
-			two->right = 0;
-			two->value = 2;
-		}
-		
-		{
-			Expr *three = times->right;
-			three->kind = Expr_Kind_LITERAL;
-			three->binary = 0;
-			three->left = 0;
-			three->right = 0;
-			three->value = 3;
-		}
-	}
-	
-	{
-		Expr *div = plus->right;
-		div->kind = Expr_Kind_BINARY;
-		div->binary = Expr_Binary_DIV;
-		div->left = cmalloc(sizeof(Expr));
-		div->right = cmalloc(sizeof(Expr));
-		div->value = 0;
-		
-		{
-			Expr *ten = div->left;
-			ten->kind = Expr_Kind_LITERAL;
-			ten->binary = 0;
-			ten->left = 0;
-			ten->right = 0;
-			ten->value = 10;
-		}
-		
-		{
-			Expr *plus2 = div->right;
-			plus2->kind = Expr_Kind_BINARY;
-			plus2->binary = Expr_Binary_ADD;
-			plus2->left = cmalloc(sizeof(Expr));
-			plus2->right = cmalloc(sizeof(Expr));
-			plus2->value = 0;
-			
-			{
-				Expr *four = plus2->left;
-				four->kind = Expr_Kind_LITERAL;
-				four->binary = 0;
-				four->left = 0;
-				four->right = 0;
-				four->value = 4;
-			}
-			
-			{
-				Expr *one = plus2->right;
-				one->kind = Expr_Kind_LITERAL;
-				one->binary = 0;
-				one->left = 0;
-				one->right = 0;
-				one->value = 1;
-			}
-		}
-	}
-	
-#if 0
-	Expr *minus = cmalloc(sizeof(Expr));
-	minus->kind = Expr_Kind_BINARY;
-	minus->binary = Expr_Binary_SUB;
-	minus->left = cmalloc(sizeof(Expr));
-	minus->right = cmalloc(sizeof(Expr));
-	minus->value = 0;
-	
-	{
-		Expr *seven = minus->left;
-		seven->kind = Expr_Kind_LITERAL;
-		seven->binary = 0;
-		seven->left = 0;
-		seven->right = 0;
-		seven->value = 7;
-	}
-	
-	{
-		Expr *zero = minus->right;
-		zero->kind = Expr_Kind_LITERAL;
-		zero->binary = 0;
-		zero->left = 0;
-		zero->right = 0;
-		zero->value = 0;
-	}
-	
-	plus->next = minus;
-#endif
-	
-	return plus;
-}
-
-static Statement *
-hardcode_a_statement(void) {
-	Statement *statement = malloc(sizeof(Statement));
-	statement->kind = Statement_Kind_EXPR;
-	statement->expr = hardcode_an_expression();
-	
-	statement->next = malloc(sizeof(Statement));
-	statement->next->kind = Statement_Kind_RETURN;
-	statement->next->expr = statement->expr;
-	statement->next->next = NULL;
-	
-	return statement;
-}
-
-static Declaration *
-hardcode_a_declaration(void) {
-	Declaration *main_decl = cmalloc(sizeof(Declaration));
-	main_decl->kind = Declaration_Kind_PROCEDURE;
-	main_decl->next = cmalloc(sizeof(Declaration));
-	main_decl->ident = string_from_lit("main");
-	
-	{
-		main_decl->body = cmalloc(sizeof(Statement));
-		main_decl->body->kind = Statement_Kind_RETURN;
-		main_decl->body->expr = cmalloc(sizeof(Expr));
-		main_decl->body->expr->kind = Expr_Kind_UNARY;
-		main_decl->body->expr->unary = Expr_Unary_CALL;
-		main_decl->body->expr->ident = string_from_lit("other");
-	}
-	
-	{
-		Declaration *next_decl = main_decl->next;
-		next_decl->kind = Declaration_Kind_PROCEDURE;
-		next_decl->ident = string_from_lit("other");
-		
-		next_decl->body = hardcode_a_statement();
-	}
-	
-	return main_decl;
-}
+#include "el_x64.c"
 
 ////////////////////////////////
 //~ Bytecode
@@ -261,7 +19,9 @@ hardcode_a_declaration(void) {
 typedef enum Instr_Operation {
 	Instr_Operation_NULL,
 	
+	Instr_Operation_NOP,
 	Instr_Operation_SET,
+	Instr_Operation_NEG,
 	Instr_Operation_ADD,
 	Instr_Operation_SUB,
 	Instr_Operation_MUL,
@@ -294,6 +54,12 @@ typedef enum Label_Kind {
 // (or index of the instruction in the array). There was a paper somewhere on the internet about building
 // an assembler which explained the algorithm to do just that.
 
+typedef struct Reg_Group Reg_Group; // Temporary
+struct Reg_Group {
+	int regs[8];
+	int reg_count;
+};
+
 typedef struct Instr Instr;
 struct Instr {
 	String label;
@@ -317,11 +83,13 @@ static int instruction_count;
 static int registers_used;
 
 static Instr_Operation
-instr_operation_from_expr_unary(Expr_Unary expr_op) {
+instr_operation_from_expr_unary(Unary_Operator expr_op) {
 	Instr_Operation instr_op = 0;
 	
 	switch (expr_op) {
-		case Expr_Unary_CALL: { instr_op = Instr_Operation_CALL; } break;
+		case Unary_Operator_PLUS: { instr_op = Instr_Operation_NOP; } break;
+		case Unary_Operator_MINUS: { instr_op = Instr_Operation_NEG; } break;
+		// case Unary_Operator_DEREFERENCE: { instr_op = Instr_Operation_DEREFERENCE; } break;
 		default: break;
 	}
 	
@@ -329,37 +97,42 @@ instr_operation_from_expr_unary(Expr_Unary expr_op) {
 }
 
 static Instr_Operation
-instr_operation_from_expr_binary(Expr_Binary expr_op) {
+instr_operation_from_expr_binary(Binary_Operator expr_op) {
 	Instr_Operation instr_op = 0;
 	
 	switch (expr_op) {
-		case Expr_Binary_ADD: { instr_op = Instr_Operation_ADD; } break;
-		case Expr_Binary_SUB: { instr_op = Instr_Operation_SUB; } break;
-		case Expr_Binary_MUL: { instr_op = Instr_Operation_MUL; } break;
-		case Expr_Binary_DIV: { instr_op = Instr_Operation_DIV; } break;
+		case Binary_Operator_PLUS: { instr_op = Instr_Operation_ADD; } break;
+		case Binary_Operator_MINUS: { instr_op = Instr_Operation_SUB; } break;
+		case Binary_Operator_TIMES: { instr_op = Instr_Operation_MUL; } break;
+		case Binary_Operator_DIVIDE: { instr_op = Instr_Operation_DIV; } break;
+		// case Binary_Operator_COMMA: { instr_op = Instr_Operation_COMMA; } break; // TODO: Better name?
+		// case Binary_Operator_MEMBER: { instr_op = Instr_Operation_COMMA; } break;
+		case Binary_Operator_CALL: { instr_op = Instr_Operation_CALL; } break;
+		// case Binary_Operator_ARRAY_ACCESS: { instr_op = Instr_Operation_ARRAY_ACCESS; } break;
 		default: break;
 	}
 	
 	return instr_op;
 }
 
-static Instr *
-generate_bytecode_for_expression(Expr *expr) {
-	Instr *instr = NULL;
+static Reg_Group
+generate_bytecode_for_expression(Expression *expr) {
+	Instr instr = {0};
+	Reg_Group dests = {0};
 	
 	switch (expr->kind) {
-		case Expr_Kind_LITERAL: {
-			instr = &instructions[instruction_count];
+		case Expression_Kind_LITERAL: {
+			instr.operation = Instr_Operation_SET;
+			instr.mode      = Addressing_Mode_CONSTANT;
+			instr.source    = expr->value;
+			instr.dest      = registers_used;
+			registers_used += 1;
+			
+			instructions[instruction_count] = instr;
 			instruction_count += 1;
 			
-			instr->label.len  = 0;
-			instr->label.data = NULL;
-			
-			instr->operation = Instr_Operation_SET;
-			instr->mode      = Addressing_Mode_CONSTANT;
-			instr->source    = expr->value;
-			instr->dest      = registers_used;
-			registers_used  += 1;
+			dests.regs[0] = instr.dest;
+			dests.reg_count = 1;
 		} break;
 		
 		// -x        => imul x, -1
@@ -367,76 +140,49 @@ generate_bytecode_for_expression(Expr *expr) {
 		// foo(x)    => mov rdi, x, call foo
 		// foo(x, y) => mov rdi, x; mov rsi, y; call foo
 		
-		case Expr_Kind_UNARY: {
+		case Expression_Kind_UNARY: {
+			Reg_Group sub_dests = generate_bytecode_for_expression(expr->left);
+			assert(sub_dests.reg_count >= 1); // Should be ==, but first decide how to treat comma expressions
 			
-			if (expr->unary == Expr_Unary_CALL) {
-				Instr call = {0};
-				
-				for (Expr *subexpr = expr->left; subexpr != NULL; subexpr = subexpr->next) {
-					Instr *arg = generate_bytecode_for_expression(subexpr);
-					
-					assert(call.arg_reg_count < array_count(call.arg_regs));
-					call.arg_regs[call.arg_reg_count] = arg->dest;
-					call.arg_reg_count += 1;
-				}
-				
-				instructions[instruction_count] = call;
-				
-				instr = &instructions[instruction_count];
-				instruction_count += 1;
-				
-				instr->label.len  = 0;
-				instr->label.data = NULL;
-				
-				instr->operation = instr_operation_from_expr_unary(expr->unary);
-				instr->mode      = Addressing_Mode_REGISTER;
-				
-				instr->jump_dest_label = expr->ident;
-			} else {
-				Instr *sub = generate_bytecode_for_expression(expr->left);
-				
-				instr = &instructions[instruction_count];
-				instruction_count += 1;
-				
-				instr->label.len  = 0;
-				instr->label.data = NULL;
-				
-				instr->operation = instr_operation_from_expr_unary(expr->unary);
-				instr->mode      = Addressing_Mode_REGISTER;
-				instr->source    = sub->dest;
-				instr->dest      = sub->dest;
-			}
+			instr.operation = instr_operation_from_expr_unary(expr->unary);
+			instr.mode      = Addressing_Mode_REGISTER;
+			instr.source    = sub_dests.regs[0];
+			instr.dest      = sub_dests.regs[0];
 			
-		} break;
-		
-		case Expr_Kind_BINARY: {
-			Instr *left  = generate_bytecode_for_expression(expr->left);
-			Instr *right = generate_bytecode_for_expression(expr->right);
-			
-			instr = &instructions[instruction_count];
+			instructions[instruction_count] = instr;
 			instruction_count += 1;
 			
-			instr->label.len  = 0;
-			instr->label.data = NULL;
+			dests.regs[0] = instr.dest;
+			dests.reg_count = 1;
+		} break;
+		
+		case Expression_Kind_BINARY: {
+			Reg_Group left_dests  = generate_bytecode_for_expression(expr->left);
+			Reg_Group right_dests = generate_bytecode_for_expression(expr->right);
+			assert(left_dests.reg_count >= 1); // Same as above
+			assert(right_dests.reg_count >= 1);
 			
-			instr->operation = instr_operation_from_expr_binary(expr->binary);
-			instr->mode      = Addressing_Mode_REGISTER;
-			instr->source    = right->dest;
-			instr->dest      = left->dest;
-			registers_used  -= 1;         // This instruction puts the result in left.dest;  right.dest can be used by the next instruction
+			instr.operation = instr_operation_from_expr_binary(expr->binary);
+			instr.mode      = Addressing_Mode_REGISTER;
+			instr.source    = right_dests.regs[0];
+			instr.dest      = left_dests.regs[0];
+			registers_used -= 1;         // This instruction puts the result in left.dest;  right.dest can be used by the next instruction
+			
+			dests.regs[0] = instr.dest;
+			dests.reg_count = 1;
 		} break;
 		
 		default: break;
 	}
 	
-	return instr;
+	return dests;
 }
 
 static void
 generate_bytecode_for_statement(Statement *statement) {
 	switch (statement->kind) {
 		case Statement_Kind_EXPR: {
-			for (Expr *expr = statement->expr; expr != NULL; expr = expr->next) {
+			for (Expression *expr = statement->expr; expr != NULL; expr = expr->next) {
 				generate_bytecode_for_expression(expr);
 			}
 		} break;
@@ -449,14 +195,14 @@ generate_bytecode_for_statement(Statement *statement) {
 				// Remember the destination register of each of the returned expressions,
 				// as well as how many there are.
 				// int i = 0;
-				for (Expr *expr = statement->expr; expr != NULL; expr = expr->next) {
-					Instr *retval = generate_bytecode_for_expression(expr);
+				for (Expression *expr = statement->expr; expr != NULL; expr = expr->next) {
+					Reg_Group dests = generate_bytecode_for_expression(expr);
 					
-					assert(ret.ret_reg_count < array_count(ret.ret_regs));
-					ret.ret_regs[ret.ret_reg_count] = retval->dest;
-					ret.ret_reg_count += 1;
-					
-					// i += 1;
+					for (int di = 0; di < dests.reg_count; di += 1) {
+						assert(ret.ret_reg_count < array_count(ret.ret_regs));
+						ret.ret_regs[ret.ret_reg_count] = dests.regs[di];
+						ret.ret_reg_count += 1;
+					}
 				}
 			}
 			
@@ -762,6 +508,8 @@ masm_generate_source(void) {
 }
 
 int main(void) {
+	test_sample_expressions();
+	
 	x64_test();
 	
 	arena_init(&masm_context.arena);

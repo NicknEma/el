@@ -422,7 +422,6 @@ static read_only Expression nil_expression = {
 	.left = &nil_expression,
 	.middle = &nil_expression,
 	.right = &nil_expression,
-	.next = &nil_expression,
 };
 
 static Expression *

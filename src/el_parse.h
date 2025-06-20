@@ -133,7 +133,6 @@ struct Expression {
 	Expression *left;
 	Expression *middle; // For ternaries
 	Expression *right;
-	Expression *next;
 	int value;
 };
 

@@ -301,9 +301,7 @@ static void
 generate_bytecode_for_statement(Statement *statement) {
 	switch (statement->kind) {
 		case Statement_Kind_EXPR: {
-			for (Expression *expr = statement->expr; expr != NULL; expr = expr->next) {
-				generate_bytecode_for_expression(expr);
-			}
+			generate_bytecode_for_expression(statement->expr);
 		} break;
 		
 		case Statement_Kind_RETURN: {

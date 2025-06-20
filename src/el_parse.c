@@ -536,6 +536,7 @@ expect_token_kind(Parse_Context *parse_context, Token_Kind kind, char *message) 
 	if (peek_token(parse_context).kind != kind) {
 		report_parse_error(parse_context, string_from_cstring(message));
 	}
+	consume_token(parse_context);
 }
 
 //- Tree printing

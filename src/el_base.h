@@ -370,6 +370,7 @@ static String string_chop(String s, i64 amount);
 static String string_stop(String s, i64 index);
 static String string_skip_chop_whitespace(String s);
 static String string_chop_past_last_slash(String s);
+static String string_slice(String s, i64 start, i64 end);
 
 ////////////////////////////////
 //~ String List

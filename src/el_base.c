@@ -622,6 +622,11 @@ string_chop_past_last_slash(String s) {
 	return s;
 }
 
+static String
+string_slice(String s, i64 start, i64 end) {
+	return string_skip(string_stop(s, end), start);
+}
+
 ////////////////////////////////
 //~ String List
 

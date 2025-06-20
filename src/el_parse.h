@@ -38,6 +38,7 @@ struct Token {
 	Token_Kind kind;
 	// int l0, l1, c0, c1;
 	i64 b0, b1; // Byte range
+	String lexeme;
 	String string_val;
 	i64    int_val;
 };
@@ -133,7 +134,10 @@ struct Expression {
 	Expression *left;
 	Expression *middle; // For ternaries
 	Expression *right;
-	int value;
+	String lexeme;
+	i64 value;
+	
+	void *user;
 };
 
 static Expression *make_atom_expression(Parse_Context *parse_context, Token token);

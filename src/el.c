@@ -171,7 +171,6 @@ instr_operation_from_expr_binary(Binary_Operator expr_op) {
 		case Binary_Operator_MINUS: { instr_op = Instr_Operation_SUB; } break;
 		case Binary_Operator_TIMES: { instr_op = Instr_Operation_MUL; } break;
 		case Binary_Operator_DIVIDE: { instr_op = Instr_Operation_DIV; } break;
-		// case Binary_Operator_COMMA: { instr_op = Instr_Operation_COMMA; } break; // TODO: Better name?
 		// case Binary_Operator_MEMBER: { instr_op = Instr_Operation_COMMA; } break;
 		case Binary_Operator_CALL: { instr_op = Instr_Operation_CALL; } break;
 		// case Binary_Operator_ARRAY_ACCESS: { instr_op = Instr_Operation_ARRAY_ACCESS; } break;
@@ -264,14 +263,17 @@ generate_bytecode_for_expression(Expression *expr) {
 				assert(left_dests.reg_count >= 1); // Same as above
 				assert(right_dests.reg_count >= 1);
 				
-				instr.operation = instr_operation_from_expr_binary(expr->binary);
-				instr.mode      = Addressing_Mode_REGISTER;
-				instr.source    = right_dests.regs[0];
-				instr.dest      = left_dests.regs[0];
-				registers_used -= 1;         // This instruction puts the result in left.dest;  right.dest can be used by the next instruction
+				// No new instructions generated; a COMMA operator simply evaluates both lhs and rhs.
 				
-				dests.regs[0] = instr.dest;
-				dests.reg_count = 1;
+				assert(left_dests.reg_count + right_dests.reg_count <= array_count(dests.regs));
+				for (int si = 0; si < left_dests.reg_count; si += 1) {
+					dests.regs[dests.reg_count] = left_dests.regs[si];
+					dests.reg_count += 1;
+				}
+				for (int si = 0; si < right_dests.reg_count; si += 1) {
+					dests.regs[dests.reg_count] = right_dests.regs[si];
+					dests.reg_count += 1;
+				}
 			} else {
 				Reg_Group left_dests  = generate_bytecode_for_expression(expr->left);
 				Reg_Group right_dests = generate_bytecode_for_expression(expr->right);

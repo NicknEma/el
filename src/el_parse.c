@@ -418,101 +418,6 @@ make_ternary_expression(Parse_Context *parse_context, Expression *left, Expressi
 
 //- Parser
 
-#if 0
-static Expression *
-parse_increasing_precedence(Parse_Context *parse_context, Expression *left, Precedence caller_precedence) {
-	assert(left != NULL);
-	
-	Expression *node = NULL;
-	
-	Token token = peek_token(parse_context);
-	Binary_Operator binary = binary_operator_from_token(token);
-	if (binary != Binary_Operator_NONE) {
-		Precedence precedence = get_binary_operator_precedence(binary);
-		
-		if (precedence > caller_precedence) {
-			consume_token(parse_context);
-			Expression *right = parse_expression(parse_context, precedence);
-			if (right != NULL) {
-				node = make_binary_expression(parse_context->arena, left, binary, right);
-			} else {
-				assert(parse_context->error_count > 0);
-			}
-		} else {
-			node = left;
-		}
-	} else if (token.kind == Token_Kind_INTEGER ||
-			   token.kind == Token_Kind_STRING ||
-			   token.kind == Token_Kind_IDENT) {
-#if 1
-		Scratch scratch = scratch_begin(0, 0);
-		report_parse_error(parse_context, push_stringf(scratch.arena, "Unexpected token %lli", token.int_val));
-		scratch_end(scratch);
-#else
-		report_parse_errorf(parse_context, "Unexpected token %lli", token.int_val);
-#endif
-		node = left;
-	} else {
-		node = left;
-	}
-	
-	return node;
-}
-
-static Expression *
-parse_expression(Parse_Context *parse_context, Precedence caller_precedence) {
-	Expression *left = parse_leaf(parse_context, caller_precedence);
-	
-	while (true) {
-		Expression *node = parse_increasing_precedence(parse_context, left, caller_precedence);
-		if (node == left) {
-			break;
-		}
-		
-		left = node;
-	}
-	
-	return left;
-}
-
-static Expression *
-parse_leaf(Parse_Context *parse_context, Precedence caller_precedence) {
-	Expression *node = NULL;
-	
-	Token token = peek_token(parse_context);
-	if (token.kind == Token_Kind_INTEGER) {
-		consume_token(parse_context);
-		node = make_integer_expression(parse_context->arena, token.int_val);
-	} else if (token.kind == Token_Kind_LPAREN) {
-		consume_token(parse_context);
-		
-		Expression *subexpr = parse_expression(parse_context, Precedence_NONE);
-		if (subexpr != NULL) {
-			node = subexpr;
-			
-			if (!expect_and_consume_token(parse_context, Token_Kind_RPAREN)) {
-				report_parse_errorf(parse_context, "Expected a ')'");
-			}
-		} else {
-			assert(parse_context->error_count > 0);
-		}
-	} else if (is_token_unary_operator(token)) {
-		consume_token(parse_context);
-		
-		Expression *subexpr = parse_expression(parse_context, caller_precedence);
-		if (subexpr != NULL) {
-			node = make_unary_expression(parse_context->arena, unary_operator_from_token_kind(token.kind), subexpr);
-		} else {
-			assert(parse_context->error_count > 0);
-		}
-	} else {
-		report_parse_errorf(parse_context, "Expected an expression");
-	}
-	
-	return node;
-}
-#else
-
 static read_only Expression nil_expression = {
 	.left = &nil_expression,
 	.middle = &nil_expression,
@@ -589,8 +494,6 @@ parse_expression(Parse_Context *parse_context, Precedence caller_precedence) {
 	
 	return left;
 }
-
-#endif
 
 ////////////////////////////////
 //~ Context
@@ -671,8 +574,6 @@ print_tree :: proc(root: ^Expression) {
 
 /*
 ** TODO(ema):
-** [ ] Parser
-**     [ ] Verify results for expressions 8 and 9
 ** [ ] Printer
 ** [ ] Input reading
 */

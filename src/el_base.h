@@ -52,6 +52,9 @@ static size_t fsize(FILE *fp);
 
 #define cast(t) (t)
 
+#define internal static
+#define global   static
+
 #if ASAN_ENABLED && COMPILER_MSVC
 # define no_asan __declspec(no_sanitize_address)
 #elif ASAN_ENABLED && (COMPILER_CLANG || COMPILER_GCC)
@@ -178,11 +181,11 @@ struct String {
 
 //- Integer math
 
-static bool is_power_of_two(u64 i);
-static u64  align_forward(u64 ptr, u64 alignment);
-static u64  round_up_to_multiple_of_u64(u64 n, u64 r);
-static i64  round_up_to_multiple_of_i64(i64 n, i64 r);
-static int  i64_digit_count(i64 n);
+internal bool is_power_of_two(u64 i);
+internal u64  align_forward(u64 ptr, u64 alignment);
+internal u64  round_up_to_multiple_of_u64(u64 n, u64 r);
+internal i64  round_up_to_multiple_of_i64(i64 n, i64 r);
+internal int  i64_digit_count(i64 n);
 
 ////////////////////////////////
 //~ Memory
@@ -217,13 +220,13 @@ per_thread Alloc_Error last_alloc_error;
 
 //- Memory procedures
 
-static void *mem_reserve(u64 size);
-static void *mem_commit(void *ptr, u64 size);
-static void *mem_reserve_and_commit(u64 size);
-static bool  mem_decommit(void *ptr, u64 size);
-static bool  mem_release(void *ptr, u64 size);
+internal void *mem_reserve(u64 size);
+internal void *mem_commit(void *ptr, u64 size);
+internal void *mem_reserve_and_commit(u64 size);
+internal bool  mem_decommit(void *ptr, u64 size);
+internal bool  mem_release(void *ptr, u64 size);
 
-static String last_alloc_error_string(void);
+internal String last_alloc_error_string(void);
 
 ////////////////////////////////
 //~ Arena
@@ -266,23 +269,23 @@ struct Arena_Init_Params {
 
 //- Arena procedures
 
-static bool _arena_init(Arena *arena, Arena_Init_Params params);
+internal bool _arena_init(Arena *arena, Arena_Init_Params params);
 #define arena_init(arena, ...) _arena_init(arena, (Arena_Init_Params){ .reserve_size = DEFAULT_ARENA_RESERVE_SIZE, __VA_ARGS__ })
-static bool arena_fini(Arena *arena);
-static void arena_reset(Arena *arena);
+internal bool arena_fini(Arena *arena);
+internal void arena_reset(Arena *arena);
 
-static u64  arena_cap(Arena arena);
-static u64  arena_pos(Arena arena);
-static u64  arena_space(Arena arena);
+internal u64  arena_cap(Arena arena);
+internal u64  arena_pos(Arena arena);
+internal u64  arena_space(Arena arena);
 
-static void *push_nozero(Arena *arena, u64 size, u64 alignment);
-static void *push_zero(Arena *arena, u64 size, u64 alignment);
+internal void *push_nozero(Arena *arena, u64 size, u64 alignment);
+internal void *push_zero(Arena *arena, u64 size, u64 alignment);
 
-static void pop_to(Arena *arena, u64 pos);
-static void pop_amount(Arena *arena, u64 amount);
+internal void pop_to(Arena *arena, u64 pos);
+internal void pop_amount(Arena *arena, u64 amount);
 
-static Arena_Restore_Point arena_begin_temp_region(Arena *arena);
-static void arena_end_temp_region(Arena_Restore_Point point);
+internal Arena_Restore_Point arena_begin_temp_region(Arena *arena);
+internal void arena_end_temp_region(Arena_Restore_Point point);
 
 ////////////////////////////////
 //~ Scratch memory
@@ -310,8 +313,8 @@ per_thread Alloc_Error scratch_arenas_init_errors[SCRATCH_ARENA_COUNT];
 
 //- Scratch memory functions
 
-static Scratch scratch_begin(Arena **conflicts, i64 conflict_count);
-static void    scratch_end(Scratch scratch);
+internal Scratch scratch_begin(Arena **conflicts, i64 conflict_count);
+internal void    scratch_end(Scratch scratch);
 
 ////////////////////////////////
 //~ Strings and slices
@@ -327,10 +330,10 @@ struct Strings_Concat_Params {
 
 //- Slice functions
 
-static SliceU8 make_sliceu8(u8 *data, i64 len);
-static SliceU8 push_sliceu8(Arena *arena, i64 len);
-static SliceU8 sliceu8_from_string(String s);
-static SliceU8 sliceu8_clone(Arena *arena, SliceU8 s);
+internal SliceU8 make_sliceu8(u8 *data, i64 len);
+internal SliceU8 push_sliceu8(Arena *arena, i64 len);
+internal SliceU8 sliceu8_from_string(String s);
+internal SliceU8 sliceu8_clone(Arena *arena, SliceU8 s);
 
 //- String functions
 
@@ -341,12 +344,12 @@ static SliceU8 sliceu8_clone(Arena *arena, SliceU8 s);
 #define string_from_cstring(s)   string(cast(u8 *)s, strlen(s))
 #define string_from_lit_const(s)       {sizeof(s)-1, cast(u8 *)s}
 
-static String string(u8 *data, i64 len);
-static String push_string(Arena *arena, i64 len);
-static String push_stringf(Arena *arena, char *fmt, ...);
-static String push_stringf_va_list(Arena *arena, char *fmt, va_list args);
-static String string_from_sliceu8(SliceU8 s);
-static String string_clone(Arena *arena, String s);
+internal String string(u8 *data, i64 len);
+internal String push_string(Arena *arena, i64 len);
+internal String push_stringf(Arena *arena, char *fmt, ...);
+internal String push_stringf_va_list(Arena *arena, char *fmt, va_list args);
+internal String string_from_sliceu8(SliceU8 s);
+internal String string_clone(Arena *arena, String s);
 #define strings_concat(arena, strings, string_count, ...) \
 strings_concat_(arena, strings, string_count, (Strings_Concat_Params){\
 .pre = string_from_lit_const(""),\
@@ -354,24 +357,24 @@ strings_concat_(arena, strings, string_count, (Strings_Concat_Params){\
 .suf = string_from_lit_const(""),\
 __VA_ARGS__\
 })
-static String strings_concat_(Arena *arena, String *strings, i64 string_count, Strings_Concat_Params params);
-static char *cstring_from_string(Arena *arena, String s);
+internal String strings_concat_(Arena *arena, String *strings, i64 string_count, Strings_Concat_Params params);
+internal char *cstring_from_string(Arena *arena, String s);
 
-static bool string_starts_with(String a, String b);
-static bool string_ends_with(String a, String b);
-static bool string_equals(String a, String b);
-static bool string_equals_case_insensitive(String a, String b);
+internal bool string_starts_with(String a, String b);
+internal bool string_ends_with(String a, String b);
+internal bool string_equals(String a, String b);
+internal bool string_equals_case_insensitive(String a, String b);
 
-static i64 string_find_first(String s, u8 c);
-static i64 string_count_occurrences(String s, u8 c);
-static i64 string_contains(String s, u8 c);
+internal i64 string_find_first(String s, u8 c);
+internal i64 string_count_occurrences(String s, u8 c);
+internal i64 string_contains(String s, u8 c);
 
-static String string_skip(String s, i64 amount);
-static String string_chop(String s, i64 amount);
-static String string_stop(String s, i64 index);
-static String string_skip_chop_whitespace(String s);
-static String string_chop_past_last_slash(String s);
-static String string_slice(String s, i64 start, i64 end);
+internal String string_skip(String s, i64 amount);
+internal String string_chop(String s, i64 amount);
+internal String string_stop(String s, i64 index);
+internal String string_skip_chop_whitespace(String s);
+internal String string_chop_past_last_slash(String s);
+internal String string_slice(String s, i64 start, i64 end);
 
 ////////////////////////////////
 //~ String List
@@ -397,12 +400,12 @@ struct String_List {
 
 //- String List functions
 
-static void string_list_push_first(Arena *arena, String_List *list, String s);
-static void string_list_push_last(Arena *arena, String_List *list, String s);
-static void string_list_pushf_first(Arena *arena, String_List *list, char *fmt, ...);
-static void string_list_pushf_last(Arena *arena, String_List *list, char *fmt, ...);
-static void string_list_pushf_first_va_list(Arena *arena, String_List *list, char *fmt, va_list args);
-static void string_list_pushf_last_va_list(Arena *arena, String_List *list, char *fmt, va_list args);
+internal void string_list_push_first(Arena *arena, String_List *list, String s);
+internal void string_list_push_last(Arena *arena, String_List *list, String s);
+internal void string_list_pushf_first(Arena *arena, String_List *list, char *fmt, ...);
+internal void string_list_pushf_last(Arena *arena, String_List *list, char *fmt, ...);
+internal void string_list_pushf_first_va_list(Arena *arena, String_List *list, char *fmt, va_list args);
+internal void string_list_pushf_last_va_list(Arena *arena, String_List *list, char *fmt, va_list args);
 
 #define string_list_push(arena, list, s) string_list_push_last(arena, list, s)
 #define string_list_pushf(arena, list, fmt, ...) string_list_pushf_last(arena, list, fmt, __VA_ARGS__)
@@ -415,7 +418,7 @@ string_list_join_(arena, list, (String_List_Join_Params){\
 .suf = string_from_lit_const(""),\
 __VA_ARGS__\
 })
-static String string_list_join_(Arena *arena, String_List list, String_List_Join_Params params);
+internal String string_list_join_(Arena *arena, String_List list, String_List_Join_Params params);
 
 #define string_from_list(arena, list, ...) string_list_join(arena, list, __VA_ARGS__)
 
@@ -433,9 +436,9 @@ struct String_Builder {
 
 //- String builder functions
 
-static void string_builder_init(String_Builder *builder, SliceU8 backing);
-static i64  string_builder_append(String_Builder *builder, String s);
+internal void string_builder_init(String_Builder *builder, SliceU8 backing);
+internal i64  string_builder_append(String_Builder *builder, String s);
 
-static String string_from_builder(String_Builder builder);
+internal String string_from_builder(String_Builder builder);
 
 #endif

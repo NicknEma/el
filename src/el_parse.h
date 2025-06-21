@@ -40,7 +40,7 @@ typedef enum Keyword {
 	Keyword_COUNT,
 } Keyword;
 
-static read_only String keywords[] = {
+global read_only String keywords[] = {
 	string_from_lit_const(""),
 	string_from_lit_const("return"),
 };
@@ -60,10 +60,10 @@ struct Token {
 
 typedef struct Parse_Context Parse_Context;
 
-static Token peek_token(Parse_Context *parse_context);
-static Token make_token(Parse_Context *parse_context);
-static void  consume_token(Parse_Context *parse_context);
-static bool  expect_and_consume_token(Parse_Context *parse_context, Token_Kind kind);
+internal Token peek_token(Parse_Context *parse_context);
+internal Token make_token(Parse_Context *parse_context);
+internal void  consume_token(Parse_Context *parse_context);
+internal bool  expect_and_consume_token(Parse_Context *parse_context, Token_Kind kind);
 
 ////////////////////////////////
 //~ Operators
@@ -111,19 +111,19 @@ typedef enum Binary_Operator {
 ////////////////////////////////
 //~ AST
 
-static bool token_is_prefix(Token token);
-static bool token_is_postfix(Token token);
-static bool token_is_infix(Token token);
+internal bool token_is_prefix(Token token);
+internal bool token_is_postfix(Token token);
+internal bool token_is_infix(Token token);
 #define token_is_unary(token)  (token_is_prefix(token) || token_is_postfix(token))
 #define token_is_binary(token) (token_is_infix(token))
 
-static Unary_Operator  unary_from_token(Token token);
-static Unary_Operator  unary_from_token_kind(Token_Kind kind);
-static Binary_Operator binary_from_token(Token token);
-static Binary_Operator binary_from_token_kind(Token_Kind kind);
+internal Unary_Operator  unary_from_token(Token token);
+internal Unary_Operator  unary_from_token_kind(Token_Kind kind);
+internal Binary_Operator binary_from_token(Token token);
+internal Binary_Operator binary_from_token_kind(Token_Kind kind);
 
-static bool token_is_expression_terminator(Token token);
-static bool token_is_expression_atom(Token token);
+internal bool token_is_expression_terminator(Token token);
+internal bool token_is_expression_atom(Token token);
 
 //- Expressions
 
@@ -153,12 +153,12 @@ struct Expression {
 	void *user;
 };
 
-static Expression *make_atom_expression(Parse_Context *parse_context, Token token);
-static Expression *make_unary_expression(Parse_Context *parse_context, Token unary, Expression *subexpr);
-static Expression *make_binary_expression(Parse_Context *parse_context, Token binary, Expression *left, Expression *right);
-static Expression *make_ternary_expression(Parse_Context *parse_context, Expression *left, Expression *middle, Expression *right);
+internal Expression *make_atom_expression(Parse_Context *parse_context, Token token);
+internal Expression *make_unary_expression(Parse_Context *parse_context, Token unary, Expression *subexpr);
+internal Expression *make_binary_expression(Parse_Context *parse_context, Token binary, Expression *left, Expression *right);
+internal Expression *make_ternary_expression(Parse_Context *parse_context, Expression *left, Expression *middle, Expression *right);
 
-static Expression *parse_expression(Parse_Context *parse_context, Precedence caller_precedence);
+internal Expression *parse_expression(Parse_Context *parse_context, Precedence caller_precedence);
 
 //- Statements
 
@@ -179,7 +179,7 @@ struct Statement {
 	Expression *expr;
 };
 
-static Statement *parse_statement(Parse_Context *parser);
+internal Statement *parse_statement(Parse_Context *parser);
 
 //- Declarations
 
@@ -211,11 +211,11 @@ struct Parse_Context {
 	int error_count;
 };
 
-static void parse_context_init(Parse_Context *parse_context, Arena *arena, String source);
+internal void parse_context_init(Parse_Context *parse_context, Arena *arena, String source);
 
-static void report_parse_error(Parse_Context *parse_context, String message);
-static void report_parse_errorf(Parse_Context *parse_context, char *format, ...);
+internal void report_parse_error(Parse_Context *parse_context, String message);
+internal void report_parse_errorf(Parse_Context *parse_context, char *format, ...);
 
-static void expect_token_kind(Parse_Context *parse_context, Token_Kind kind, char *message);
+internal void expect_token_kind(Parse_Context *parse_context, Token_Kind kind, char *message);
 
 #endif

@@ -4,7 +4,7 @@
 ////////////////////////////////
 //~ Memory
 
-static void *
+internal void *
 mem_reserve(u64 size) {
 	void *result = NULL;
 	
@@ -34,7 +34,7 @@ mem_reserve(u64 size) {
 	return result;
 }
 
-static void *
+internal void *
 mem_commit(void *ptr, u64 size) {
 	// No need to align the size to a page boundary, Windows will do it for us.
 	void *result = VirtualAlloc(ptr, size, MEM_COMMIT, PAGE_READWRITE);
@@ -52,7 +52,7 @@ mem_commit(void *ptr, u64 size) {
 	return result;
 }
 
-static void *
+internal void *
 mem_reserve_and_commit(u64 size) {
 	void *result = NULL;
 	
@@ -82,12 +82,12 @@ mem_reserve_and_commit(u64 size) {
 	return result;
 }
 
-static bool
+internal bool
 mem_decommit(void *ptr, u64 size) {
 	return VirtualFree(ptr, size, MEM_DECOMMIT);
 }
 
-static bool
+internal bool
 mem_release(void *ptr, u64 size) {
 	(void)size; // Not needed on Windows
 	

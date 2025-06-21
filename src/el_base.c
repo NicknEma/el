@@ -39,18 +39,18 @@ fsize(FILE *fp) {
 
 //- Integer math
 
-static bool
+internal bool
 is_power_of_two(u64 i) {
 	return i > 0 && (i & (i-1)) == 0;
 }
 
-static u64
+internal u64
 align_forward(u64 ptr, u64 alignment) {
 	assert(is_power_of_two(alignment));
 	return (ptr + alignment-1) & ~(alignment-1);
 }
 
-static u64
+internal u64
 round_up_to_multiple_of_u64(u64 n, u64 r) {
     u64 result;
     
@@ -62,7 +62,7 @@ round_up_to_multiple_of_u64(u64 n, u64 r) {
     return result;
 }
 
-static i64
+internal i64
 round_up_to_multiple_of_i64(i64 n, i64 r) {
     i64 result;
     
@@ -74,7 +74,7 @@ round_up_to_multiple_of_i64(i64 n, i64 r) {
     return result;
 }
 
-static int
+internal int
 i64_digit_count(i64 n) {
 	int count = 0;
 	
@@ -95,7 +95,7 @@ i64_digit_count(i64 n) {
 
 //- Memory procedures
 
-static String
+internal String
 last_alloc_error_string(void) {
 	read_only static String strings[] = {
 		string_from_lit_const(""),
@@ -114,7 +114,7 @@ last_alloc_error_string(void) {
 
 //- Arena operations: constructors/destructors
 
-static bool
+internal bool
 _arena_init(Arena *arena, Arena_Init_Params params) {
 	// Trying to initialize a NULL arena is impossible, so we don't allow it.
 	// Initializing an arena with a size of 0 is useless but possible.
@@ -135,7 +135,7 @@ _arena_init(Arena *arena, Arena_Init_Params params) {
 	return last_alloc_error == Alloc_Error_NONE;
 }
 
-static bool
+internal bool
 arena_fini(Arena *arena) {
 	assert(arena != NULL);
 	
@@ -146,7 +146,7 @@ arena_fini(Arena *arena) {
 	return released && last_alloc_error == Alloc_Error_NONE;
 }
 
-static void
+internal void
 arena_reset(Arena *arena) {
 	last_alloc_error = Alloc_Error_NONE;
 	pop_to(arena, 0);
@@ -154,24 +154,24 @@ arena_reset(Arena *arena) {
 
 //- Arena operations: info
 
-static u64
+internal u64
 arena_cap(Arena arena) {
 	return arena.cap;
 }
 
-static u64
+internal u64
 arena_pos(Arena arena) {
 	return arena.pos;
 }
 
-static u64
+internal u64
 arena_space(Arena arena) {
 	return arena.cap - arena.pos;
 }
 
 //- Arena operations: push
 
-static void *
+internal void *
 push_nozero_aligned(Arena *arena, u64 size, u64 alignment) {
 	last_alloc_error = Alloc_Error_NONE;
 	
@@ -208,7 +208,7 @@ push_nozero_aligned(Arena *arena, u64 size, u64 alignment) {
 	return result;
 }
 
-static void *
+internal void *
 push_zero_aligned(Arena *arena, u64 size, u64 alignment) {
 	last_alloc_error = Alloc_Error_NONE;
 	
@@ -231,7 +231,7 @@ push_zero_aligned(Arena *arena, u64 size, u64 alignment) {
 
 //- Arena operations: pop
 
-static void
+internal void
 pop_to(Arena *arena, u64 pos) {
 	last_alloc_error = Alloc_Error_NONE;
 	
@@ -254,7 +254,7 @@ pop_to(Arena *arena, u64 pos) {
 	}
 }
 
-static void
+internal void
 pop_amount(Arena *arena, u64 amount) {
 	last_alloc_error = Alloc_Error_NONE;
 	
@@ -266,7 +266,7 @@ pop_amount(Arena *arena, u64 amount) {
 
 //- Arena operations: Temp
 
-static Arena_Restore_Point
+internal Arena_Restore_Point
 arena_begin_temp_region(Arena *arena) {
 	last_alloc_error = Alloc_Error_NONE;
 	
@@ -274,7 +274,7 @@ arena_begin_temp_region(Arena *arena) {
 	return point;
 }
 
-static void
+internal void
 arena_end_temp_region(Arena_Restore_Point point) {
 	pop_to(point.arena, point.pos);
 }
@@ -282,7 +282,7 @@ arena_end_temp_region(Arena_Restore_Point point) {
 ////////////////////////////////
 //~ Scratch Memory
 
-static Scratch
+internal Scratch
 scratch_begin(Arena **conflicts, i64 conflict_count) {
 	last_alloc_error = Alloc_Error_NONE;
 	
@@ -323,7 +323,7 @@ scratch_begin(Arena **conflicts, i64 conflict_count) {
 	return scratch;
 }
 
-static void
+internal void
 scratch_end(Scratch scratch) {
 	arena_end_temp_region(scratch);
 }
@@ -333,7 +333,7 @@ scratch_end(Scratch scratch) {
 
 //- Slice functions
 
-static SliceU8
+internal SliceU8
 make_sliceu8(u8 *data, i64 len) {
 	SliceU8 result = {
 		.data = data,
@@ -342,7 +342,7 @@ make_sliceu8(u8 *data, i64 len) {
 	return result;
 }
 
-static SliceU8
+internal SliceU8
 push_sliceu8(Arena *arena, i64 len) {
 	SliceU8 result = {
 		.data = push(arena, cast(u64) len),
@@ -356,12 +356,12 @@ push_sliceu8(Arena *arena, i64 len) {
 	return result;
 }
 
-static SliceU8
+internal SliceU8
 sliceu8_from_string(String s) {
 	return make_sliceu8(s.data, s.len);
 }
 
-static SliceU8
+internal SliceU8
 sliceu8_clone(Arena *arena, SliceU8 s) {
 	// We don't call push_sliceu8() because that clears memory to 0 and we don't need that here.
 	SliceU8 result = {
@@ -380,7 +380,7 @@ sliceu8_clone(Arena *arena, SliceU8 s) {
 
 //- String functions
 
-static String
+internal String
 string(u8 *data, i64 len) {
 	String result = {
 		.data = data,
@@ -389,7 +389,7 @@ string(u8 *data, i64 len) {
 	return result;
 }
 
-static String
+internal String
 push_string(Arena *arena, i64 len) {
 	String result = {
 		.data = push(arena, cast(u64) len),
@@ -403,7 +403,7 @@ push_string(Arena *arena, i64 len) {
 	return result;
 }
 
-static String
+internal String
 push_stringf(Arena *arena, char *fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
@@ -412,7 +412,7 @@ push_stringf(Arena *arena, char *fmt, ...) {
 	return result;
 }
 
-static String
+internal String
 push_stringf_va_list(Arena *arena, char *fmt, va_list args) {
 	i64 len = vsnprintf(0, 0, fmt, args);
 	String result = {
@@ -429,12 +429,12 @@ push_stringf_va_list(Arena *arena, char *fmt, va_list args) {
 	return result;
 }
 
-static String
+internal String
 string_from_sliceu8(SliceU8 s) {
 	return string(s.data, s.len);
 }
 
-static String
+internal String
 string_clone(Arena *arena, String s) {
 	// We don't call push_string() because that clears memory to 0 and we don't need that here.
 	String result = {
@@ -451,7 +451,7 @@ string_clone(Arena *arena, String s) {
 	return result;
 }
 
-static String
+internal String
 strings_concat_(Arena *arena, String *strings, i64 string_count, Strings_Concat_Params params) {
 	i64 total_len = 0;
 	for (i64 i = 0; i < string_count; i += 1) {
@@ -492,7 +492,7 @@ strings_concat_(Arena *arena, String *strings, i64 string_count, Strings_Concat_
 	return result;
 }
 
-static char *
+internal char *
 cstring_from_string(Arena *arena, String s) {
 	char *result = push_nozero(arena, (s.len + 1) * sizeof(char));
 	if (result) {
@@ -503,7 +503,7 @@ cstring_from_string(Arena *arena, String s) {
 	return result;
 }
 
-static bool
+internal bool
 string_starts_with(String a, String b) {
 	bool result = false;
 	if (a.len >= b.len) {
@@ -513,7 +513,7 @@ string_starts_with(String a, String b) {
 	return result;
 }
 
-static bool
+internal bool
 string_ends_with(String a, String b) {
 	bool result = false;
 	if (a.len >= b.len) {
@@ -523,12 +523,12 @@ string_ends_with(String a, String b) {
 	return result;
 }
 
-static bool
+internal bool
 string_equals(String a, String b) {
 	return (a.len == b.len) && (memcmp(a.data, b.data, a.len) == 0);
 }
 
-static bool
+internal bool
 string_equals_case_insensitive(String a, String b) {
 	// TODO: Unicode casings
 	
@@ -545,7 +545,7 @@ string_equals_case_insensitive(String a, String b) {
 	return result;
 }
 
-static i64
+internal i64
 string_find_first(String s, u8 c) {
 	i64 result = -1;
 	for (i64 i = 0; i < s.len; i += 1) {
@@ -557,7 +557,7 @@ string_find_first(String s, u8 c) {
 	return result;
 }
 
-static i64
+internal i64
 string_count_occurrences(String s, u8 c) {
 	i64 result = 0;
 	for (i64 i = 0; i < s.len; i += 1) {
@@ -568,13 +568,13 @@ string_count_occurrences(String s, u8 c) {
 	return result;
 }
 
-static i64
+internal i64
 string_contains(String s, u8 c) {
 	i64 first = string_find_first(s, c);
 	return first >= 0;
 }
 
-static String
+internal String
 string_skip(String s, i64 amount) {
 	if (amount > s.len) {
 		amount = s.len;
@@ -586,7 +586,7 @@ string_skip(String s, i64 amount) {
 	return s;
 }
 
-static String
+internal String
 string_chop(String s, i64 amount) {
 	if (amount > s.len) {
 		amount = s.len;
@@ -597,7 +597,7 @@ string_chop(String s, i64 amount) {
 	return s;
 }
 
-static String
+internal String
 string_stop(String s, i64 index) {
 	if (index < s.len && index > -1) {
 		s.len = index;
@@ -606,7 +606,7 @@ string_stop(String s, i64 index) {
 	return s;
 }
 
-static String
+internal String
 string_skip_chop_whitespace(String s) {
 	for (i64 i = 0; i < s.len; i += 1) {
 		if (!isspace(s.data[i])) {
@@ -626,7 +626,7 @@ string_skip_chop_whitespace(String s) {
 	return s;
 }
 
-static String
+internal String
 string_chop_past_last_slash(String s) {
 	for (i64 i = s.len - 1; i > -1; i -= 1) {
 		if (s.data[i] == '\\' || s.data[i] == '/') {
@@ -638,7 +638,7 @@ string_chop_past_last_slash(String s) {
 	return s;
 }
 
-static String
+internal String
 string_slice(String s, i64 start, i64 end) {
 	return string_skip(string_stop(s, end), start);
 }
@@ -648,7 +648,7 @@ string_slice(String s, i64 start, i64 end) {
 
 //- String List functions
 
-static void
+internal void
 string_list_push_first(Arena *arena, String_List *list, String s) {
 	String_Node *node = push_type(arena, String_Node);
 	
@@ -660,7 +660,7 @@ string_list_push_first(Arena *arena, String_List *list, String s) {
 	}
 }
 
-static void
+internal void
 string_list_push_last(Arena *arena, String_List *list, String s) {
 	String_Node *node = push_type(arena, String_Node);
 	
@@ -672,7 +672,7 @@ string_list_push_last(Arena *arena, String_List *list, String s) {
 	}
 }
 
-static void
+internal void
 string_list_pushf_first(Arena *arena, String_List *list, char *fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
@@ -680,7 +680,7 @@ string_list_pushf_first(Arena *arena, String_List *list, char *fmt, ...) {
 	va_end(args);
 }
 
-static void
+internal void
 string_list_pushf_last(Arena *arena, String_List *list, char *fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
@@ -688,19 +688,19 @@ string_list_pushf_last(Arena *arena, String_List *list, char *fmt, ...) {
 	va_end(args);
 }
 
-static void
+internal void
 string_list_pushf_first_va_list(Arena *arena, String_List *list, char *fmt, va_list args) {
 	String s = push_stringf_va_list(arena, fmt, args);
 	string_list_push_first(arena, list, s);
 }
 
-static void
+internal void
 string_list_pushf_last_va_list(Arena *arena, String_List *list, char *fmt, va_list args) {
 	String s = push_stringf_va_list(arena, fmt, args);
 	string_list_push_last(arena, list, s);
 }
 
-static String
+internal String
 string_list_join_(Arena *arena, String_List list, String_List_Join_Params params) {
 	i64 total_len = list.total_len;
 	
@@ -741,14 +741,14 @@ string_list_join_(Arena *arena, String_List list, String_List_Join_Params params
 ////////////////////////////////
 //~ String Builder
 
-static void
+internal void
 string_builder_init(String_Builder *builder, SliceU8 backing) {
 	builder->data = backing.data;
 	builder->cap  = backing.len;
 	builder->len  = 0;
 }
 
-static i64
+internal i64
 string_builder_append(String_Builder *builder, String s) {
 	assert(builder->data); // Not initialized
 	
@@ -760,7 +760,7 @@ string_builder_append(String_Builder *builder, String s) {
 	return to_copy;
 }
 
-static String
+internal String
 string_from_builder(String_Builder builder) {
 	return string(builder.data, builder.len);
 }

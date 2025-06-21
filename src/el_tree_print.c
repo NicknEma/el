@@ -2,7 +2,7 @@
 #define EL_TREE_PRINT_C
 
 #if 0
-static int
+internal int
 compute_expression_tree_width(Expression *root) {
 	assert(root != NULL);
 	
@@ -29,12 +29,12 @@ compute_expression_tree_width(Expression *root) {
 }
 #endif
 
-static void
+internal void
 print_spaces(int count) {
 	for (int i = 0; i < count; i += 1) putchar(' ');
 }
 
-static void
+internal void
 print_expression_tree(Expression *root) {
 	Scratch scratch = scratch_begin(0, 0);
 	

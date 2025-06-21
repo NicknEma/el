@@ -4,7 +4,7 @@
 ////////////////////////////////
 //~ Tokens
 
-static Token
+internal Token
 peek_token(Parse_Context *parse_context) {
 	if (parse_context->source_index == 0) {
 		consume_token(parse_context);
@@ -12,12 +12,12 @@ peek_token(Parse_Context *parse_context) {
 	return parse_context->token;
 }
 
-static void
+internal void
 consume_token(Parse_Context *parse_context) {
 	parse_context->token = make_token(parse_context);
 }
 
-static bool
+internal bool
 expect_and_consume_token(Parse_Context *parse_context, Token_Kind kind) {
 	bool kinds_match = peek_token(parse_context).kind == kind;
 	if (kinds_match) {
@@ -27,12 +27,12 @@ expect_and_consume_token(Parse_Context *parse_context, Token_Kind kind) {
 }
 
 // This procedure assumes that its input represents a number (aka. is in the range '0'..'9').
-static i64
+internal i64
 i64_from_char(u8 c) {
 	return (c - '0');
 }
 
-static Token
+internal Token
 make_token(Parse_Context *parse_context) {
 	Token token = {0};
 	
@@ -252,7 +252,7 @@ make_token(Parse_Context *parse_context) {
 
 //- Parsing helpers: Prefix/Infix/Postfix
 
-static bool
+internal bool
 token_is_prefix(Token token) {
 	bool result = false;
 	switch (token.kind) {
@@ -263,7 +263,7 @@ token_is_prefix(Token token) {
 	return result;
 }
 
-static bool
+internal bool
 token_is_postfix(Token token) {
 	bool result = false;
 	switch (token.kind) {
@@ -273,7 +273,7 @@ token_is_postfix(Token token) {
 	return result;
 }
 
-static bool
+internal bool
 token_is_infix(Token token) {
 	bool result = false;
 	if (token.kind == Token_Kind_QMARK || binary_from_token(token) != Binary_Operator_NONE) {
@@ -284,12 +284,12 @@ token_is_infix(Token token) {
 
 //- Parsing helpers: Unary/Binary
 
-static Unary_Operator
+internal Unary_Operator
 unary_from_token(Token token) {
 	return unary_from_token_kind(token.kind);
 }
 
-static Unary_Operator
+internal Unary_Operator
 unary_from_token_kind(Token_Kind kind) {
 	Unary_Operator unary = Unary_Operator_NONE;
 	switch (kind) {
@@ -301,12 +301,12 @@ unary_from_token_kind(Token_Kind kind) {
 	return unary;
 }
 
-static Binary_Operator
+internal Binary_Operator
 binary_from_token(Token token) {
 	return binary_from_token_kind(token.kind);
 }
 
-static Binary_Operator
+internal Binary_Operator
 binary_from_token_kind(Token_Kind kind) {
 	Binary_Operator binary = Binary_Operator_NONE;
 	switch (kind) {
@@ -326,7 +326,7 @@ binary_from_token_kind(Token_Kind kind) {
 
 //- Parsing helpers: Precedence
 
-static Precedence
+internal Precedence
 infix_precedence_from_token(Token token) {
 	Precedence precedence = Precedence_NONE;
 	switch (token.kind) {
@@ -356,7 +356,7 @@ infix_precedence_from_token(Token token) {
 	return precedence;
 }
 
-static Precedence
+internal Precedence
 prefix_precedence_from_token(Token token) {
 	Precedence precedence = Precedence_NONE;
 	if (token_is_prefix(token)) {
@@ -365,7 +365,7 @@ prefix_precedence_from_token(Token token) {
 	return precedence;
 }
 
-static Precedence
+internal Precedence
 postfix_precedence_from_token(Token token) {
 	Precedence precedence = Precedence_NONE;
 	if (token_is_postfix(token)) {
@@ -376,13 +376,13 @@ postfix_precedence_from_token(Token token) {
 
 //- Parsing helpers: Misc
 
-static bool
+internal bool
 token_is_expression_terminator(Token token) {
 	Token_Kind k = token.kind;
 	return (k == Token_Kind_EOI || k == Token_Kind_RPAREN || k == Token_Kind_RBRACK || k == Token_Kind_RBRACE || k == Token_Kind_SEMICOLON);
 }
 
-static bool
+internal bool
 token_is_expression_atom(Token token) {
 	Token_Kind k = token.kind;
 	return k == Token_Kind_INTEGER || k == Token_Kind_STRING || k == Token_Kind_IDENT;
@@ -390,7 +390,7 @@ token_is_expression_atom(Token token) {
 
 //- Node constructors
 
-static Expression *
+internal Expression *
 make_atom_expression(Parse_Context *parse_context, Token token) {
 	Expression *node = push_type(parse_context->arena, Expression);
 	
@@ -409,7 +409,7 @@ make_atom_expression(Parse_Context *parse_context, Token token) {
 	return node;
 }
 
-static Expression *
+internal Expression *
 make_unary_expression(Parse_Context *parse_context, Token unary, Expression *subexpr) {
 	Expression *node = push_type(parse_context->arena, Expression);
 	
@@ -423,7 +423,7 @@ make_unary_expression(Parse_Context *parse_context, Token unary, Expression *sub
 	return node;
 }
 
-static Expression *
+internal Expression *
 make_binary_expression(Parse_Context *parse_context, Token binary, Expression *left, Expression *right) {
 	Expression *node = push_type(parse_context->arena, Expression);
 	
@@ -438,7 +438,7 @@ make_binary_expression(Parse_Context *parse_context, Token binary, Expression *l
 	return node;
 }
 
-static Expression *
+internal Expression *
 make_ternary_expression(Parse_Context *parse_context, Expression *left, Expression *middle, Expression *right) {
 	Expression *node = push_type(parse_context->arena, Expression);
 	
@@ -455,13 +455,13 @@ make_ternary_expression(Parse_Context *parse_context, Expression *left, Expressi
 
 //- Parser: Expressions
 
-static read_only Expression nil_expression = {
+global read_only Expression nil_expression = {
 	.left = &nil_expression,
 	.middle = &nil_expression,
 	.right = &nil_expression,
 };
 
-static Expression *
+internal Expression *
 parse_expression(Parse_Context *parse_context, Precedence caller_precedence) {
 	Expression *left = &nil_expression;
 	
@@ -533,13 +533,13 @@ parse_expression(Parse_Context *parse_context, Precedence caller_precedence) {
 
 //- Parser: Statements
 
-static read_only Statement nil_statement = {
+global read_only Statement nil_statement = {
 	.block = &nil_statement,
 	.next  = &nil_statement,
 	.expr  = &nil_expression,
 };
 
-static Statement *
+internal Statement *
 parse_statement(Parse_Context *parser) {
 	Statement *result = &nil_statement;
 	
@@ -610,7 +610,7 @@ parse_statement(Parse_Context *parser) {
 ////////////////////////////////
 //~ Context
 
-static void
+internal void
 report_parse_error(Parse_Context *parse_context, String message) {
 	if (parse_context->error_count == 0) {
 		fprintf(stderr, "Error [%lli..%lli]: %.*s.\n", parse_context->token.b0, parse_context->token.b1, string_expand(message));
@@ -618,7 +618,7 @@ report_parse_error(Parse_Context *parse_context, String message) {
 	parse_context->error_count += 1;
 }
 
-static void
+internal void
 report_parse_errorf(Parse_Context *parse_context, char *format, ...) {
 	va_list args;
 	va_start(args, format);
@@ -631,14 +631,14 @@ report_parse_errorf(Parse_Context *parse_context, char *format, ...) {
 	va_end(args);
 }
 
-static void
+internal void
 parse_context_init(Parse_Context *parse_context, Arena *arena, String source) {
 	memset(parse_context, 0, sizeof(*parse_context));
 	parse_context->arena  = arena;
 	parse_context->source = source;
 }
 
-static void
+internal void
 expect_token_kind(Parse_Context *parse_context, Token_Kind kind, char *message) {
 	if (peek_token(parse_context).kind != kind) {
 		report_parse_error(parse_context, string_from_cstring(message));
@@ -666,7 +666,7 @@ char *sample_expression_8 = "1 2";
 char *sample_expression_9 = "2 (4 + 1)";
 char *sample_expression_0 = "3 * (2 (4 + 1))";
 
-static void
+internal void
 test_sample_expressions(void) {
 	Arena arena = {0};
 	arena_init(&arena);
@@ -723,7 +723,7 @@ test_sample_expressions(void) {
 	arena_fini(&arena);
 }
 
-static Expression *
+internal Expression *
 parse_expression_string(Arena *arena, String source) {
 	Parse_Context context = {0};
 	parse_context_init(&context, arena, source);
@@ -743,7 +743,7 @@ String sample_statement_8 = string_from_lit_const("1 + 2");
 String sample_statement_9 = string_from_lit_const("{ return } ");
 String sample_statement_0 = string_from_lit_const("{ return; ");
 
-static void
+internal void
 test_sample_statements(void) {
 	Arena arena = {0};
 	arena_init(&arena);
@@ -794,7 +794,7 @@ test_sample_statements(void) {
 	arena_fini(&arena);
 }
 
-static Statement *
+internal Statement *
 parse_statement_string(Arena *arena, String source) {
 	Parse_Context context = {0};
 	parse_context_init(&context, arena, source);
@@ -802,7 +802,7 @@ parse_statement_string(Arena *arena, String source) {
 	return parse_statement(&context);
 }
 
-static Declaration *
+internal Declaration *
 hardcode_a_declaration(Arena *arena) {
 	Declaration *main_decl = push_type(arena, Declaration);
 	main_decl->kind = Declaration_Kind_PROCEDURE;

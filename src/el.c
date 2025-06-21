@@ -27,9 +27,9 @@ struct Decl_List {
 	Decl_Node *last;
 };
 
-static Decl_List proc_list;
+global Decl_List proc_list;
 
-static void
+internal void
 decl_list_push(Arena *arena, Decl_List *list, Declaration *decl) {
 	Decl_Node *node = push_type(arena, Decl_Node);
 	if (node != NULL) {
@@ -38,7 +38,7 @@ decl_list_push(Arena *arena, Decl_List *list, Declaration *decl) {
 	}
 }
 
-static void
+internal void
 populate_decl_lists(Arena *arena, Declaration *first) {
 	for (Declaration *decl = first; decl != NULL; decl = decl->next) {
 		if (decl->kind == Declaration_Kind_PROCEDURE) {
@@ -47,7 +47,7 @@ populate_decl_lists(Arena *arena, Declaration *first) {
 	}
 }
 
-static Declaration *
+internal Declaration *
 decl_list_find_ident(Decl_List *list, String ident) {
 	Declaration *result = NULL;
 	for (Decl_Node *node = list->first; node != NULL; node = node->next) {
@@ -63,7 +63,7 @@ decl_list_find_ident(Decl_List *list, String ident) {
 //~ Tree
 
 #if 0
-static int
+internal int
 count_expressions_in_list(Expression *expr, int acc) {
 	if (expr->kind == Expression_Kind_COMMA) {
 		acc += count_expressions_in_list(expr->left);
@@ -141,12 +141,12 @@ struct Instr {
 	int arg_reg_count;
 };
 
-static Instr instructions[256];
-static int instruction_count;
+global Instr instructions[256];
+global int instruction_count;
 
-static int registers_used;
+global int registers_used;
 
-static Instr_Operation
+internal Instr_Operation
 instr_operation_from_expr_unary(Unary_Operator expr_op) {
 	Instr_Operation instr_op = 0;
 	
@@ -160,7 +160,7 @@ instr_operation_from_expr_unary(Unary_Operator expr_op) {
 	return instr_op;
 }
 
-static Instr_Operation
+internal Instr_Operation
 instr_operation_from_expr_binary(Binary_Operator expr_op) {
 	Instr_Operation instr_op = 0;
 	
@@ -178,7 +178,7 @@ instr_operation_from_expr_binary(Binary_Operator expr_op) {
 	return instr_op;
 }
 
-static Reg_Group
+internal Reg_Group
 generate_bytecode_for_expression(Expression *expr) {
 	Instr instr = {0};
 	Reg_Group dests = {0};
@@ -301,7 +301,7 @@ generate_bytecode_for_expression(Expression *expr) {
 	return dests;
 }
 
-static void
+internal void
 generate_bytecode_for_statement(Statement *statement) {
 	switch (statement->kind) {
 		case Statement_Kind_EXPR: {
@@ -401,7 +401,7 @@ generate_bytecode_for_statement(Statement *statement) {
 	}
 }
 
-static void
+internal void
 generate_bytecode_for_declaration(Declaration *declaration) {
 	switch (declaration->kind) {
 		case Declaration_Kind_PROCEDURE: {
@@ -438,11 +438,11 @@ struct MASM_Context {
 	String indent_string;
 };
 
-static MASM_Context masm_context = {
+global MASM_Context masm_context = {
 	.indent_string = string_from_lit_const("\t"),
 };
 
-static void
+internal void
 masm_append_line(String line) {
 	Scratch scratch = scratch_begin(0, 0);
 	
@@ -467,7 +467,7 @@ masm_append_line(String line) {
 	scratch_end(scratch);
 }
 
-static String
+internal String
 masm_register_from_bytecode_register(int bytecode_reg) {
 	String register_names[] = {
 		string_from_lit_const("rax"),
@@ -497,7 +497,7 @@ masm_register_from_bytecode_register(int bytecode_reg) {
 	return register_names[bytecode_reg];
 }
 
-static String
+internal String
 masm_generate_source(void) {
 	
 	masm_append_line(string_from_lit("; Generated"));

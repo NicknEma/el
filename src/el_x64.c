@@ -57,24 +57,24 @@ typedef enum X64_Mode {
 
 //- Global variables
 
-static u8  x64_emit_buf[4*4096];
-static u8 *x64_emit_ptr = x64_emit_buf;
+global u8  x64_emit_buf[4*4096];
+global u8 *x64_emit_ptr = x64_emit_buf;
 
 //- Functions
 
-static void
+internal void
 x64_emit_u8(u8 v) {
 	x64_emit_ptr[0] = v;
 	x64_emit_ptr   += 1;
 }
 
-static void
+internal void
 x64_emit_u16(u16 v) {
 	x64_emit_u8(cast(u8) ((v >>  0) & 0xFF));
 	x64_emit_u8(cast(u8) ((v >>  8) & 0xFF));
 }
 
-static void
+internal void
 x64_emit_u32(u32 v) {
 	x64_emit_u8(cast(u8) ((v >>  0) & 0xFF));
 	x64_emit_u8(cast(u8) ((v >>  8) & 0xFF));
@@ -83,7 +83,7 @@ x64_emit_u32(u32 v) {
 }
 
 // Forces 64-bit mode and stores the high bits of the 'reg' and 'rm' fields in ModRM.
-static void
+internal void
 x64_emit_rex(X64_Register reg, X64_Register rm) {
 	assert(cast(u8) reg   < 16); // reg   field of the ModRM byte; we only care about the high bit
 	assert(cast(u8) rm    < 16); // rm    field of the ModRM byte; we only care about the high bit
@@ -93,7 +93,7 @@ x64_emit_rex(X64_Register reg, X64_Register rm) {
 	x64_emit_u8(0x48 | (cast(u8) rm >> 3) | ((cast(u8) reg >> 3) << 2));
 }
 
-static void
+internal void
 x64_emit_rex_indexed(X64_Register reg, X64_Register rm, X64_Register index) {
 	assert(cast(u8) reg   < 16); // reg   field of the ModRM byte; we only care about the high bit
 	assert(cast(u8) rm    < 16); // rm    field of the ModRM byte; we only care about the high bit
@@ -102,7 +102,7 @@ x64_emit_rex_indexed(X64_Register reg, X64_Register rm, X64_Register index) {
 	x64_emit_u8(0x48 | (cast(u8) rm >> 3) | ((cast(u8) index >> 3) << 1) | ((cast(u8) reg >> 3) << 2));
 }
 
-static void
+internal void
 x64_emit_mod_rx_rm(u8 mod, u8 rx, u8 rm) {
 	assert(mod <  4);
 	assert(rx  < 16);
@@ -118,7 +118,7 @@ x64_emit_mod_rx_rm(u8 mod, u8 rx, u8 rm) {
 //     add rax, rcx
 // reg: Destination register, 'rax' in the example
 // operand: Source register, 'rcx' in the example
-static void
+internal void
 x64_emit_direct_operand(X64_Register reg, X64_Register operand) {
 	x64_emit_mod_rx_rm(cast(u8) X64_Mode_Direct, cast(u8) reg, cast(u8) operand);
 }
@@ -127,7 +127,7 @@ x64_emit_direct_operand(X64_Register reg, X64_Register operand) {
 //     add rax, [rcx]
 // rx = rax
 // operand = rcx
-static void
+internal void
 x64_emit_indirect_operand(X64_Register reg, X64_Register operand) {
 	assert(cast(X64_Register)(cast(u8) operand & 7) != X64_Register_RSP); // In 32-bit addressing mode, a R/M of 100 indicates a SIB byte will follow
 	assert(cast(X64_Register)(cast(u8) operand & 7) != X64_Register_RBP); // In 32-bit addressing mode, a R/M of 101 indicates a 32-bit displacement will follow
@@ -141,7 +141,7 @@ x64_emit_indirect_operand(X64_Register reg, X64_Register operand) {
 // Example instruction:
 //     add rax, [rbp]
 // rx = rax
-static void
+internal void
 x64_emit_indirect_rip(u8 rx) {
 	x64_emit_mod_rx_rm(cast(u8) X64_Mode_Indirect, rx, 0x5);
 }
@@ -150,7 +150,7 @@ x64_emit_indirect_rip(u8 rx) {
 // Emits a ModRM byte defining an instruction that uses a constant displacement as an indirect source.
 // Example instruction:
 //     add rax, [0x12345678]  ; dereference memory location 0x12345678
-static void
+internal void
 x64_emit_indirect_displacement(X64_Register reg, u32 displacement) {
 #if 0
 	x64_emit_mod_rx_rm(cast(u8) X64_Mode_Indirect_With_Multi_Byte_Displacement, cast(u8) reg, 0x5);
@@ -167,7 +167,7 @@ x64_emit_indirect_displacement(X64_Register reg, u32 displacement) {
 // rx = rax
 // operand = rcx
 // displacement = 0x12
-static void
+internal void
 x64_emit_indirect_operand_with_byte_displacement(X64_Register reg, X64_Register operand, u8 displacement) {
 	assert(cast(X64_Register)(cast(u8) operand & 7) != X64_Register_RSP); // In 32-bit addressing mode, a R/M of 100 indicates a SIB byte will follow
 	
@@ -181,7 +181,7 @@ x64_emit_indirect_operand_with_byte_displacement(X64_Register reg, X64_Register 
 // rx = rax
 // operand = rcx
 // displacement = 0x12345678
-static void
+internal void
 x64_emit_indirect_operand_with_multi_byte_displacement(X64_Register reg, X64_Register operand, u32 displacement) {
 	assert(cast(X64_Register)(cast(u8) operand & 7) != X64_Register_RSP); // In 32-bit addressing mode, a R/M of 100 indicates a SIB byte will follow
 	
@@ -189,7 +189,7 @@ x64_emit_indirect_operand_with_multi_byte_displacement(X64_Register reg, X64_Reg
 	x64_emit_u32(displacement);
 }
 
-static void
+internal void
 x64_emit_sib(X64_Register base, X64_Scale scale, X64_Register index) {
 	x64_emit_mod_rx_rm(cast(u8) scale, cast(u8) index, cast(u8) base);
 }
@@ -200,7 +200,7 @@ x64_emit_sib(X64_Register base, X64_Scale scale, X64_Register index) {
 // operand = rcx
 // index = rdx
 // scale = X4
-static void
+internal void
 x64_emit_indexed_indirect_operand(X64_Register reg, X64_Register base, X64_Scale scale, X64_Register index) {
 	x64_emit_mod_rx_rm(cast(u8) X64_Mode_Indirect, cast(u8) reg, cast(u8) X64_Register_RSP); // RSP indicates a following SIB byte
 	x64_emit_sib(base, scale, index);
@@ -208,7 +208,7 @@ x64_emit_indexed_indirect_operand(X64_Register reg, X64_Register base, X64_Scale
 
 // Example instruction:
 //     add rax, [rcx + 4*rdx + 0x12]
-static void
+internal void
 x64_emit_indexed_indirect_operand_with_byte_displacement(X64_Register reg, X64_Register base, X64_Scale scale, X64_Register index, u8 displacement) {
 	x64_emit_mod_rx_rm(cast(u8) X64_Mode_Indirect_With_Byte_Displacement, cast(u8) reg, cast(u8) X64_Register_RSP); // RSP indicates a following SIB byte
 	x64_emit_sib(base, scale, index);
@@ -217,7 +217,7 @@ x64_emit_indexed_indirect_operand_with_byte_displacement(X64_Register reg, X64_R
 
 // Example instruction:
 //     add rax, [rcx + 4*rdx + 0x12345678]
-static void
+internal void
 x64_emit_indexed_indirect_operand_with_multi_byte_displacement(X64_Register reg, X64_Register base, X64_Scale scale, X64_Register index, u32 displacement) {
 	x64_emit_mod_rx_rm(cast(u8) X64_Mode_Indirect_With_Multi_Byte_Displacement, cast(u8) reg, cast(u8) X64_Register_RSP); // RSP indicates a following SIB byte
 	x64_emit_sib(base, scale, index);
@@ -404,23 +404,23 @@ x64_emit_u32(immediate)
 #if 1
 
 #define X64_DEFINE_1R(mnemonic, opcode) \
-static void x64_emit_##mnemonic##_r(void) { \
+internal void x64_emit_##mnemonic##_r(void) { \
 x64_emit_u8(opcode); \
 }
 
 #define X64_DEFINE_1M(mnemonic, opcode) \
-static void x64_emit_##mnemonic##_m(void) { \
+internal void x64_emit_##mnemonic##_m(void) { \
 x64_emit_u8(opcode); \
 }
 
 #define X64_DEFINE_1I(mnemonic, opcode, extension) \
-static void x64_emit_##mnemonic##_i(void) { \
+internal void x64_emit_##mnemonic##_i(void) { \
 x64_emit_u8(opcode); \
 } \
 enum { x64_extension_##mnemonic##_i = extension };
 
 #define X64_DEFINE_1X(mnemonic, opcode, extension) \
-static void x64_emit_##mnemonic##_x(void) { \
+internal void x64_emit_##mnemonic##_x(void) { \
 x64_emit_u8(opcode); \
 } \
 enum { x64_extension_##mnemonic##_x = extension };
@@ -438,17 +438,17 @@ X64_DEFINE_1X(mul, 0xf7, 0x04)
 #else
 
 // Emits an ADD instruction where the destination is a register
-static void x64_emit_add_r(void) {
+internal void x64_emit_add_r(void) {
 	x64_emit_u8(0x03);
 }
 
 // Emits an ADD instruction where the destination is a memory location
-static void x64_emit_add_m(void) {
+internal void x64_emit_add_m(void) {
 	x64_emit_u8(0x01);
 }
 
 // Emits an ADD instruction where the source is a constant
-static void x64_emit_add_i(void) {
+internal void x64_emit_add_i(void) {
 	x64_emit_u8(0x81);
 }
 
@@ -461,7 +461,7 @@ enum {
 ////////////////////////////////
 //~ Tests
 
-static void x64_test(void) {
+internal void x64_test(void) {
 	
 	x64_emit_d_i(add, 0x12345678, 0xcafebabe); // Add immediate to constant absolute location
 	// x64_emit_ripd_i(add, 0x12345678, 0xcafebabe); // Add immediate to constant relative location

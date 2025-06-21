@@ -6,7 +6,7 @@
 
 internal Token
 peek_token(Parse_Context *parser) {
-	if (parser->source_index == 0) {
+	if (parser->index == 0) {
 		consume_token(parser);
 	}
 	return parser->token;
@@ -34,17 +34,20 @@ i64_from_char(u8 c) {
 
 internal Token
 make_token(Parse_Context *parser) {
-	Token token = {0};
+	Token  token  = {0};
+	
+	String source = parser->source;
+	i64    index  = parser->index;
 	
 	// Skip whitespace
-	while (parser->source_index < parser->source.len && isspace(parser->source.data[parser->source_index])) {
-		parser->source_index += 1;
+	while (index < source.len && isspace(source.data[index])) {
+		index += 1;
 	}
 	
-	token.b0 = parser->source_index;
+	token.b0 = index;
 	
-	if (parser->source_index < parser->source.len) {
-		switch (parser->source.data[parser->source_index]) {
+	if (index < source.len) {
+		switch (source.data[index]) {
 			case '0':
 			case '1':
 			case '2':
@@ -56,11 +59,10 @@ make_token(Parse_Context *parser) {
 			case '8':
 			case '9': {
 				i64 value = 0;
-				i64 index = parser->source_index;
 				
-				while (index < parser->source.len && (isdigit(parser->source.data[index]) || parser->source.data[index] == '_')) {
-					if (parser->source.data[index] != '_') {
-						i64 digit = i64_from_char(parser->source.data[index]);
+				while (index < source.len && (isdigit(source.data[index]) || source.data[index] == '_')) {
+					if (source.data[index] != '_') {
+						i64 digit = i64_from_char(source.data[index]);
 						
 						value *= 10;
 						value += digit;
@@ -72,153 +74,146 @@ make_token(Parse_Context *parser) {
 				token.kind = Token_Kind_INTEGER;
 				token.int_val = value;
 				token.b1 = index;
-				
-				parser->source_index = index;
 			} break;
 			
 			case '+': {
 				token.kind = Token_Kind_PLUS;
-				token.b1 = parser->source_index + 1;
+				token.b1 = index + 1;
 				
-				parser->source_index += 1;
+				index += 1;
 			} break;
 			
 			case '-': {
 				token.kind = Token_Kind_DASH;
-				token.b1 = parser->source_index + 1;
+				token.b1 = index + 1;
 				
-				parser->source_index += 1;
+				index += 1;
 			} break;
 			
 			case '*': {
 				token.kind = Token_Kind_STAR;
-				token.b1 = parser->source_index + 1;
+				token.b1 = index + 1;
 				
-				parser->source_index += 1;
+				index += 1;
 			} break;
 			
 			case '/': {
 				token.kind = Token_Kind_SLASH;
-				token.b1 = parser->source_index + 1;
+				token.b1 = index + 1;
 				
-				parser->source_index += 1;
+				index += 1;
 			} break;
 			
 			case '%': {
 				token.kind = Token_Kind_PERCENT;
-				token.b1 = parser->source_index + 1;
+				token.b1 = index + 1;
 				
-				parser->source_index += 1;
+				index += 1;
 			} break;
 			
 			case ':': {
 				token.kind = Token_Kind_COLON;
-				token.b1 = parser->source_index + 1;
+				token.b1 = index + 1;
 				
-				parser->source_index += 1;
+				index += 1;
 				
-				if (parser->source_index < parser->source.len && parser->source.data[parser->source_index] == ':') {
+				if (index < source.len && source.data[index] == ':') {
 					token.kind = Token_Kind_DOUBLE_COLON;
-					token.b1 = parser->source_index + 1;
+					token.b1 = index + 1;
 					
-					parser->source_index += 1;
+					index += 1;
 				}
 			} break;
 			
 			case '?': {
 				token.kind = Token_Kind_QMARK;
-				token.b1 = parser->source_index + 1;
+				token.b1 = index + 1;
 				
-				parser->source_index += 1;
+				index += 1;
 			} break;
 			
 			case '(': {
 				token.kind = Token_Kind_LPAREN;
-				token.b1 = parser->source_index + 1;
+				token.b1 = index + 1;
 				
-				parser->source_index += 1;
+				index += 1;
 			} break;
 			
 			case ')': {
 				token.kind = Token_Kind_RPAREN;
-				token.b1 = parser->source_index + 1;
+				token.b1 = index + 1;
 				
-				parser->source_index += 1;
+				index += 1;
 			} break;
 			
 			case '[': {
 				token.kind = Token_Kind_LBRACK;
-				token.b1 = parser->source_index + 1;
+				token.b1 = index + 1;
 				
-				parser->source_index += 1;
+				index += 1;
 			} break;
 			
 			case ']': {
 				token.kind = Token_Kind_RBRACK;
-				token.b1 = parser->source_index + 1;
+				token.b1 = index + 1;
 				
-				parser->source_index += 1;
+				index += 1;
 			} break;
 			
 			case '{': {
 				token.kind = Token_Kind_LBRACE;
-				token.b1 = parser->source_index + 1;
+				token.b1 = index + 1;
 				
-				parser->source_index += 1;
+				index += 1;
 			} break;
 			
 			case '}': {
 				token.kind = Token_Kind_RBRACE;
-				token.b1 = parser->source_index + 1;
+				token.b1 = index + 1;
 				
-				parser->source_index += 1;
+				index += 1;
 			} break;
 			
 			case '.': {
 				token.kind = Token_Kind_DOT;
-				token.b1 = parser->source_index + 1;
+				token.b1 = index + 1;
 				
-				parser->source_index += 1;
+				index += 1;
 			} break;
 			
 			case ',': {
 				token.kind = Token_Kind_COMMA;
-				token.b1 = parser->source_index + 1;
+				token.b1 = index + 1;
 				
-				parser->source_index += 1;
+				index += 1;
 			} break;
 			
 			case ';': {
 				token.kind = Token_Kind_SEMICOLON;
-				token.b1 = parser->source_index + 1;
+				token.b1 = index + 1;
 				
-				parser->source_index += 1;
+				index += 1;
 			} break;
 			
 			case '^': {
 				token.kind = Token_Kind_HAT;
-				token.b1 = parser->source_index + 1;
+				token.b1 = index + 1;
 				
-				parser->source_index += 1;
+				index += 1;
 			} break;
 			
 			default: {
-				if (isalpha(parser->source.data[parser->source_index]) ||
-					parser->source.data[parser->source_index] == '_') {
+				if (isalpha(source.data[index]) || source.data[index] == '_') {
 					token.kind = Token_Kind_IDENT;
 					
-					i64 start = parser->source_index;
-					i64 end   = 0;
-					while (isalpha(parser->source.data[parser->source_index]) ||
-						   isdigit(parser->source.data[parser->source_index]) ||
-						   parser->source.data[parser->source_index] == '_') {
-						parser->source_index += 1;
+					i64 start = index;
+					while (isalpha(source.data[index]) || isdigit(source.data[index]) || source.data[index] == '_') {
+						index += 1;
 					}
-					end = parser->source_index;
 					
-					String ident = string_slice(parser->source, start, end);
-					token.b1 = end;
+					token.b1 = index;
 					
+					String ident = string_slice(source, start, index);
 					for (int i = 1; i < array_count(keywords); i += 1) {
 						if (string_equals(ident, keywords[i])) {
 							token.kind = Token_Kind_KEYWORD;
@@ -228,9 +223,9 @@ make_token(Parse_Context *parser) {
 					}
 				} else {
 					token.kind = Token_Kind_INVALID;
-					token.b1 = parser->source_index + 1;
+					token.b1 = index + 1;
 					
-					parser->source_index += 1;
+					index += 1;
 				}
 			} break;
 		}
@@ -239,8 +234,11 @@ make_token(Parse_Context *parser) {
 	}
 	
 	if (token.b1 == 0) {
-		token.b1 = parser->source_index;
+		token.b1 = index;
 	}
+	
+	parser->source = source;
+	parser->index  = index;
 	
 	return token;
 }
@@ -313,8 +311,8 @@ binary_from_token_kind(Token_Kind kind) {
 		case Token_Kind_STAR:    { binary = Binary_Operator_TIMES; } break;
 		case Token_Kind_SLASH:   { binary = Binary_Operator_DIVIDE; } break;
 		case Token_Kind_PERCENT: { binary = Binary_Operator_MODULUS; } break;
-		case Token_Kind_COMMA: { binary = Binary_Operator_COMMA; } break;
-		case Token_Kind_DOT: { binary = Binary_Operator_MEMBER; } break;
+		case Token_Kind_COMMA:   { binary = Binary_Operator_COMMA; } break;
+		case Token_Kind_DOT:     { binary = Binary_Operator_MEMBER; } break;
 		case Token_Kind_LPAREN:  { binary = Binary_Operator_CALL; } break;
 		case Token_Kind_LBRACK:  { binary = Binary_Operator_ARRAY_ACCESS; } break;
 		default: break;
@@ -459,9 +457,9 @@ make_ternary_expression(Parse_Context *parser, Expression *left, Expression *mid
 //- Parser: Expressions
 
 global read_only Expression nil_expression = {
-	.left = &nil_expression,
+	.left   = &nil_expression,
 	.middle = &nil_expression,
-	.right = &nil_expression,
+	.right  = &nil_expression,
 };
 
 internal Expression *
@@ -556,6 +554,7 @@ parse_statement(Parse_Context *parser) {
 		result->block = &nil_statement;
 		result->expr  = &nil_expression;
 		
+		// Parse statement list inside the braces
 		Statement *block_first = NULL;
 		Statement *block_last  = NULL;
 		
@@ -569,9 +568,7 @@ parse_statement(Parse_Context *parser) {
 			if (token.kind == Token_Kind_RBRACE) {
 				consume_token(parser);
 				break;
-			}
-			
-			if (token.kind == Token_Kind_EOI) {
+			} else if (token.kind == Token_Kind_EOI) {
 				report_parse_error(parser, string_from_lit("Expected }"));
 				break;
 			}

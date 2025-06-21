@@ -203,9 +203,9 @@ struct Parse_Context {
 	Arena *arena;
 	
 	String source;
-	int source_index;
+	i64    index;
 	
-	Token token;
+	Token  token;
 	
 	int error_count;
 };

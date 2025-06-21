@@ -379,7 +379,7 @@ postfix_precedence_from_token(Token token) {
 static bool
 token_is_expression_terminator(Token token) {
 	Token_Kind k = token.kind;
-	return (k == Token_Kind_EOI || k == Token_Kind_RPAREN || k == Token_Kind_RBRACK || k == Token_Kind_SEMICOLON);
+	return (k == Token_Kind_EOI || k == Token_Kind_RPAREN || k == Token_Kind_RBRACK || k == Token_Kind_RBRACE || k == Token_Kind_SEMICOLON);
 }
 
 static bool

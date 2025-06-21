@@ -594,7 +594,9 @@ parse_statement(Parse_Context *parser) {
 		result->expr  = parse_expression(parser, Precedence_NONE);
 	}
 	
-	expect_token_kind(parser, Token_Kind_SEMICOLON, "Expected ; after statement");
+	if (result->kind != Statement_Kind_BLOCK) {
+		expect_token_kind(parser, Token_Kind_SEMICOLON, "Expected ; after statement");
+	}
 	
 	return result;
 }

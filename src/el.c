@@ -284,6 +284,9 @@ generate_bytecode_for_expression(Expression *expr) {
 				instr.dest      = left_dests.regs[0];
 				registers_used -= 1;         // This instruction puts the result in left.dest;  right.dest can be used by the next instruction
 				
+				instructions[instruction_count] = instr;
+				instruction_count += 1;
+				
 				dests.regs[0] = instr.dest;
 				dests.reg_count = 1;
 			}

@@ -145,17 +145,7 @@ static Expression *make_unary_expression(Parse_Context *parse_context, Token una
 static Expression *make_binary_expression(Parse_Context *parse_context, Token binary, Expression *left, Expression *right);
 static Expression *make_ternary_expression(Parse_Context *parse_context, Expression *left, Expression *middle, Expression *right);
 
-#if 0
 static Expression *parse_expression(Parse_Context *parse_context, Precedence caller_precedence);
-static Expression *parse_increasing_precedence(Parse_Context *parse_context, Expression *left, Precedence caller_precedence);
-static Expression *parse_leaf(Parse_Context *parse_context, Precedence caller_precedence);
-#elif 0
-static Expression *parse_expression(Parse_Context *parse_context, Precedence caller_precedence);
-static Expression *parse_expression_start(Parse_Context *parse_context, Precedence caller_precedence);
-static Expression *parse_expression_rest(Parse_Context *parse_context, Expression *left, Precedence caller_precedence);
-#else
-static Expression *parse_expression(Parse_Context *parse_context, Precedence caller_precedence);
-#endif
 
 //- Statements
 

@@ -395,9 +395,15 @@ make_atom_expression(Parse_Context *parse_context, Token token) {
 	Expression *node = push_type(parse_context->arena, Expression);
 	
 	if (node != NULL) {
-		node->kind   = Expression_Kind_LITERAL;
-		node->lexeme = token.lexeme;
-		node->value  = token.int_val;
+		if (token.kind == Token_Kind_INTEGER) {
+			node->kind   = Expression_Kind_LITERAL;
+			node->lexeme = token.lexeme;
+			node->value  = token.int_val;
+		} else if (token.kind == Token_Kind_IDENT) {
+			node->kind   = Expression_Kind_IDENT;
+			node->lexeme = token.lexeme;
+			node->ident  = token.lexeme;
+		} else { panic(); }
 	}
 	
 	return node;
@@ -773,52 +779,43 @@ test_sample_statements(void) {
 	parse_context_init(&parser, &arena, sample_statement_7);
 	sample_program_tree = parse_statement(&parser);
 	
+	arena_reset(&arena);
+	parse_context_init(&parser, &arena, sample_statement_8);
+	sample_program_tree = parse_statement(&parser);
+	
+	arena_reset(&arena);
+	parse_context_init(&parser, &arena, sample_statement_9);
+	sample_program_tree = parse_statement(&parser);
+	
+	arena_reset(&arena);
+	parse_context_init(&parser, &arena, sample_statement_0);
+	sample_program_tree = parse_statement(&parser);
+	
 	arena_fini(&arena);
 }
 
 static Statement *
-hardcode_a_statement(Arena *arena) {
-	Statement *statement = push_type(arena, Statement);
-	statement->kind = Statement_Kind_EXPR;
-	statement->expr = parse_expression_string(arena, string_from_lit("2*3 + 10/(4+1)"));
-	// statement->expr = parse_expression_string("7-0");
+parse_statement_string(Arena *arena, String source) {
+	Parse_Context context = {0};
+	parse_context_init(&context, arena, source);
 	
-	statement->next = push_type(arena, Statement);
-	statement->next->kind = Statement_Kind_RETURN;
-	statement->next->expr = statement->expr;
-	statement->next->next = NULL;
-	
-	return statement;
+	return parse_statement(&context);
 }
 
 static Declaration *
 hardcode_a_declaration(Arena *arena) {
 	Declaration *main_decl = push_type(arena, Declaration);
 	main_decl->kind = Declaration_Kind_PROCEDURE;
-	main_decl->next = push_type(arena, Declaration);
 	main_decl->ident = string_from_lit("main");
+	main_decl->body = parse_statement_string(arena, string_from_lit("{ return other(); }"));
 	
 	{
-		main_decl->body = push_type(arena, Statement);
-		main_decl->body->kind = Statement_Kind_RETURN;
-		main_decl->body->expr = push_type(arena, Expression);
-		main_decl->body->expr->kind = Expression_Kind_BINARY;
-		main_decl->body->expr->binary = Binary_Operator_CALL;
-		main_decl->body->expr->right = &nil_expression;
-		main_decl->body->expr->left = push_type(arena, Expression);
+		main_decl->next = push_type(arena, Declaration);
 		
-		{
-			main_decl->body->expr->left->kind = Expression_Kind_IDENT;
-			main_decl->body->expr->left->ident = string_from_lit("other");
-		}
-	}
-	
-	{
 		Declaration *next_decl = main_decl->next;
 		next_decl->kind = Declaration_Kind_PROCEDURE;
 		next_decl->ident = string_from_lit("other");
-		
-		next_decl->body = hardcode_a_statement(arena);
+		next_decl->body = parse_statement_string(arena, string_from_lit("{ return 2*3 + 10/(4+1); 7-0; }"));
 	}
 	
 	return main_decl;

@@ -252,7 +252,10 @@ generate_bytecode_for_expression(Expression *expr) {
 				instruction_count += 1;
 				
 				// Pretend that every function has 1 return value and that it is put in register 0.
-				// TODO: This is very bad
+				// TODO: This is very bad.
+				// This is why we should use the stack:
+				// before inserting the call instruction, push all live registers onto the stack
+				// after the call instruction, pop all registers that were pushed before
 				dests.regs[0] = 0;
 				dests.reg_count = 1;
 			} else if (binary == Binary_Operator_COMMA) {
@@ -303,6 +306,12 @@ generate_bytecode_for_statement(Statement *statement) {
 	switch (statement->kind) {
 		case Statement_Kind_EXPR: {
 			generate_bytecode_for_expression(statement->expr);
+		} break;
+		
+		case Statement_Kind_BLOCK: {
+			for (Statement *s = statement->block; s != NULL && s != &nil_statement; s = s->next) {
+				generate_bytecode_for_statement(s);
+			}
 		} break;
 		
 		case Statement_Kind_RETURN: {
@@ -405,11 +414,11 @@ generate_bytecode_for_declaration(Declaration *declaration) {
 			instructions[instruction_count] = instr;
 			instruction_count += 1;
 			
-			for (Statement *statement = declaration->body; statement != NULL; statement = statement->next) {
-				generate_bytecode_for_statement(statement);
-			}
+			generate_bytecode_for_statement(declaration->body);
 			
-			assert(instructions[instruction_count-1].operation == Instr_Operation_RETURN);
+			if (instructions[instruction_count-1].operation != Instr_Operation_RETURN) {
+				fprintf(stderr, "Warning: Unreachable code after return statement.\n");
+			}
 		} break;
 		
 		default: break;

@@ -51,7 +51,6 @@ struct Token {
 	Keyword keyword;
 	// int l0, l1, c0, c1;
 	i64 b0, b1; // Byte range
-	String lexeme;
 	String string_val;
 	i64    int_val;
 };
@@ -60,10 +59,10 @@ struct Token {
 
 typedef struct Parse_Context Parse_Context;
 
-internal Token peek_token(Parse_Context *parse_context);
-internal Token make_token(Parse_Context *parse_context);
-internal void  consume_token(Parse_Context *parse_context);
-internal bool  expect_and_consume_token(Parse_Context *parse_context, Token_Kind kind);
+internal Token peek_token(Parse_Context *parser);
+internal Token make_token(Parse_Context *parser);
+internal void  consume_token(Parse_Context *parser);
+internal bool  expect_and_consume_token(Parse_Context *parser, Token_Kind kind);
 
 ////////////////////////////////
 //~ Operators
@@ -153,12 +152,12 @@ struct Expression {
 	void *user;
 };
 
-internal Expression *make_atom_expression(Parse_Context *parse_context, Token token);
-internal Expression *make_unary_expression(Parse_Context *parse_context, Token unary, Expression *subexpr);
-internal Expression *make_binary_expression(Parse_Context *parse_context, Token binary, Expression *left, Expression *right);
-internal Expression *make_ternary_expression(Parse_Context *parse_context, Expression *left, Expression *middle, Expression *right);
+internal Expression *make_atom_expression(Parse_Context *parser, Token token);
+internal Expression *make_unary_expression(Parse_Context *parser, Token unary, Expression *subexpr);
+internal Expression *make_binary_expression(Parse_Context *parser, Token binary, Expression *left, Expression *right);
+internal Expression *make_ternary_expression(Parse_Context *parser, Expression *left, Expression *middle, Expression *right);
 
-internal Expression *parse_expression(Parse_Context *parse_context, Precedence caller_precedence);
+internal Expression *parse_expression(Parse_Context *parser, Precedence caller_precedence);
 
 //- Statements
 
@@ -211,11 +210,11 @@ struct Parse_Context {
 	int error_count;
 };
 
-internal void parse_context_init(Parse_Context *parse_context, Arena *arena, String source);
+internal void parser_init(Parse_Context *parser, Arena *arena, String source);
 
-internal void report_parse_error(Parse_Context *parse_context, String message);
-internal void report_parse_errorf(Parse_Context *parse_context, char *format, ...);
+internal void report_parse_error(Parse_Context *parser, String message);
+internal void report_parse_errorf(Parse_Context *parser, char *format, ...);
 
-internal void expect_token_kind(Parse_Context *parse_context, Token_Kind kind, char *message);
+internal void expect_token_kind(Parse_Context *parser, Token_Kind kind, char *message);
 
 #endif

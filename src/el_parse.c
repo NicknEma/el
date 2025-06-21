@@ -5,23 +5,23 @@
 //~ Tokens
 
 internal Token
-peek_token(Parse_Context *parse_context) {
-	if (parse_context->source_index == 0) {
-		consume_token(parse_context);
+peek_token(Parse_Context *parser) {
+	if (parser->source_index == 0) {
+		consume_token(parser);
 	}
-	return parse_context->token;
+	return parser->token;
 }
 
 internal void
-consume_token(Parse_Context *parse_context) {
-	parse_context->token = make_token(parse_context);
+consume_token(Parse_Context *parser) {
+	parser->token = make_token(parser);
 }
 
 internal bool
-expect_and_consume_token(Parse_Context *parse_context, Token_Kind kind) {
-	bool kinds_match = peek_token(parse_context).kind == kind;
+expect_and_consume_token(Parse_Context *parser, Token_Kind kind) {
+	bool kinds_match = peek_token(parser).kind == kind;
 	if (kinds_match) {
-		consume_token(parse_context);
+		consume_token(parser);
 	}
 	return kinds_match;
 }
@@ -33,18 +33,18 @@ i64_from_char(u8 c) {
 }
 
 internal Token
-make_token(Parse_Context *parse_context) {
+make_token(Parse_Context *parser) {
 	Token token = {0};
 	
 	// Skip whitespace
-	while (parse_context->source_index < parse_context->source.len && isspace(parse_context->source.data[parse_context->source_index])) {
-		parse_context->source_index += 1;
+	while (parser->source_index < parser->source.len && isspace(parser->source.data[parser->source_index])) {
+		parser->source_index += 1;
 	}
 	
-	token.b0 = parse_context->source_index;
+	token.b0 = parser->source_index;
 	
-	if (parse_context->source_index < parse_context->source.len) {
-		switch (parse_context->source.data[parse_context->source_index]) {
+	if (parser->source_index < parser->source.len) {
+		switch (parser->source.data[parser->source_index]) {
 			case '0':
 			case '1':
 			case '2':
@@ -56,11 +56,11 @@ make_token(Parse_Context *parse_context) {
 			case '8':
 			case '9': {
 				i64 value = 0;
-				i64 index = parse_context->source_index;
+				i64 index = parser->source_index;
 				
-				while (index < parse_context->source.len && (isdigit(parse_context->source.data[index]) || parse_context->source.data[index] == '_')) {
-					if (parse_context->source.data[index] != '_') {
-						i64 digit = i64_from_char(parse_context->source.data[index]);
+				while (index < parser->source.len && (isdigit(parser->source.data[index]) || parser->source.data[index] == '_')) {
+					if (parser->source.data[index] != '_') {
+						i64 digit = i64_from_char(parser->source.data[index]);
 						
 						value *= 10;
 						value += digit;
@@ -73,150 +73,150 @@ make_token(Parse_Context *parse_context) {
 				token.int_val = value;
 				token.b1 = index;
 				
-				parse_context->source_index = index;
+				parser->source_index = index;
 			} break;
 			
 			case '+': {
 				token.kind = Token_Kind_PLUS;
-				token.b1 = parse_context->source_index + 1;
+				token.b1 = parser->source_index + 1;
 				
-				parse_context->source_index += 1;
+				parser->source_index += 1;
 			} break;
 			
 			case '-': {
 				token.kind = Token_Kind_DASH;
-				token.b1 = parse_context->source_index + 1;
+				token.b1 = parser->source_index + 1;
 				
-				parse_context->source_index += 1;
+				parser->source_index += 1;
 			} break;
 			
 			case '*': {
 				token.kind = Token_Kind_STAR;
-				token.b1 = parse_context->source_index + 1;
+				token.b1 = parser->source_index + 1;
 				
-				parse_context->source_index += 1;
+				parser->source_index += 1;
 			} break;
 			
 			case '/': {
 				token.kind = Token_Kind_SLASH;
-				token.b1 = parse_context->source_index + 1;
+				token.b1 = parser->source_index + 1;
 				
-				parse_context->source_index += 1;
+				parser->source_index += 1;
 			} break;
 			
 			case '%': {
 				token.kind = Token_Kind_PERCENT;
-				token.b1 = parse_context->source_index + 1;
+				token.b1 = parser->source_index + 1;
 				
-				parse_context->source_index += 1;
+				parser->source_index += 1;
 			} break;
 			
 			case ':': {
 				token.kind = Token_Kind_COLON;
-				token.b1 = parse_context->source_index + 1;
+				token.b1 = parser->source_index + 1;
 				
-				parse_context->source_index += 1;
+				parser->source_index += 1;
 				
-				if (parse_context->source_index < parse_context->source.len && parse_context->source.data[parse_context->source_index] == ':') {
+				if (parser->source_index < parser->source.len && parser->source.data[parser->source_index] == ':') {
 					token.kind = Token_Kind_DOUBLE_COLON;
-					token.b1 = parse_context->source_index + 1;
+					token.b1 = parser->source_index + 1;
 					
-					parse_context->source_index += 1;
+					parser->source_index += 1;
 				}
 			} break;
 			
 			case '?': {
 				token.kind = Token_Kind_QMARK;
-				token.b1 = parse_context->source_index + 1;
+				token.b1 = parser->source_index + 1;
 				
-				parse_context->source_index += 1;
+				parser->source_index += 1;
 			} break;
 			
 			case '(': {
 				token.kind = Token_Kind_LPAREN;
-				token.b1 = parse_context->source_index + 1;
+				token.b1 = parser->source_index + 1;
 				
-				parse_context->source_index += 1;
+				parser->source_index += 1;
 			} break;
 			
 			case ')': {
 				token.kind = Token_Kind_RPAREN;
-				token.b1 = parse_context->source_index + 1;
+				token.b1 = parser->source_index + 1;
 				
-				parse_context->source_index += 1;
+				parser->source_index += 1;
 			} break;
 			
 			case '[': {
 				token.kind = Token_Kind_LBRACK;
-				token.b1 = parse_context->source_index + 1;
+				token.b1 = parser->source_index + 1;
 				
-				parse_context->source_index += 1;
+				parser->source_index += 1;
 			} break;
 			
 			case ']': {
 				token.kind = Token_Kind_RBRACK;
-				token.b1 = parse_context->source_index + 1;
+				token.b1 = parser->source_index + 1;
 				
-				parse_context->source_index += 1;
+				parser->source_index += 1;
 			} break;
 			
 			case '{': {
 				token.kind = Token_Kind_LBRACE;
-				token.b1 = parse_context->source_index + 1;
+				token.b1 = parser->source_index + 1;
 				
-				parse_context->source_index += 1;
+				parser->source_index += 1;
 			} break;
 			
 			case '}': {
 				token.kind = Token_Kind_RBRACE;
-				token.b1 = parse_context->source_index + 1;
+				token.b1 = parser->source_index + 1;
 				
-				parse_context->source_index += 1;
+				parser->source_index += 1;
 			} break;
 			
 			case '.': {
 				token.kind = Token_Kind_DOT;
-				token.b1 = parse_context->source_index + 1;
+				token.b1 = parser->source_index + 1;
 				
-				parse_context->source_index += 1;
+				parser->source_index += 1;
 			} break;
 			
 			case ',': {
 				token.kind = Token_Kind_COMMA;
-				token.b1 = parse_context->source_index + 1;
+				token.b1 = parser->source_index + 1;
 				
-				parse_context->source_index += 1;
+				parser->source_index += 1;
 			} break;
 			
 			case ';': {
 				token.kind = Token_Kind_SEMICOLON;
-				token.b1 = parse_context->source_index + 1;
+				token.b1 = parser->source_index + 1;
 				
-				parse_context->source_index += 1;
+				parser->source_index += 1;
 			} break;
 			
 			case '^': {
 				token.kind = Token_Kind_HAT;
-				token.b1 = parse_context->source_index + 1;
+				token.b1 = parser->source_index + 1;
 				
-				parse_context->source_index += 1;
+				parser->source_index += 1;
 			} break;
 			
 			default: {
-				if (isalpha(parse_context->source.data[parse_context->source_index]) ||
-					parse_context->source.data[parse_context->source_index] == '_') {
+				if (isalpha(parser->source.data[parser->source_index]) ||
+					parser->source.data[parser->source_index] == '_') {
 					token.kind = Token_Kind_IDENT;
 					
-					i64 start = parse_context->source_index;
+					i64 start = parser->source_index;
 					i64 end   = 0;
-					while (isalpha(parse_context->source.data[parse_context->source_index]) ||
-						   isdigit(parse_context->source.data[parse_context->source_index]) ||
-						   parse_context->source.data[parse_context->source_index] == '_') {
-						parse_context->source_index += 1;
+					while (isalpha(parser->source.data[parser->source_index]) ||
+						   isdigit(parser->source.data[parser->source_index]) ||
+						   parser->source.data[parser->source_index] == '_') {
+						parser->source_index += 1;
 					}
-					end = parse_context->source_index;
+					end = parser->source_index;
 					
-					String ident = string_slice(parse_context->source, start, end);
+					String ident = string_slice(parser->source, start, end);
 					token.b1 = end;
 					
 					for (int i = 1; i < array_count(keywords); i += 1) {
@@ -228,9 +228,9 @@ make_token(Parse_Context *parse_context) {
 					}
 				} else {
 					token.kind = Token_Kind_INVALID;
-					token.b1 = parse_context->source_index + 1;
+					token.b1 = parser->source_index + 1;
 					
-					parse_context->source_index += 1;
+					parser->source_index += 1;
 				}
 			} break;
 		}
@@ -239,10 +239,8 @@ make_token(Parse_Context *parse_context) {
 	}
 	
 	if (token.b1 == 0) {
-		token.b1 = parse_context->source_index;
+		token.b1 = parser->source_index;
 	}
-	
-	token.lexeme = string_slice(parse_context->source, token.b0, token.b1);
 	
 	return token;
 }
@@ -388,21 +386,26 @@ token_is_expression_atom(Token token) {
 	return k == Token_Kind_INTEGER || k == Token_Kind_STRING || k == Token_Kind_IDENT;
 }
 
+internal String
+lexeme_from_token(Parse_Context *parser, Token token) {
+	return string_slice(parser->source, token.b0, token.b1);
+}
+
 //- Node constructors
 
 internal Expression *
-make_atom_expression(Parse_Context *parse_context, Token token) {
-	Expression *node = push_type(parse_context->arena, Expression);
+make_atom_expression(Parse_Context *parser, Token token) {
+	Expression *node = push_type(parser->arena, Expression);
 	
 	if (node != NULL) {
 		if (token.kind == Token_Kind_INTEGER) {
 			node->kind   = Expression_Kind_LITERAL;
-			node->lexeme = token.lexeme;
+			node->lexeme = lexeme_from_token(parser, token);
 			node->value  = token.int_val;
 		} else if (token.kind == Token_Kind_IDENT) {
 			node->kind   = Expression_Kind_IDENT;
-			node->lexeme = token.lexeme;
-			node->ident  = token.lexeme;
+			node->lexeme = lexeme_from_token(parser, token);
+			node->ident  = node->lexeme;
 		} else { panic(); }
 	}
 	
@@ -410,12 +413,12 @@ make_atom_expression(Parse_Context *parse_context, Token token) {
 }
 
 internal Expression *
-make_unary_expression(Parse_Context *parse_context, Token unary, Expression *subexpr) {
-	Expression *node = push_type(parse_context->arena, Expression);
+make_unary_expression(Parse_Context *parser, Token unary, Expression *subexpr) {
+	Expression *node = push_type(parser->arena, Expression);
 	
 	if (node != NULL) {
 		node->kind   = Expression_Kind_UNARY;
-		node->lexeme = unary.lexeme;
+		node->lexeme = lexeme_from_token(parser, unary);
 		node->unary  = unary_from_token(unary);
 		node->right  = subexpr;
 	}
@@ -424,12 +427,12 @@ make_unary_expression(Parse_Context *parse_context, Token unary, Expression *sub
 }
 
 internal Expression *
-make_binary_expression(Parse_Context *parse_context, Token binary, Expression *left, Expression *right) {
-	Expression *node = push_type(parse_context->arena, Expression);
+make_binary_expression(Parse_Context *parser, Token binary, Expression *left, Expression *right) {
+	Expression *node = push_type(parser->arena, Expression);
 	
 	if (node != NULL) {
 		node->kind   = Expression_Kind_BINARY;
-		node->lexeme = binary.lexeme;
+		node->lexeme = lexeme_from_token(parser, binary);
 		node->binary = binary_from_token(binary);
 		node->left   = left;
 		node->right  = right;
@@ -439,8 +442,8 @@ make_binary_expression(Parse_Context *parse_context, Token binary, Expression *l
 }
 
 internal Expression *
-make_ternary_expression(Parse_Context *parse_context, Expression *left, Expression *middle, Expression *right) {
-	Expression *node = push_type(parse_context->arena, Expression);
+make_ternary_expression(Parse_Context *parser, Expression *left, Expression *middle, Expression *right) {
+	Expression *node = push_type(parser->arena, Expression);
 	
 	if (node != NULL) {
 		node->kind   = Expression_Kind_TERNARY;
@@ -462,69 +465,69 @@ global read_only Expression nil_expression = {
 };
 
 internal Expression *
-parse_expression(Parse_Context *parse_context, Precedence caller_precedence) {
+parse_expression(Parse_Context *parser, Precedence caller_precedence) {
 	Expression *left = &nil_expression;
 	
-	Token token = peek_token(parse_context);
+	Token token = peek_token(parser);
 	if (token_is_expression_atom(token)) {
-		consume_token(parse_context);
+		consume_token(parser);
 		
-		left = make_atom_expression(parse_context, token);
+		left = make_atom_expression(parser, token);
 	} else if (token_is_prefix(token)) {
-		consume_token(parse_context);
-		Expression *right = parse_expression(parse_context, prefix_precedence_from_token(token));
+		consume_token(parser);
+		Expression *right = parse_expression(parser, prefix_precedence_from_token(token));
 		
-		left = make_unary_expression(parse_context, token, right);
+		left = make_unary_expression(parser, token, right);
 	} else if (token.kind == Token_Kind_LPAREN) {
-		consume_token(parse_context);
-		Expression *grouped = parse_expression(parse_context, Precedence_NONE);
-		expect_token_kind(parse_context, Token_Kind_RPAREN, "Expected )");
+		consume_token(parser);
+		Expression *grouped = parse_expression(parser, Precedence_NONE);
+		expect_token_kind(parser, Token_Kind_RPAREN, "Expected )");
 		
 		left = grouped;
 	} else {
-		report_parse_error(parse_context, string_from_lit("Expected an expression"));
+		report_parse_error(parser, string_from_lit("Expected an expression"));
 	}
 	
 	for (;;) {
-		token = peek_token(parse_context);
+		token = peek_token(parser);
 		
 		if (token_is_postfix(token)) {
 			Precedence precedence = postfix_precedence_from_token(token);
 			if (precedence < caller_precedence)  break;
 			
-			consume_token(parse_context);
+			consume_token(parser);
 			
-			left = make_unary_expression(parse_context, token, left);
+			left = make_unary_expression(parser, token, left);
 		} else if (token_is_infix(token)) {
 			Precedence precedence = infix_precedence_from_token(token);
 			if (precedence < caller_precedence)  break;
 			
-			consume_token(parse_context);
+			consume_token(parser);
 			
 			if (token.kind == Token_Kind_QMARK) {
-				Expression *middle = parse_expression(parse_context, Precedence_NONE);
+				Expression *middle = parse_expression(parser, Precedence_NONE);
 				
-				expect_token_kind(parse_context, Token_Kind_COLON, "Expected :");
-				Expression *right = parse_expression(parse_context, precedence);
+				expect_token_kind(parser, Token_Kind_COLON, "Expected :");
+				Expression *right = parse_expression(parser, precedence);
 				
-				left = make_ternary_expression(parse_context, left, middle, right);
+				left = make_ternary_expression(parser, left, middle, right);
 			} else {
 				if (token.kind == Token_Kind_LPAREN || token.kind == Token_Kind_LBRACK) {
 					precedence = 0;
 				}
 				
-				Expression *right = parse_expression(parse_context, precedence);
+				Expression *right = parse_expression(parser, precedence);
 				
-				left = make_binary_expression(parse_context, token, left, right);
+				left = make_binary_expression(parser, token, left, right);
 				
-				if (token.kind == Token_Kind_LPAREN)  expect_token_kind(parse_context, Token_Kind_RPAREN, "Expected )");
-				if (token.kind == Token_Kind_LBRACK)  expect_token_kind(parse_context, Token_Kind_RBRACK, "Expected ]");
+				if (token.kind == Token_Kind_LPAREN)  expect_token_kind(parser, Token_Kind_RPAREN, "Expected )");
+				if (token.kind == Token_Kind_LBRACK)  expect_token_kind(parser, Token_Kind_RBRACK, "Expected ]");
 			}
 		} else if (token_is_expression_terminator(token)) {
 			break;
 		} else {
-			report_parse_error(parse_context, string_from_lit("Unexpected character"));
-			consume_token(parse_context);
+			report_parse_error(parser, string_from_lit("Unexpected character"));
+			consume_token(parser);
 		}
 	}
 	
@@ -611,39 +614,39 @@ parse_statement(Parse_Context *parser) {
 //~ Context
 
 internal void
-report_parse_error(Parse_Context *parse_context, String message) {
-	if (parse_context->error_count == 0) {
-		fprintf(stderr, "Error [%lli..%lli]: %.*s.\n", parse_context->token.b0, parse_context->token.b1, string_expand(message));
+report_parse_error(Parse_Context *parser, String message) {
+	if (parser->error_count == 0) {
+		fprintf(stderr, "Error [%lli..%lli]: %.*s.\n", parser->token.b0, parser->token.b1, string_expand(message));
 	}
-	parse_context->error_count += 1;
+	parser->error_count += 1;
 }
 
 internal void
-report_parse_errorf(Parse_Context *parse_context, char *format, ...) {
+report_parse_errorf(Parse_Context *parser, char *format, ...) {
 	va_list args;
 	va_start(args, format);
 	Scratch scratch = scratch_begin(0, 0);
 	
 	String formatted_message = push_stringf_va_list(scratch.arena, format, args);
-	report_parse_error(parse_context, formatted_message);
+	report_parse_error(parser, formatted_message);
 	
 	scratch_end(scratch);
 	va_end(args);
 }
 
 internal void
-parse_context_init(Parse_Context *parse_context, Arena *arena, String source) {
-	memset(parse_context, 0, sizeof(*parse_context));
-	parse_context->arena  = arena;
-	parse_context->source = source;
+parser_init(Parse_Context *parser, Arena *arena, String source) {
+	memset(parser, 0, sizeof(*parser));
+	parser->arena  = arena;
+	parser->source = source;
 }
 
 internal void
-expect_token_kind(Parse_Context *parse_context, Token_Kind kind, char *message) {
-	if (peek_token(parse_context).kind != kind) {
-		report_parse_error(parse_context, string_from_cstring(message));
+expect_token_kind(Parse_Context *parser, Token_Kind kind, char *message) {
+	if (peek_token(parser).kind != kind) {
+		report_parse_error(parser, string_from_cstring(message));
 	}
-	consume_token(parse_context);
+	consume_token(parser);
 }
 
 //- Testing
@@ -671,54 +674,54 @@ test_sample_expressions(void) {
 	Arena arena = {0};
 	arena_init(&arena);
 	
-	Parse_Context parse_context = {0};
+	Parse_Context parser = {0};
 	Expression *sample_program_tree = NULL;
 	
 	arena_reset(&arena);
-	parse_context_init(&parse_context, &arena, string_from_cstring(sample_expression_1));
-	sample_program_tree = parse_expression(&parse_context, Precedence_NONE);
+	parser_init(&parser, &arena, string_from_cstring(sample_expression_1));
+	sample_program_tree = parse_expression(&parser, Precedence_NONE);
 	
 	print_expression_tree(sample_program_tree);
 	
 	arena_reset(&arena);
-	parse_context_init(&parse_context, &arena, string_from_cstring(sample_expression_2));
-	sample_program_tree = parse_expression(&parse_context, Precedence_NONE);
+	parser_init(&parser, &arena, string_from_cstring(sample_expression_2));
+	sample_program_tree = parse_expression(&parser, Precedence_NONE);
 	
 	print_expression_tree(sample_program_tree);
 	
 	arena_reset(&arena);
-	parse_context_init(&parse_context, &arena, string_from_cstring(sample_expression_3));
-	sample_program_tree = parse_expression(&parse_context, Precedence_NONE);
+	parser_init(&parser, &arena, string_from_cstring(sample_expression_3));
+	sample_program_tree = parse_expression(&parser, Precedence_NONE);
 	
 	print_expression_tree(sample_program_tree);
 	
 	arena_reset(&arena);
-	parse_context_init(&parse_context, &arena, string_from_cstring(sample_expression_4));
-	sample_program_tree = parse_expression(&parse_context, Precedence_NONE);
+	parser_init(&parser, &arena, string_from_cstring(sample_expression_4));
+	sample_program_tree = parse_expression(&parser, Precedence_NONE);
 	
 	print_expression_tree(sample_program_tree);
 	
 	arena_reset(&arena);
-	parse_context_init(&parse_context, &arena, string_from_cstring(sample_expression_5));
-	sample_program_tree = parse_expression(&parse_context, Precedence_NONE);
+	parser_init(&parser, &arena, string_from_cstring(sample_expression_5));
+	sample_program_tree = parse_expression(&parser, Precedence_NONE);
 	
 	print_expression_tree(sample_program_tree);
 	
 	arena_reset(&arena);
-	parse_context_init(&parse_context, &arena, string_from_cstring(sample_expression_6));
-	sample_program_tree = parse_expression(&parse_context, Precedence_NONE);
+	parser_init(&parser, &arena, string_from_cstring(sample_expression_6));
+	sample_program_tree = parse_expression(&parser, Precedence_NONE);
 	
 	arena_reset(&arena);
-	parse_context_init(&parse_context, &arena, string_from_cstring(sample_expression_7));
-	sample_program_tree = parse_expression(&parse_context, Precedence_NONE);
+	parser_init(&parser, &arena, string_from_cstring(sample_expression_7));
+	sample_program_tree = parse_expression(&parser, Precedence_NONE);
 	
 	arena_reset(&arena);
-	parse_context_init(&parse_context, &arena, string_from_cstring(sample_expression_8));
-	sample_program_tree = parse_expression(&parse_context, Precedence_NONE);
+	parser_init(&parser, &arena, string_from_cstring(sample_expression_8));
+	sample_program_tree = parse_expression(&parser, Precedence_NONE);
 	
 	arena_reset(&arena);
-	parse_context_init(&parse_context, &arena, string_from_cstring(sample_expression_9));
-	sample_program_tree = parse_expression(&parse_context, Precedence_NONE);
+	parser_init(&parser, &arena, string_from_cstring(sample_expression_9));
+	sample_program_tree = parse_expression(&parser, Precedence_NONE);
 	
 	arena_fini(&arena);
 }
@@ -726,7 +729,7 @@ test_sample_expressions(void) {
 internal Expression *
 parse_expression_string(Arena *arena, String source) {
 	Parse_Context context = {0};
-	parse_context_init(&context, arena, source);
+	parser_init(&context, arena, source);
 	
 	return parse_expression(&context, 0);
 }
@@ -752,43 +755,43 @@ test_sample_statements(void) {
 	Statement *sample_program_tree = NULL;
 	
 	arena_reset(&arena);
-	parse_context_init(&parser, &arena, sample_statement_1);
+	parser_init(&parser, &arena, sample_statement_1);
 	sample_program_tree = parse_statement(&parser);
 	
 	arena_reset(&arena);
-	parse_context_init(&parser, &arena, sample_statement_2);
+	parser_init(&parser, &arena, sample_statement_2);
 	sample_program_tree = parse_statement(&parser);
 	
 	arena_reset(&arena);
-	parse_context_init(&parser, &arena, sample_statement_3);
+	parser_init(&parser, &arena, sample_statement_3);
 	sample_program_tree = parse_statement(&parser);
 	
 	arena_reset(&arena);
-	parse_context_init(&parser, &arena, sample_statement_4);
+	parser_init(&parser, &arena, sample_statement_4);
 	sample_program_tree = parse_statement(&parser);
 	
 	arena_reset(&arena);
-	parse_context_init(&parser, &arena, sample_statement_5);
+	parser_init(&parser, &arena, sample_statement_5);
 	sample_program_tree = parse_statement(&parser);
 	
 	arena_reset(&arena);
-	parse_context_init(&parser, &arena, sample_statement_6);
+	parser_init(&parser, &arena, sample_statement_6);
 	sample_program_tree = parse_statement(&parser);
 	
 	arena_reset(&arena);
-	parse_context_init(&parser, &arena, sample_statement_7);
+	parser_init(&parser, &arena, sample_statement_7);
 	sample_program_tree = parse_statement(&parser);
 	
 	arena_reset(&arena);
-	parse_context_init(&parser, &arena, sample_statement_8);
+	parser_init(&parser, &arena, sample_statement_8);
 	sample_program_tree = parse_statement(&parser);
 	
 	arena_reset(&arena);
-	parse_context_init(&parser, &arena, sample_statement_9);
+	parser_init(&parser, &arena, sample_statement_9);
 	sample_program_tree = parse_statement(&parser);
 	
 	arena_reset(&arena);
-	parse_context_init(&parser, &arena, sample_statement_0);
+	parser_init(&parser, &arena, sample_statement_0);
 	sample_program_tree = parse_statement(&parser);
 	
 	arena_fini(&arena);
@@ -797,7 +800,7 @@ test_sample_statements(void) {
 internal Statement *
 parse_statement_string(Arena *arena, String source) {
 	Parse_Context context = {0};
-	parse_context_init(&context, arena, source);
+	parser_init(&context, arena, source);
 	
 	return parse_statement(&context);
 }

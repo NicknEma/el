@@ -34,7 +34,7 @@ i64_from_char(u8 c) {
 
 static Token
 make_token(Parse_Context *parse_context) {
-	Token token;
+	Token token = {0};
 	
 	// Skip whitespace
 	while (parse_context->source_index < parse_context->source.len && isspace(parse_context->source.data[parse_context->source_index])) {

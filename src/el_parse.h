@@ -11,6 +11,7 @@ typedef enum Token_Kind {
 	Token_Kind_INTEGER,
 	Token_Kind_STRING,
 	Token_Kind_IDENT,
+	Token_Kind_KEYWORD,
 	Token_Kind_PLUS,
 	Token_Kind_DASH,
 	Token_Kind_STAR,
@@ -33,9 +34,21 @@ typedef enum Token_Kind {
 	Token_Kind_COUNT,
 } Token_Kind;
 
+typedef enum Keyword {
+	Keyword_NONE = 0,
+	Keyword_RETURN,
+	Keyword_COUNT,
+} Keyword;
+
+static read_only String keywords[] = {
+	string_from_lit_const(""),
+	string_from_lit_const("return"),
+};
+
 typedef struct Token Token;
 struct Token {
 	Token_Kind kind;
+	Keyword keyword;
 	// int l0, l1, c0, c1;
 	i64 b0, b1; // Byte range
 	String lexeme;
@@ -115,7 +128,7 @@ static bool token_is_expression_atom(Token token);
 //- Expressions
 
 typedef enum Expression_Kind {
-	Expression_Kind_NULL,
+	Expression_Kind_NULL = 0,
 	Expression_Kind_LITERAL,
 	Expression_Kind_IDENT,
 	Expression_Kind_UNARY,
@@ -150,7 +163,9 @@ static Expression *parse_expression(Parse_Context *parse_context, Precedence cal
 //- Statements
 
 typedef enum Statement_Kind {
+	Statement_Kind_NULL = 0,
 	Statement_Kind_EXPR,
+	Statement_Kind_BLOCK,
 	Statement_Kind_RETURN,
 	Statement_Kind_COUNT,
 } Statement_Kind;
@@ -159,9 +174,12 @@ typedef struct Statement Statement;
 struct Statement {
 	Statement_Kind kind;
 	Statement     *next;
+	Statement     *block;
 	
 	Expression *expr;
 };
+
+static Statement *parse_statement(Parse_Context *parser);
 
 //- Declarations
 

@@ -203,10 +203,35 @@ make_token(Parse_Context *parse_context) {
 			} break;
 			
 			default: {
-				token.kind = Token_Kind_INVALID;
-				token.b1 = parse_context->source_index + 1;
-				
-				parse_context->source_index += 1;
+				if (isalpha(parse_context->source.data[parse_context->source_index]) ||
+					parse_context->source.data[parse_context->source_index] == '_') {
+					token.kind = Token_Kind_IDENT;
+					
+					i64 start = parse_context->source_index;
+					i64 end   = 0;
+					while (isalpha(parse_context->source.data[parse_context->source_index]) ||
+						   isdigit(parse_context->source.data[parse_context->source_index]) ||
+						   parse_context->source.data[parse_context->source_index] == '_') {
+						parse_context->source_index += 1;
+					}
+					end = parse_context->source_index;
+					
+					String ident = string_slice(parse_context->source, start, end);
+					token.b1 = end;
+					
+					for (int i = 1; i < array_count(keywords); i += 1) {
+						if (string_equals(ident, keywords[i])) {
+							token.kind = Token_Kind_KEYWORD;
+							token.keyword = i;
+							break;
+						}
+					}
+				} else {
+					token.kind = Token_Kind_INVALID;
+					token.b1 = parse_context->source_index + 1;
+					
+					parse_context->source_index += 1;
+				}
 			} break;
 		}
 	} else {
@@ -422,7 +447,7 @@ make_ternary_expression(Parse_Context *parse_context, Expression *left, Expressi
 	return node;
 }
 
-//- Parser
+//- Parser: Expressions
 
 static read_only Expression nil_expression = {
 	.left = &nil_expression,
@@ -498,6 +523,75 @@ parse_expression(Parse_Context *parse_context, Precedence caller_precedence) {
 	}
 	
 	return left;
+}
+
+//- Parser: Statements
+
+static read_only Statement nil_statement = {
+	.block = &nil_statement,
+	.next  = &nil_statement,
+	.expr  = &nil_expression,
+};
+
+static Statement *
+parse_statement(Parse_Context *parser) {
+	Statement *result = &nil_statement;
+	
+	Token token = peek_token(parser);
+	if (token.kind == Token_Kind_LBRACE) {
+		consume_token(parser); // {
+		
+		result = push_type(parser->arena, Statement);
+		result->kind  = Statement_Kind_BLOCK;
+		result->next  = &nil_statement;
+		result->block = &nil_statement;
+		result->expr  = &nil_expression;
+		
+		Statement *block_first = NULL;
+		Statement *block_last  = NULL;
+		
+		for (;;) {
+			Statement *stat = parse_statement(parser);
+			if (stat != &nil_statement) { // Otherwise queue_push() will write to read-only memory
+				queue_push(block_first, block_last, stat);
+			}
+			
+			token = peek_token(parser);
+			if (token.kind == Token_Kind_RBRACE) {
+				consume_token(parser);
+				break;
+			}
+		}
+		
+		if (block_first != NULL) {
+			result->block = block_first;
+		}
+	} else if (token.keyword == Keyword_RETURN) {
+		consume_token(parser); // return
+		
+		result = push_type(parser->arena, Statement);
+		result->kind  = Statement_Kind_RETURN;
+		result->next  = &nil_statement;
+		result->block = &nil_statement;
+		result->expr  = &nil_expression;
+		
+		token = peek_token(parser);
+		if (token.kind != Token_Kind_SEMICOLON) {
+			result->expr = parse_expression(parser, Precedence_NONE);
+		}
+	} else if (token.kind == Token_Kind_SEMICOLON) {
+		;
+	} else {
+		result = push_type(parser->arena, Statement);
+		result->kind  = Statement_Kind_EXPR;
+		result->next  = &nil_statement;
+		result->block = &nil_statement;
+		result->expr  = parse_expression(parser, Precedence_NONE);
+	}
+	
+	expect_token_kind(parser, Token_Kind_SEMICOLON, "Expected ; after statement");
+	
+	return result;
 }
 
 ////////////////////////////////
@@ -829,6 +923,57 @@ parse_expression_string(Arena *arena, String source) {
 	parse_context_init(&context, arena, source);
 	
 	return parse_expression(&context, 0);
+}
+
+String sample_statement_1 = string_from_lit_const("1 + 2;");
+String sample_statement_2 = string_from_lit_const("return;");
+String sample_statement_3 = string_from_lit_const("return 0;");
+String sample_statement_4 = string_from_lit_const("return 1 + 2;");
+String sample_statement_5 = string_from_lit_const("return (1 + 2);");
+String sample_statement_6 = string_from_lit_const("{ return; return; }");
+String sample_statement_7 = string_from_lit_const("{ ;; }");
+
+String sample_statement_8 = string_from_lit_const("1 + 2");
+String sample_statement_9 = string_from_lit_const("{ return } ");
+String sample_statement_0 = string_from_lit_const("{ return; ");
+
+static void
+test_sample_statements(void) {
+	Arena arena = {0};
+	arena_init(&arena);
+	
+	Parse_Context parser = {0};
+	Statement *sample_program_tree = NULL;
+	
+	arena_reset(&arena);
+	parse_context_init(&parser, &arena, sample_statement_1);
+	sample_program_tree = parse_statement(&parser);
+	
+	arena_reset(&arena);
+	parse_context_init(&parser, &arena, sample_statement_2);
+	sample_program_tree = parse_statement(&parser);
+	
+	arena_reset(&arena);
+	parse_context_init(&parser, &arena, sample_statement_3);
+	sample_program_tree = parse_statement(&parser);
+	
+	arena_reset(&arena);
+	parse_context_init(&parser, &arena, sample_statement_4);
+	sample_program_tree = parse_statement(&parser);
+	
+	arena_reset(&arena);
+	parse_context_init(&parser, &arena, sample_statement_5);
+	sample_program_tree = parse_statement(&parser);
+	
+	arena_reset(&arena);
+	parse_context_init(&parser, &arena, sample_statement_6);
+	sample_program_tree = parse_statement(&parser);
+	
+	arena_reset(&arena);
+	parse_context_init(&parser, &arena, sample_statement_7);
+	sample_program_tree = parse_statement(&parser);
+	
+	arena_fini(&arena);
 }
 
 static Statement *

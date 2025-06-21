@@ -698,6 +698,7 @@ masm_generate_source(void) {
 
 int main(void) {
 	test_sample_expressions();
+	test_sample_statements();
 	
 	x64_test();
 	

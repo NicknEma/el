@@ -561,6 +561,11 @@ parse_statement(Parse_Context *parser) {
 				consume_token(parser);
 				break;
 			}
+			
+			if (token.kind == Token_Kind_EOI) {
+				report_parse_error(parser, string_from_lit("Expected }"));
+				break;
+			}
 		}
 		
 		if (block_first != NULL) {

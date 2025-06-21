@@ -182,6 +182,7 @@ static bool is_power_of_two(u64 i);
 static u64  align_forward(u64 ptr, u64 alignment);
 static u64  round_up_to_multiple_of_u64(u64 n, u64 r);
 static i64  round_up_to_multiple_of_i64(i64 n, i64 r);
+static int  i64_digit_count(i64 n);
 
 ////////////////////////////////
 //~ Memory

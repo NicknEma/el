@@ -74,6 +74,22 @@ round_up_to_multiple_of_i64(i64 n, i64 r) {
     return result;
 }
 
+static int
+i64_digit_count(i64 n) {
+	int count = 0;
+	
+	if (n != 0) {
+		while (n != 0) {
+			count += 1;
+			n/= 10;
+		}
+	} else {
+		count = 1;
+	}
+	
+	return count;
+}
+
 ////////////////////////////////
 //~ Memory
 

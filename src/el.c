@@ -3,13 +3,11 @@
 
 #include "el_base.c"
 
-static void *
-cmalloc(size_t size) {
-	return calloc(1, size);
-}
-
 #include "el_parse.h"
+#include "el_tree_print.h"
+
 #include "el_parse.c"
+#include "el_tree_print.c"
 
 #include "el_x64.c"
 

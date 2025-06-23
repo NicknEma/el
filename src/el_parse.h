@@ -159,14 +159,16 @@ struct Expression {
 	Expression_Kind kind;
 	Unary_Operator  unary;
 	Binary_Operator binary;
-	String ident;
-	Expression *left;
+	
+	union { Expression *left; Expression *subexpr; };
 	Expression *middle; // For ternaries
 	Expression *right;
-	String lexeme;
-	i64 value;
 	
-	void *user;
+	String lexeme;
+	String ident;
+	i64    value;
+	
+	void  *user;
 };
 
 internal Expression *make_atom_expression(Parse_Context *parser, Token token);

@@ -415,10 +415,10 @@ make_unary_expression(Parse_Context *parser, Token unary, Expression *subexpr) {
 	Expression *node = push_type(parser->arena, Expression);
 	
 	if (node != NULL) {
-		node->kind   = Expression_Kind_UNARY;
-		node->lexeme = lexeme_from_token(parser, unary);
-		node->unary  = unary_from_token(unary);
-		node->right  = subexpr;
+		node->kind    = Expression_Kind_UNARY;
+		node->lexeme  = lexeme_from_token(parser, unary);
+		node->unary   = unary_from_token(unary);
+		node->subexpr = subexpr;
 	}
 	
 	return node;
@@ -668,6 +668,8 @@ char *sample_expression_0 = "3 * (2 (4 + 1))";
 
 internal void
 test_sample_expressions(void) {
+	Scratch scratch = scratch_begin(0, 0);
+	
 	Arena arena = {0};
 	arena_init(&arena);
 	
@@ -678,49 +680,59 @@ test_sample_expressions(void) {
 	parser_init(&parser, &arena, string_from_cstring(sample_expression_1));
 	sample_program_tree = parse_expression(&parser, Precedence_NONE);
 	
-	print_expression_tree(sample_program_tree);
+	printf("%.*s\n", string_expand(string_from_expression_tree(scratch.arena, sample_program_tree)));
 	
 	arena_reset(&arena);
 	parser_init(&parser, &arena, string_from_cstring(sample_expression_2));
 	sample_program_tree = parse_expression(&parser, Precedence_NONE);
 	
-	print_expression_tree(sample_program_tree);
+	printf("%.*s\n", string_expand(string_from_expression_tree(scratch.arena, sample_program_tree)));
 	
 	arena_reset(&arena);
 	parser_init(&parser, &arena, string_from_cstring(sample_expression_3));
 	sample_program_tree = parse_expression(&parser, Precedence_NONE);
 	
-	print_expression_tree(sample_program_tree);
+	printf("%.*s\n", string_expand(string_from_expression_tree(scratch.arena, sample_program_tree)));
 	
 	arena_reset(&arena);
 	parser_init(&parser, &arena, string_from_cstring(sample_expression_4));
 	sample_program_tree = parse_expression(&parser, Precedence_NONE);
 	
-	print_expression_tree(sample_program_tree);
+	printf("%.*s\n", string_expand(string_from_expression_tree(scratch.arena, sample_program_tree)));
 	
 	arena_reset(&arena);
 	parser_init(&parser, &arena, string_from_cstring(sample_expression_5));
 	sample_program_tree = parse_expression(&parser, Precedence_NONE);
 	
-	print_expression_tree(sample_program_tree);
+	printf("%.*s\n", string_expand(string_from_expression_tree(scratch.arena, sample_program_tree)));
 	
 	arena_reset(&arena);
 	parser_init(&parser, &arena, string_from_cstring(sample_expression_6));
 	sample_program_tree = parse_expression(&parser, Precedence_NONE);
 	
+	printf("%.*s\n", string_expand(string_from_expression_tree(scratch.arena, sample_program_tree)));
+	
 	arena_reset(&arena);
 	parser_init(&parser, &arena, string_from_cstring(sample_expression_7));
 	sample_program_tree = parse_expression(&parser, Precedence_NONE);
+	
+	printf("%.*s\n", string_expand(string_from_expression_tree(scratch.arena, sample_program_tree)));
 	
 	arena_reset(&arena);
 	parser_init(&parser, &arena, string_from_cstring(sample_expression_8));
 	sample_program_tree = parse_expression(&parser, Precedence_NONE);
 	
+	printf("%.*s\n", string_expand(string_from_expression_tree(scratch.arena, sample_program_tree)));
+	
 	arena_reset(&arena);
 	parser_init(&parser, &arena, string_from_cstring(sample_expression_9));
 	sample_program_tree = parse_expression(&parser, Precedence_NONE);
 	
+	printf("%.*s\n", string_expand(string_from_expression_tree(scratch.arena, sample_program_tree)));
+	
 	arena_fini(&arena);
+	
+	scratch_end(scratch);
 }
 
 internal Expression *

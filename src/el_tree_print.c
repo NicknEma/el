@@ -1,6 +1,70 @@
 #ifndef EL_TREE_PRINT_C
 #define EL_TREE_PRINT_C
 
+internal void
+string_from_expression_tree_internal(Arena *arena, Expression *root, String_List *builder) {
+	switch (root->kind) {
+		case Expression_Kind_LITERAL: {
+			string_list_push(arena, builder, root->lexeme);
+		} break;
+		
+		case Expression_Kind_IDENT: {
+			string_list_push(arena, builder, root->ident);
+		} break;
+		
+		case Expression_Kind_UNARY: {
+			switch (root->unary) {
+				case Unary_Operator_PLUS:
+				case Unary_Operator_MINUS: {
+					string_list_pushf(arena, builder, "%.*s(", string_expand(root->lexeme));
+					string_from_expression_tree_internal(arena, root->left, builder);
+					string_list_push(arena, builder, string_from_lit(")"));
+				} break;
+				
+				case Unary_Operator_DEREFERENCE: {
+					string_list_push(arena, builder, string_from_lit("("));
+					string_from_expression_tree_internal(arena, root->left, builder);
+					string_list_pushf(arena, builder, ")%.*s", string_expand(root->lexeme));
+				} break;
+				
+				default: break;
+			}
+		} break;
+		
+		case Expression_Kind_BINARY: {
+			string_list_push(arena, builder, string_from_lit("("));
+			string_from_expression_tree_internal(arena, root->left, builder);
+			string_list_pushf(arena, builder, ")%.*s(", string_expand(root->lexeme));
+			string_from_expression_tree_internal(arena, root->right, builder);
+			string_list_push(arena, builder, string_from_lit(")"));
+		} break;
+		
+		case Expression_Kind_TERNARY: {
+			string_list_push(arena, builder, string_from_lit("("));
+			string_from_expression_tree_internal(arena, root->left, builder);
+			string_list_push(arena, builder, string_from_lit(")?("));
+			string_from_expression_tree_internal(arena, root->middle, builder);
+			string_list_push(arena, builder, string_from_lit("):("));
+			string_from_expression_tree_internal(arena, root->right, builder);
+			string_list_push(arena, builder, string_from_lit(")"));
+		} break;
+		
+		default: break;
+	}
+}
+
+internal String
+string_from_expression_tree(Arena *arena, Expression *root) {
+	Scratch scratch = scratch_begin(&arena, 1);
+	String_List builder = {0};
+	
+	string_from_expression_tree_internal(scratch.arena, root, &builder);
+	String result = string_from_list(arena, builder);
+	
+	scratch_end(scratch);
+	return result;
+}
+
 #if 0
 internal int
 compute_expression_tree_width(Expression *root) {

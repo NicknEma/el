@@ -65,6 +65,15 @@ string_from_expression_tree(Arena *arena, Expression *root) {
 	return result;
 }
 
+internal void
+print_expression_tree(Expression *root) {
+	Scratch scratch = scratch_begin(0, 0);
+	printf("%.*s\n", string_expand(string_from_expression_tree(scratch.arena, root)));
+	
+	scratch_end(scratch);
+}
+
+
 #if 0
 internal int
 compute_expression_tree_width(Expression *root) {
@@ -91,7 +100,7 @@ compute_expression_tree_width(Expression *root) {
 	
 	return root_width;
 }
-#endif
+
 
 internal void
 print_spaces(int count) {
@@ -253,5 +262,6 @@ print_expression_tree(Expression *root) {
 	
 	scratch_end(scratch);
 }
+#endif
 
 #endif

@@ -654,156 +654,12 @@ expect_token_kind(Parse_Context *parser, Token_Kind kind, char *message) {
 ** [ ] Input reading
 */
 
-char *sample_expression_1 = "1+2";                    // 3
-char *sample_expression_2 = "5 - 4";                  // 1
-char *sample_expression_3 = "(3 * 4) - (10 / 2) + 1"; // 8
-char *sample_expression_4 = "7 + (-2) - (3 - 1)";     // 3
-char *sample_expression_5 = "100_000 * 2";            // 200000
-char *sample_expression_6 = "5 + (+4)";               // 9
-char *sample_expression_7 = "1++2";                   // 3
-
-char *sample_expression_8 = "1 2";
-char *sample_expression_9 = "2 (4 + 1)";
-char *sample_expression_0 = "3 * (2 (4 + 1))";
-
-internal void
-test_sample_expressions(void) {
-	Scratch scratch = scratch_begin(0, 0);
-	
-	Arena arena = {0};
-	arena_init(&arena);
-	
-	Parse_Context parser = {0};
-	Expression *sample_program_tree = NULL;
-	
-	arena_reset(&arena);
-	parser_init(&parser, &arena, string_from_cstring(sample_expression_1));
-	sample_program_tree = parse_expression(&parser, Precedence_NONE);
-	
-	printf("%.*s\n", string_expand(string_from_expression_tree(scratch.arena, sample_program_tree)));
-	
-	arena_reset(&arena);
-	parser_init(&parser, &arena, string_from_cstring(sample_expression_2));
-	sample_program_tree = parse_expression(&parser, Precedence_NONE);
-	
-	printf("%.*s\n", string_expand(string_from_expression_tree(scratch.arena, sample_program_tree)));
-	
-	arena_reset(&arena);
-	parser_init(&parser, &arena, string_from_cstring(sample_expression_3));
-	sample_program_tree = parse_expression(&parser, Precedence_NONE);
-	
-	printf("%.*s\n", string_expand(string_from_expression_tree(scratch.arena, sample_program_tree)));
-	
-	arena_reset(&arena);
-	parser_init(&parser, &arena, string_from_cstring(sample_expression_4));
-	sample_program_tree = parse_expression(&parser, Precedence_NONE);
-	
-	printf("%.*s\n", string_expand(string_from_expression_tree(scratch.arena, sample_program_tree)));
-	
-	arena_reset(&arena);
-	parser_init(&parser, &arena, string_from_cstring(sample_expression_5));
-	sample_program_tree = parse_expression(&parser, Precedence_NONE);
-	
-	printf("%.*s\n", string_expand(string_from_expression_tree(scratch.arena, sample_program_tree)));
-	
-	arena_reset(&arena);
-	parser_init(&parser, &arena, string_from_cstring(sample_expression_6));
-	sample_program_tree = parse_expression(&parser, Precedence_NONE);
-	
-	printf("%.*s\n", string_expand(string_from_expression_tree(scratch.arena, sample_program_tree)));
-	
-	arena_reset(&arena);
-	parser_init(&parser, &arena, string_from_cstring(sample_expression_7));
-	sample_program_tree = parse_expression(&parser, Precedence_NONE);
-	
-	printf("%.*s\n", string_expand(string_from_expression_tree(scratch.arena, sample_program_tree)));
-	
-	arena_reset(&arena);
-	parser_init(&parser, &arena, string_from_cstring(sample_expression_8));
-	sample_program_tree = parse_expression(&parser, Precedence_NONE);
-	
-	printf("%.*s\n", string_expand(string_from_expression_tree(scratch.arena, sample_program_tree)));
-	
-	arena_reset(&arena);
-	parser_init(&parser, &arena, string_from_cstring(sample_expression_9));
-	sample_program_tree = parse_expression(&parser, Precedence_NONE);
-	
-	printf("%.*s\n", string_expand(string_from_expression_tree(scratch.arena, sample_program_tree)));
-	
-	arena_fini(&arena);
-	
-	scratch_end(scratch);
-}
-
 internal Expression *
 parse_expression_string(Arena *arena, String source) {
 	Parse_Context context = {0};
 	parser_init(&context, arena, source);
 	
-	return parse_expression(&context, 0);
-}
-
-String sample_statement_1 = string_from_lit_const("1 + 2;");
-String sample_statement_2 = string_from_lit_const("return;");
-String sample_statement_3 = string_from_lit_const("return 0;");
-String sample_statement_4 = string_from_lit_const("return 1 + 2;");
-String sample_statement_5 = string_from_lit_const("return (1 + 2);");
-String sample_statement_6 = string_from_lit_const("{ return; return; }");
-String sample_statement_7 = string_from_lit_const("{ ;; }");
-
-String sample_statement_8 = string_from_lit_const("1 + 2");
-String sample_statement_9 = string_from_lit_const("{ return } ");
-String sample_statement_0 = string_from_lit_const("{ return; ");
-
-internal void
-test_sample_statements(void) {
-	Arena arena = {0};
-	arena_init(&arena);
-	
-	Parse_Context parser = {0};
-	Statement *sample_program_tree = NULL;
-	
-	arena_reset(&arena);
-	parser_init(&parser, &arena, sample_statement_1);
-	sample_program_tree = parse_statement(&parser);
-	
-	arena_reset(&arena);
-	parser_init(&parser, &arena, sample_statement_2);
-	sample_program_tree = parse_statement(&parser);
-	
-	arena_reset(&arena);
-	parser_init(&parser, &arena, sample_statement_3);
-	sample_program_tree = parse_statement(&parser);
-	
-	arena_reset(&arena);
-	parser_init(&parser, &arena, sample_statement_4);
-	sample_program_tree = parse_statement(&parser);
-	
-	arena_reset(&arena);
-	parser_init(&parser, &arena, sample_statement_5);
-	sample_program_tree = parse_statement(&parser);
-	
-	arena_reset(&arena);
-	parser_init(&parser, &arena, sample_statement_6);
-	sample_program_tree = parse_statement(&parser);
-	
-	arena_reset(&arena);
-	parser_init(&parser, &arena, sample_statement_7);
-	sample_program_tree = parse_statement(&parser);
-	
-	arena_reset(&arena);
-	parser_init(&parser, &arena, sample_statement_8);
-	sample_program_tree = parse_statement(&parser);
-	
-	arena_reset(&arena);
-	parser_init(&parser, &arena, sample_statement_9);
-	sample_program_tree = parse_statement(&parser);
-	
-	arena_reset(&arena);
-	parser_init(&parser, &arena, sample_statement_0);
-	sample_program_tree = parse_statement(&parser);
-	
-	arena_fini(&arena);
+	return parse_expression(&context, Precedence_NONE);
 }
 
 internal Statement *
@@ -812,6 +668,140 @@ parse_statement_string(Arena *arena, String source) {
 	parser_init(&context, arena, source);
 	
 	return parse_statement(&context);
+}
+
+internal void
+test_expression_parser(void) {
+	Arena arena = {0};
+	arena_init(&arena);
+	
+	Expression *tree = &nil_expression;
+	
+	String expr_1 = string_from_lit("1+2");                    // 3
+	String expr_2 = string_from_lit("5 - 4");                  // 1
+	String expr_3 = string_from_lit("(3 * 4) - (10 / 2) + 1"); // 8
+	String expr_4 = string_from_lit("7 + (-2) - (3 - 1)");     // 3
+	String expr_5 = string_from_lit("100_000 * 2");            // 200000
+	String expr_6 = string_from_lit("5 + (+4)");               // 9
+	String expr_7 = string_from_lit("1++2");                   // 3
+	
+	String expr_8 = string_from_lit("1 2");
+	String expr_9 = string_from_lit("2 (4 + 1)");
+	String expr_0 = string_from_lit("3 * (2 (4 + 1))");
+	
+	arena_reset(&arena);
+	printf("Parsing sample expression 1:\n");
+	tree = parse_expression_string(&arena, expr_1);
+	print_expression_tree(tree);
+	
+	arena_reset(&arena);
+	printf("Parsing sample expression 2:\n");
+	tree = parse_expression_string(&arena, expr_2);
+	print_expression_tree(tree);
+	
+	arena_reset(&arena);
+	printf("Parsing sample expression 3:\n");
+	tree = parse_expression_string(&arena, expr_3);
+	print_expression_tree(tree);
+	
+	arena_reset(&arena);
+	printf("Parsing sample expression 4:\n");
+	tree = parse_expression_string(&arena, expr_4);
+	print_expression_tree(tree);
+	
+	arena_reset(&arena);
+	printf("Parsing sample expression 5:\n");
+	tree = parse_expression_string(&arena, expr_5);
+	print_expression_tree(tree);
+	
+	arena_reset(&arena);
+	printf("Parsing sample expression 6:\n");
+	tree = parse_expression_string(&arena, expr_6);
+	print_expression_tree(tree);
+	
+	arena_reset(&arena);
+	printf("Parsing sample expression 7:\n");
+	tree = parse_expression_string(&arena, expr_7);
+	print_expression_tree(tree);
+	
+	arena_reset(&arena);
+	printf("Parsing sample expression 8:\n");
+	tree = parse_expression_string(&arena, expr_8);
+	print_expression_tree(tree);
+	
+	arena_reset(&arena);
+	printf("Parsing sample expression 9:\n");
+	tree = parse_expression_string(&arena, expr_9);
+	print_expression_tree(tree);
+	
+	arena_reset(&arena);
+	printf("Parsing sample expression 0:\n");
+	tree = parse_expression_string(&arena, expr_0);
+	print_expression_tree(tree);
+	
+	arena_fini(&arena);
+}
+
+internal void
+test_statement_parser(void) {
+	Arena arena = {0};
+	arena_init(&arena);
+	
+	Statement *tree = &nil_statement;
+	
+	String stat_1 = string_from_lit_const("1 + 2;");
+	String stat_2 = string_from_lit_const("return;");
+	String stat_3 = string_from_lit_const("return 0;");
+	String stat_4 = string_from_lit_const("return 1 + 2;");
+	String stat_5 = string_from_lit_const("return (1 + 2);");
+	String stat_6 = string_from_lit_const("{ return; return; }");
+	String stat_7 = string_from_lit_const("{ ;; }");
+	
+	String stat_8 = string_from_lit_const("1 + 2");
+	String stat_9 = string_from_lit_const("{ return } ");
+	String stat_0 = string_from_lit_const("{ return; ");
+	
+	arena_reset(&arena);
+	printf("Parsing sample statement 1:\n");
+	tree = parse_statement_string(&arena, stat_1);
+	
+	arena_reset(&arena);
+	printf("Parsing sample statement 2:\n");
+	tree = parse_statement_string(&arena, stat_2);
+	
+	arena_reset(&arena);
+	printf("Parsing sample statement 3:\n");
+	tree = parse_statement_string(&arena, stat_3);
+	
+	arena_reset(&arena);
+	printf("Parsing sample statement 4:\n");
+	tree = parse_statement_string(&arena, stat_4);
+	
+	arena_reset(&arena);
+	printf("Parsing sample statement 5:\n");
+	tree = parse_statement_string(&arena, stat_5);
+	
+	arena_reset(&arena);
+	printf("Parsing sample statement 6:\n");
+	tree = parse_statement_string(&arena, stat_6);
+	
+	arena_reset(&arena);
+	printf("Parsing sample statement 7:\n");
+	tree = parse_statement_string(&arena, stat_7);
+	
+	arena_reset(&arena);
+	printf("Parsing sample statement 8:\n");
+	tree = parse_statement_string(&arena, stat_8);
+	
+	arena_reset(&arena);
+	printf("Parsing sample statement 9:\n");
+	tree = parse_statement_string(&arena, stat_9);
+	
+	arena_reset(&arena);
+	printf("Parsing sample statement 0:\n");
+	tree = parse_statement_string(&arena, stat_0);
+	
+	arena_fini(&arena);
 }
 
 internal Declaration *

@@ -707,8 +707,8 @@ masm_generate_source(void) {
 }
 
 int main(void) {
-	test_sample_expressions();
-	test_sample_statements();
+	test_expression_parser();
+	test_statement_parser();
 	
 	x64_test();
 	

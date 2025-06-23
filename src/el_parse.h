@@ -8,28 +8,45 @@
 
 typedef enum Token_Kind {
 	Token_Kind_INVALID = 0,
+	
+	/*  33 ..  47 */
+	
+	Token_Kind_PERCENT = '%',
+	Token_Kind_LPAREN  = '(',
+	Token_Kind_RPAREN  = ')',
+	Token_Kind_STAR    = '*',
+	Token_Kind_PLUS    = '+',
+	Token_Kind_COMMA   = ',',
+	Token_Kind_DASH    = '-',
+	Token_Kind_DOT     = '.',
+	Token_Kind_SLASH   = '/',
+	
+	/*  58 ..  64 */
+	
+	Token_Kind_COLON     = ':',
+	Token_Kind_SEMICOLON = ';',
+	Token_Kind_QMARK     = '?',
+	
+	/*  91 ..  96 */
+	
+	Token_Kind_LBRACK = '[',
+	Token_Kind_RBRACK = ']',
+	Token_Kind_HAT    = '^',
+	
+	/* 123 .. 126 */
+	
+	Token_Kind_LBRACE = '{',
+	Token_Kind_RBRACE = '}',
+	
+	/* 127 .. */
+	
+	Token_Kind_DOUBLE_COLON = 127,
+	
 	Token_Kind_INTEGER,
 	Token_Kind_STRING,
 	Token_Kind_IDENT,
 	Token_Kind_KEYWORD,
-	Token_Kind_PLUS,
-	Token_Kind_DASH,
-	Token_Kind_STAR,
-	Token_Kind_SLASH,
-	Token_Kind_PERCENT,
-	Token_Kind_HAT,
-	Token_Kind_DOT,
-	Token_Kind_QMARK,
-	Token_Kind_COMMA,
-	Token_Kind_SEMICOLON,
-	Token_Kind_COLON,
-	Token_Kind_DOUBLE_COLON,
-	Token_Kind_LPAREN,
-	Token_Kind_RPAREN,
-	Token_Kind_LBRACK,
-	Token_Kind_RBRACK,
-	Token_Kind_LBRACE,
-	Token_Kind_RBRACE,
+	
 	Token_Kind_EOI,
 	Token_Kind_COUNT,
 } Token_Kind;

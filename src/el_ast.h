@@ -1,5 +1,5 @@
-#ifndef EL_PARSE_H
-#define EL_PARSE_H
+#ifndef EL_AST_H
+#define EL_AST_H
 
 ////////////////////////////////
 //~ Tokens
@@ -124,6 +124,13 @@ typedef enum Binary_Operator {
 	Binary_Operator_COUNT,
 } Binary_Operator;
 
+typedef struct Location Location;
+struct Location {
+	i64 l0, l1;
+	i64 c0, c1;
+	i64 b0, b1;
+};
+
 ////////////////////////////////
 //~ AST
 
@@ -143,26 +150,28 @@ internal bool token_is_expression_atom(Token token);
 
 //- Expressions
 
-typedef enum Expression_Kind {
-	Expression_Kind_NULL = 0,
-	Expression_Kind_LITERAL,
-	Expression_Kind_IDENT,
-	Expression_Kind_UNARY,
-	Expression_Kind_BINARY,
-	Expression_Kind_TERNARY,
-	Expression_Kind_COUNT,
-} Expression_Kind;
+typedef enum Ast_Expression_Kind {
+	Ast_Expression_Kind_NULL = 0,
+	Ast_Expression_Kind_LITERAL,
+	Ast_Expression_Kind_IDENT,
+	Ast_Expression_Kind_UNARY,
+	Ast_Expression_Kind_BINARY,
+	Ast_Expression_Kind_TERNARY,
+	Ast_Expression_Kind_COUNT,
+} Ast_Expression_Kind;
 
 // TODO: Add a Runtime_Type field
-typedef struct Expression Expression;
-struct Expression {
-	Expression_Kind kind;
-	Unary_Operator  unary;
-	Binary_Operator binary;
+typedef struct Ast_Expression Ast_Expression;
+struct Ast_Expression {
+	Ast_Expression_Kind kind;
+	Unary_Operator      unary;
+	Binary_Operator     binary;
 	
-	union { Expression *left; Expression *subexpr; };
-	Expression *middle; // For ternaries
-	Expression *right;
+	union { Ast_Expression *left; Ast_Expression *subexpr; };
+	Ast_Expression *middle; // For ternaries
+	Ast_Expression *right;
+	
+	Location location;
 	
 	String lexeme;
 	String ident;
@@ -171,48 +180,52 @@ struct Expression {
 	void  *user;
 };
 
-internal Expression *make_atom_expression(Parse_Context *parser, Token token);
-internal Expression *make_unary_expression(Parse_Context *parser, Token unary, Expression *subexpr);
-internal Expression *make_binary_expression(Parse_Context *parser, Token binary, Expression *left, Expression *right);
-internal Expression *make_ternary_expression(Parse_Context *parser, Expression *left, Expression *middle, Expression *right);
+internal Ast_Expression *make_atom_expression(Parse_Context *parser, Token token);
+internal Ast_Expression *make_unary_expression(Parse_Context *parser, Token unary, Ast_Expression *subexpr);
+internal Ast_Expression *make_binary_expression(Parse_Context *parser, Token binary, Ast_Expression *left, Ast_Expression *right);
+internal Ast_Expression *make_ternary_expression(Parse_Context *parser, Ast_Expression *left, Ast_Expression *middle, Ast_Expression *right);
 
-internal Expression *parse_expression(Parse_Context *parser, Precedence caller_precedence);
+internal Ast_Expression *parse_expression(Parse_Context *parser, Precedence caller_precedence);
 
-//- Statements
+internal String string_from_expression_tree(Arena *arena, Ast_Expression *root);
+internal void print_expression_tree(Ast_Expression *root);
 
-typedef enum Statement_Kind {
-	Statement_Kind_NULL = 0,
-	Statement_Kind_EXPR,
-	Statement_Kind_BLOCK,
-	Statement_Kind_RETURN,
-	Statement_Kind_COUNT,
-} Statement_Kind;
+//- Ast_Statements
 
-typedef struct Statement Statement;
-struct Statement {
-	Statement_Kind kind;
-	Statement     *next;
-	Statement     *block;
+typedef enum Ast_Statement_Kind {
+	Ast_Statement_Kind_NULL = 0,
+	Ast_Statement_Kind_EXPR,
+	Ast_Statement_Kind_BLOCK,
+	Ast_Statement_Kind_RETURN,
+	Ast_Statement_Kind_COUNT,
+} Ast_Statement_Kind;
+
+typedef struct Ast_Statement Ast_Statement;
+struct Ast_Statement {
+	Ast_Statement_Kind kind;
+	Ast_Statement     *next;
+	Ast_Statement     *block;
 	
-	Expression *expr;
+	Ast_Expression *expr;
 };
 
-internal Statement *parse_statement(Parse_Context *parser);
+internal Ast_Statement *parse_statement(Parse_Context *parser);
 
-//- Declarations
+//- Ast_Declarations
 
-typedef enum Declaration_Kind {
-	Declaration_Kind_PROCEDURE,
-	Declaration_Kind_COUNT,
-} Declaration_Kind;
+typedef enum Ast_Declaration_Kind {
+	Ast_Declaration_Kind_VARIABLE,
+	Ast_Declaration_Kind_PROCEDURE,
+	Ast_Declaration_Kind_COUNT,
+} Ast_Declaration_Kind;
 
-typedef struct Declaration Declaration;
-struct Declaration {
-	Declaration_Kind kind;
-	Declaration     *next;
-	String           ident;
+typedef struct Ast_Declaration Ast_Declaration;
+struct Ast_Declaration {
+	Ast_Declaration_Kind kind;
+	Ast_Declaration     *next;
+	String               ident;
 	
-	Statement *body;
+	Ast_Statement *body;
 };
 
 ////////////////////////////////

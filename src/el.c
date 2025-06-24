@@ -3,69 +3,614 @@
 
 #include "el_base.c"
 
-#include "el_parse.h"
-#include "el_tree_print.h"
+#include "el_ast.h"
 
-#include "el_parse.c"
-#include "el_tree_print.c"
+#include "el_ast_parse.c"
+#include "el_ast_print.c"
 
 #include "el_x64.c"
 
 ////////////////////////////////
-//~ Database
-
-typedef struct Decl_Node Decl_Node;
-struct Decl_Node {
-	Declaration *decl;
-	Decl_Node   *prev;
-	Decl_Node   *next;
-};
-
-typedef struct Decl_List Decl_List;
-struct Decl_List {
-	Decl_Node *first;
-	Decl_Node *last;
-};
-
-global Decl_List proc_list;
+//~ Errors
 
 internal void
-decl_list_push(Arena *arena, Decl_List *list, Declaration *decl) {
-	Decl_Node *node = push_type(arena, Decl_Node);
-	if (node != NULL) {
-		node->decl = decl;
-		dll_push_back(list->first, list->last, node);
+report_error(String message) {
+	fprintf(stderr, "Error: %.*s\n", string_expand(message));
+}
+
+////////////////////////////////
+//~ Types
+
+typedef enum Type_Kind {
+	Type_Kind_VOID = 0,
+	Type_Kind_INTEGER,
+	Type_Kind_STRING,
+	Type_Kind_STRUCT,
+	Type_Kind_POINTER,
+	Type_Kind_PROC,
+	Type_Kind_COUNT,
+} Type_Kind;
+
+typedef struct Type Type;
+struct Type {
+	Type_Kind kind;
+	
+	Type *members;
+	i64   member_count;
+};
+
+////////////////////////////////
+//~ Scope and Symbols
+
+typedef struct Symbol Symbol;
+struct Symbol {
+	Symbol *next;
+	Symbol *prev;
+	Symbol *next_free;
+	
+	String ident;
+	Ast_Declaration_Kind decl_kind;
+	Location location_declared;
+	Location locations_used[32]; // Arbitrary number for now
+	i64 locations_used_count;
+	Type type;
+	i64  size;
+	i64  addr;
+	// Calling_Convention conv;
+	// Storage_Class storage_class;
+};
+
+global Symbol *first_free_symbol;
+
+internal Symbol *
+symbol_alloc(Arena *arena) {
+	Symbol *result = first_free_symbol;
+	
+	if (result != NULL) {
+		stack_pop_nz(first_free_symbol, next_free, check_null);
+		memset(result, 0, sizeof(Symbol));
+	} else {
+		push_type(arena, Symbol);
 	}
+	
+	return result;
 }
 
 internal void
-populate_decl_lists(Arena *arena, Declaration *first) {
-	for (Declaration *decl = first; decl != NULL; decl = decl->next) {
-		if (decl->kind == Declaration_Kind_PROCEDURE) {
-			decl_list_push(arena, &proc_list, decl);
+symbol_free(Symbol *symbol) {
+	stack_push_n(first_free_symbol, symbol, next_free);
+}
+
+internal void
+symbol_add_location_used(Arena *arena, Symbol *symbol, Location location) {
+	(void) arena;
+	
+	assert(symbol->locations_used_count < array_count(symbol->locations_used));
+	symbol->locations_used[symbol->locations_used_count] = location;
+	symbol->locations_used_count += 1;
+}
+
+
+typedef struct Scope Scope;
+struct Scope {
+	Scope *parent;
+	Scope *next_sibling;
+	Scope *prev_sibling;
+	Scope *first_child;
+	Scope *last_child;
+	
+	Symbol *first_symbol;
+	Symbol *last_symbol;
+};
+
+internal Scope *
+scope_enter(Arena *arena, Scope *scope) {
+	Scope *new_scope = push_type(arena, Scope);
+	
+	dll_push_back_npz(scope->first_child, scope->last_child, new_scope, next_sibling, prev_sibling, check_null, set_null);
+	new_scope->parent = scope;
+	
+	return new_scope;
+}
+
+internal Scope *
+scope_leave(Scope *scope) {
+	return scope->parent;
+}
+
+internal Symbol *
+scope_lookup(Scope *inner, String ident) {
+	Symbol *result = NULL;
+	
+	for (Scope *current = inner; current != NULL; current = current->parent) {
+		for (Symbol *entry = current->first_symbol; entry != NULL; entry = entry->next) {
+			if (string_equals(entry->ident, ident)) {
+				result = entry;
+				goto found;
+			}
+		}
+	}
+	found:;
+	
+	return result;
+}
+
+internal Symbol *
+scope_insert_ident(Arena *arena, Scope *scope, String ident) {
+	Symbol *entry = symbol_alloc(arena);
+	
+	dll_push_back(scope->first_symbol, scope->last_symbol, entry);
+	entry->ident = ident;
+	
+	return entry;
+}
+
+
+internal void
+build_scope_for_expression(Arena *arena, Scope *scope, Ast_Expression *expr) {
+	
+	switch (expr->kind) {
+		case Ast_Expression_Kind_LITERAL: break;
+		
+		case Ast_Expression_Kind_IDENT: {
+			Symbol *symbol = scope_lookup(scope, expr->ident);
+			if (symbol == NULL) {
+				// We insert the symbol even if this is just a usage site.
+				// We register the location_used, so later we can check if there was
+				// at least one location_declared.
+				symbol = scope_insert_ident(arena, scope, expr->ident);
+			}
+			
+			symbol_add_location_used(arena, symbol, expr->location);
+		} break;
+		
+		case Ast_Expression_Kind_UNARY: {
+			build_scope_for_expression(arena, scope, expr->subexpr);
+		} break;
+		
+		case Ast_Expression_Kind_BINARY: {
+			build_scope_for_expression(arena, scope, expr->left);
+			build_scope_for_expression(arena, scope, expr->right);
+		} break;
+		
+		case Ast_Expression_Kind_TERNARY: {
+			build_scope_for_expression(arena, scope, expr->left);
+			build_scope_for_expression(arena, scope, expr->middle);
+			build_scope_for_expression(arena, scope, expr->right);
+		} break;
+		
+		default: break;
+	}
+	
+	return;
+}
+
+internal void
+build_scope_for_statement(Arena *arena, Scope *scope, Ast_Statement *stat) {
+	
+	switch (stat->kind) {
+		case Ast_Statement_Kind_EXPR: {
+			build_scope_for_expression(arena, scope, stat->expr);
+		} break;
+		
+		case Ast_Statement_Kind_RETURN: {
+			build_scope_for_expression(arena, scope, stat->expr);
+		} break;
+		
+		case Ast_Statement_Kind_BLOCK: {
+			scope = scope_enter(arena, scope);
+			
+			for (Ast_Statement *curr = stat->block; curr != NULL && curr != &nil_statement; curr = curr->next) {
+				build_scope_for_expression(arena, scope, stat->expr);
+			}
+			
+			scope = scope_leave(scope);
+		} break;
+		
+		default: break;
+	}
+	
+	return;
+}
+
+internal void
+build_scope_for_declaration(Arena *arena, Scope *scope, Ast_Declaration *decl) {
+	
+	switch (decl->kind) {
+		case Ast_Declaration_Kind_PROCEDURE: {
+			scope = scope_enter(arena, scope);
+			
+			// for each decl in the procedure's formal parameter list:
+			//   build_scope_for_declaration()
+			
+			build_scope_for_statement(arena, scope, decl->body);
+			
+			scope = scope_leave(scope);
+		} break;
+		
+		default: break;
+	}
+	
+	return;
+}
+
+global Scope scope_global;
+global Arena scope_arena;
+
+internal void
+rearrange_scope(Arena *arena, Scope *scope) {
+	for (Symbol *entry = scope->first_symbol; entry != NULL; entry = entry->next) {
+		if (entry->locations_used_count > 1) {
+			bool declared = !location_is_zero(entry->location_declared);
+			i64  uses_before_decl = 0;
+			for (; uses_before_decl < entry->locations_used_count; uses_before_decl += 1) {
+				Location used = entry->locations_used[uses_before_decl];
+				if (location_is_greater_than(used, entry->location_declared)) {
+					break;
+				}
+			}
+			
+			// If it's not declared at all, then technically every use is before the declaration.
+			assert(implies(!declared, uses_before_decl == entry->locations_used_count));
+			
+			if (uses_before_decl < entry->locations_used_count || !declared) {
+				Symbol *found_symbol = NULL;
+				Scope  *found_scope  = NULL;
+				
+				for (Scope *current = scope; current != NULL; current = current->parent) {
+					for (Symbol *other_entry = current->first_symbol; other_entry != NULL; other_entry = other_entry->next) {
+						if (string_equals(other_entry->ident, entry->ident)) {
+							found_symbol = other_entry;
+							found_scope  = current;
+							goto found;
+						}
+					}
+				}
+				found:;
+				
+				if (found_symbol != NULL) {
+					// Split the inner entry between locations_used that are before and after
+					// the location_declared.
+					Symbol *before_part = entry;
+					Symbol *after_part  = symbol_alloc(arena);
+					
+					after_part->ident = before_part->ident;
+					after_part->type  = before_part->type;
+					after_part->size  = before_part->size;
+					after_part->addr  = before_part->addr;
+					
+					after_part->location_declared = before_part->location_declared;
+					
+					i64 uses_after_decl = before_part->locations_used_count - uses_before_decl;
+					after_part->locations_used_count  = uses_after_decl;
+					before_part->locations_used_count = uses_before_decl;
+					
+					for (i64 i = 0; i < uses_after_decl; i += 1) {
+						after_part->locations_used[i] = before_part->locations_used[uses_before_decl + i];
+					}
+					
+					// Merge the first entry with the outer entry.
+					assert(found_symbol->locations_used_count + before_part->locations_used_count <
+						   array_count(found_symbol->locations_used));
+					
+					for (i64 i = 0; i < before_part->locations_used_count; i += 1) {
+						found_symbol->locations_used[found_symbol->locations_used_count + i] = before_part->locations_used[i];
+					}
+					
+					found_symbol->locations_used_count += before_part->locations_used_count;
+					symbol_free(before_part);
+					
+					// The uses after the current location_declared are fine as they are and
+					// should be left untouched.
+					
+					allow_break();
+				} else {
+					// The incriminated identifier was not found in any of the parent scopes,
+					// so the only valid one is the one defined in the current scope.
+					//
+					// Since the identifier is used before its declaration (or it was not declared),
+					// react accordingly depending on the type of declaration.
+					
+					bool is_local_var = (entry->decl_kind == Ast_Declaration_Kind_VARIABLE) && (scope->parent != NULL);
+					if (is_local_var || !declared) {
+						// If it's a local variable (meaning we don't care about out-of-order
+						// declarations) or the ident wasn't declared at all: report error.
+						
+						for (i64 i = 0; i < uses_before_decl; i += 1) {
+							Location used = entry->locations_used[uses_before_decl];
+							(void) used;
+							
+							report_error(string_from_lit("Undeclared identifier"));
+						}
+					} else {
+						// All good.
+					}
+				}
+			}
 		}
 	}
 }
 
-internal Declaration *
-decl_list_find_ident(Decl_List *list, String ident) {
-	Declaration *result = NULL;
-	for (Decl_Node *node = list->first; node != NULL; node = node->next) {
-		if (string_equals(node->decl->ident, ident)) {
-			result = node->decl;
+internal void
+build_scope(Ast_Declaration *root) {
+	arena_init(&scope_arena);
+	
+	for (Ast_Declaration *decl = root; decl != NULL && decl != &nil_declaration; decl = decl->next) {
+		build_scope_for_declaration(&scope_arena, &scope_global, decl);
+	}
+	
+	// TODO: Recursively do this for all scopes
+	rearrange_scope(&scope_arena, &scope_global);
+	
+	// TODO: Check for shadowing
+	
+	// TODO: If there are entries in the table with no locations_used, you can report a warning and
+	// remove them
+	
+	return;
+}
+
+////////////////////////////////
+//~ Type-checking
+
+#if 0
+internal Typed_Expression *
+analyse_expression(Arena *arena, Ast_Expression *expr, Scope *scope, String_List *unresolved) {
+	Typed_Expression *result = &nil_typed_expression;
+	
+	switch (expr->kind) {
+		case Ast_Expression_Kind_LITERAL: {
+			result = typed_expression_from_ast_expression(expr);
+			result->value = expr->value;
+			result->types = push_array(arena, Type, 1);
+			result->type_count = 1;
+			result->types[0].kind = Type_Kind_INTEGER;
+		} break;
+		
+		case Ast_Expression_Kind_IDENT: {
+			Decl *found = NULL;
+			Scope *where = scope;
+			for (Scope *s = scope; s != NULL; s = s->next) {
+				for (Decl *decl = scope->resolved_decls->first; decl != NULL; decl = decl->next) {
+					if (string_equals(decl->ident, expr->ident)) {
+						found = decl;
+						where = s;
+						goto after_scope_loop;
+					}
+				}
+			}
+			
+			after_scope_loop:;
+			if (!found) {
+				string_list_push(arena, unresolved, expr->ident);
+			} else {
+				result = typed_expression_from_ast_expression(expr);
+				result->type_count = 1;
+				result->types = push_array(arena, Type, result->type_count);
+				result->types[0] = found->type;
+				
+				if (where == scope) {
+					// It's a global: remember the identifier
+				} else {
+					// It's a local or parameter: remember the stack offset
+				}
+			}
+		} break;
+		
+		case Ast_Expression_Kind_UNARY: {
+			Typed_Expression *subresult = analyse_expression(arena, expr->subexpr, scope, unresolved);
+			
+			switch (expr->unary) {
+				case Unary_Operator_PLUS:
+				case Unary_Operator_MINUS: {
+					if (subresult->type_count != 1) {
+						report_error(string_from_lit("Cannot apply + or - to multiple types"));
+					} else if (subresult->types[0] != Type_Kind_INTEGER) {
+						report_error(string_from_lit("Cannot apply + or - to this type"));
+					} else {
+						result = typed_expression_from_ast_expression(expr);
+						result->type_count = 1;
+						result->types = push_array(arena, Type, result->type_count);
+						result->types[0] = subresult->types[0];
+					}
+				} break;
+				
+				case Unary_Operator_DEREFERENCE: {
+					if (subresult->type_count != 1) {
+						report_error(string_from_lit("Cannot apply ^ to multiple types"));
+					} else if (subresult->types[0] != Type_Kind_INTEGER) {
+						report_error(string_from_lit("Cannot apply ^ to this type"));
+					} else {
+						result = typed_expression_from_ast_expression(expr);
+						result->type_count = 1;
+						result->types = push_array(arena, Type, result->type_count);
+						result->types[0] = subresult->types[0];
+					}
+				} break;
+				
+				default: break;
+			}
+			
+		} break;
+		
+		case Ast_Expression_Kind_BINARY: {
+			Typed_Expression *typed_left  = analyse_expression(arena, expr->left,    scope, unresolved);
+			Typed_Expression *typed_right = analyse_expression(arena, expr->right,   scope, unresolved);
+			
+			switch (expr->binary) {
+				case Binary_Operator_PLUS:
+				case Binary_Operator_MINUS:
+				case Binary_Operator_TIMES:
+				case Binary_Operator_DIVIDE:
+				case Binary_Operator_MODULUS: {
+					if (typed_left->type_count == 1 && typed_right->type_count == 1) {
+						report_error(string_from_lit("Too many expressions on left or right of this operator"));
+					} else if (typed_left->types[0] != Type_Kind_INTEGER && typed_right->types[0] != Type_Kind_INTEGER) {
+						report_error(string_from_lit("Cannot apply operator to this type"));
+					} else {
+						result = typed_expression_from_ast_expression(expr);
+						result->type_count = 1;
+						result->types = push_array(arena, Type, result->type_count);
+						result->types[0] = typed_left->types[0];
+					}
+				} break;
+				
+				case Binary_Operator_COMMA: {
+					result = typed_expression_from_ast_expression(expr);
+					result->type_count = typed_left->type_count + typed_right->type_count;
+					result->types = push_array(arena, Type, result->type_count);
+					for (i64 i = 0; i < typed_left->type_count; i += 1) {
+						result->types[i] = typed_left->types[i];
+					}
+					for (i64 i = typed_left->type_count; i < typed_right->type_count; i += 1) {
+						result->types[i] = typed_right->types[i];
+					}
+				} break;
+				
+				case Binary_Operator_CALL: {
+					// TODO: For now, every call's left expr is an identifier
+					
+					Decl *found = NULL;
+					for (Scope *s = scope; s != NULL; s = s->next) {
+						for (Decl *decl = scope->procs->first; decl != NULL; decl = decl->next) {
+							if (string_equals(decl->ident, expr->ident)) {
+								found = decl;
+								goto after_scope_loop;
+							}
+						}
+					}
+					
+					after_scope_loop:;
+					if (!found) {
+						string_list_push(arena, unresolved, expr->ident);
+					} else {
+						result = typed_expression_from_ast_expression(expr);
+						result->type_count = found->ret_type_count;
+						result->types = push_array(arena, Type, result->type_count);
+						for (i64 i = 0; i < result->type_count; i += 1) {
+							result->types[0] = found->ret_types[0];
+						}
+						result->ident = expr->ident;
+					}
+				} break;
+				
+				default: break;
+			}
+			
+		} break;
+		
+#if 0
+		case Ast_Expression_Kind_TERNARY: {
+			analyse_expression(arena, expr->left,    scope, unresolved);
+			analyse_expression(arena, expr->middle,  scope, unresolved);
+			analyse_expression(arena, expr->right,   scope, unresolved);
+		} break;
+#endif
+		
+		default: break;
+	}
+	
+	return result;
+}
+
+typedef struct Typed_Statement Typed_Statement;
+struct Typed_Statement {
+	Ast_Statement_Kind kind;
+	Typed_Statement   *next;
+	Typed_Statement   *block;
+	
+	Typed_Expression *expr;
+};
+
+internal Typed_Statement *
+analyse_statement(Arena *arena, Ast_Statement *stat, Scope *scope, String_List *unresolved) {
+	Typed_Statement *result = &nil_typed_statement;
+	
+	switch (stat->kind) {
+		case Ast_Statement_Kind_EXPR: {
+			(void) analyse_expression(arena, stat->expr, scope, unresolved);
+		} break;
+		
+		case Ast_Statement_Kind_RETURN: {
+			(void) analyse_expression(arena, stat->expr, scope, unresolved);
+		} break;
+		
+		case Ast_Statement_Kind_BLOCK: {
+			scope = push_scope(scope);
+			
+			// TODO: First do all DECL statements so that local functions and types are added to the
+			// scope;
+			// then do all other statements.
+			
+			for (Ast_Statement *curr = stat->block; curr != NULL && curr != &nil_statement; curr = curr->next) {
+				(void) analyse_statement(arena, curr, scope, unresolved);
+			}
+			
+			scope = pop_scope(scope);
+		} break;
+	}
+	
+	return result;
+}
+
+internal void
+analyse_declarations(Ast_Declaration *first) {
+	Scratch scratch = scratch_begin(0, 0);
+	
+	Typed_Declaration *first = NULL;
+	
+	Scope scope = {0};
+	String_List unresolved = {0};
+	
+	for (Ast_Declaration *decl; decl != NULL && decl != &nil_declaration; decl = decl->next) {
+		String_List dependencies = {0};
+		
+		if (decl->kind == Ast_Declaration_Kind_PROCEDURE) {
+			Typed_Declaration *typed_decl = analyse_declaration(scratch.arena, decl, &scope, &dependencies);
+			// push to the Typed_Declaration list
+		}
+	}
+	
+	for (;unresolved->first != NULL;) {
+		bool made_progress = false;
+		
+		for (Typed_Declaration *decl = first; decl != NULL; decl = decl->next) {
+			
+			bool resolved = false;
+			for (String_Node *dep = dependencies->first; dep != NULL; dep = dep->next) {
+				
+				
+				if (!found) {
+					string_list_push(arena, &unresolved_symbols, dep->s);
+				}
+			}
+			
+			if (resolved) {
+				decl_list_push(&scope->decls, decl);
+				
+				made_progress = true;
+			} else {
+				decl_list_push(&unresolved, decl);
+			}
+		}
+		
+		if (!made_progress) {
+			fprintf(stderr, "Error!\n");
 			break;
 		}
 	}
-	return result;
+	
+	scratch_end(scratch);
 }
+#endif
 
 ////////////////////////////////
 //~ Tree
 
 #if 0
 internal int
-count_expressions_in_list(Expression *expr, int acc) {
-	if (expr->kind == Expression_Kind_COMMA) {
+count_expressions_in_list(Ast_Expression *expr, int acc) {
+	if (expr->kind == Ast_Expression_Kind_COMMA) {
 		acc += count_expressions_in_list(expr->left);
 		acc += count_expressions_in_list(expr->right);
 	} else {
@@ -179,12 +724,12 @@ instr_operation_from_expr_binary(Binary_Operator expr_op) {
 }
 
 internal Reg_Group
-generate_bytecode_for_expression(Expression *expr) {
+generate_bytecode_for_expression(Ast_Expression *expr) {
 	Instr instr = {0};
 	Reg_Group dests = {0};
 	
 	switch (expr->kind) {
-		case Expression_Kind_LITERAL: {
+		case Ast_Expression_Kind_LITERAL: {
 			instr.operation = Instr_Operation_SET;
 			instr.mode      = Addressing_Mode_CONSTANT;
 			instr.source    = expr->value;
@@ -203,7 +748,7 @@ generate_bytecode_for_expression(Expression *expr) {
 		// foo(x)    => mov rdi, x, call foo
 		// foo(x, y) => mov rdi, x; mov rsi, y; call foo
 		
-		case Expression_Kind_UNARY: {
+		case Ast_Expression_Kind_UNARY: {
 			Reg_Group sub_dests = generate_bytecode_for_expression(expr->left);
 			assert(sub_dests.reg_count >= 1); // Should be ==, but first decide how to treat comma expressions
 			
@@ -219,12 +764,12 @@ generate_bytecode_for_expression(Expression *expr) {
 			dests.reg_count = 1;
 		} break;
 		
-		case Expression_Kind_BINARY: {
+		case Ast_Expression_Kind_BINARY: {
 			Binary_Operator binary = expr->binary;
 			
 			if (binary == Binary_Operator_CALL) {
 				// For now only identifiers can be lhs of calls
-				assert(expr->left->kind == Expression_Kind_IDENT);
+				assert(expr->left->kind == Ast_Expression_Kind_IDENT);
 				instr.jump_dest_label = expr->left->ident;
 				
 				Reg_Group right_dests = generate_bytecode_for_expression(expr->right);
@@ -245,8 +790,8 @@ generate_bytecode_for_expression(Expression *expr) {
 					instr.arg_reg_count += 1;
 				}
 				
-				Declaration *callee = decl_list_find_ident(&proc_list, instr.jump_dest_label);
-				assert(callee != NULL); // Typechecking should've failed
+				// Ast_Declaration *callee = decl_list_find_ident(&proc_list, instr.jump_dest_label);
+				// assert(callee != NULL); // Typechecking should've failed
 				
 				instructions[instruction_count] = instr;
 				instruction_count += 1;
@@ -302,19 +847,19 @@ generate_bytecode_for_expression(Expression *expr) {
 }
 
 internal void
-generate_bytecode_for_statement(Statement *statement) {
+generate_bytecode_for_statement(Ast_Statement *statement) {
 	switch (statement->kind) {
-		case Statement_Kind_EXPR: {
+		case Ast_Statement_Kind_EXPR: {
 			generate_bytecode_for_expression(statement->expr);
 		} break;
 		
-		case Statement_Kind_BLOCK: {
-			for (Statement *s = statement->block; s != NULL && s != &nil_statement; s = s->next) {
+		case Ast_Statement_Kind_BLOCK: {
+			for (Ast_Statement *s = statement->block; s != NULL && s != &nil_statement; s = s->next) {
 				generate_bytecode_for_statement(s);
 			}
 		} break;
 		
-		case Statement_Kind_RETURN: {
+		case Ast_Statement_Kind_RETURN: {
 			
 			Instr ret = {0};
 			
@@ -323,7 +868,7 @@ generate_bytecode_for_statement(Statement *statement) {
 				// Remember the destination register of each of the returned expressions,
 				// as well as how many there are.
 				// int i = 0;
-				for (Expression *expr = statement->expr; expr != NULL; expr = expr->next) {
+				for (Ast_Expression *expr = statement->expr; expr != NULL; expr = expr->next) {
 					Reg_Group dests = generate_bytecode_for_expression(expr);
 					
 					for (int di = 0; di < dests.reg_count; di += 1) {
@@ -346,12 +891,12 @@ generate_bytecode_for_statement(Statement *statement) {
 				
 #if 0
 				typedef struct Expr_Node Expr_Node;
-				struct Expr_Node { Expression *expr; Expr_Node *next; };
+				struct Expr_Node { Ast_Expression *expr; Expr_Node *next; };
 				
 				Expr_Node *expr = statement->expr;
 				
 				for (;expr != NULL;) {
-					if (expr->kind == Expression_Kind_COMMA) {
+					if (expr->kind == Ast_Expression_Kind_COMMA) {
 						stack_push(expr->right);
 						stack_push(expr->left);
 					} else {
@@ -402,9 +947,9 @@ generate_bytecode_for_statement(Statement *statement) {
 }
 
 internal void
-generate_bytecode_for_declaration(Declaration *declaration) {
+generate_bytecode_for_declaration(Ast_Declaration *declaration) {
 	switch (declaration->kind) {
-		case Declaration_Kind_PROCEDURE: {
+		case Ast_Declaration_Kind_PROCEDURE: {
 			Instr instr = {0};
 			
 			instr.label      = declaration->ident;
@@ -712,19 +1257,19 @@ int main(void) {
 	
 	x64_test();
 	
-	arena_init(&masm_context.arena);
-	
 	Arena tree_arena = {0};
 	arena_init(&tree_arena);
-	Declaration *program = hardcode_a_declaration(&tree_arena);
+	Ast_Declaration *program = hardcode_a_declaration(&tree_arena);
 	
-	Arena decl_arena = {0};
-	arena_init(&decl_arena);
-	populate_decl_lists(&decl_arena, program);
+	build_scope(program);
 	
-	for (Declaration *decl = program; decl != NULL; decl = decl->next) {
+	// TODO: Type-checking here
+	
+	for (Ast_Declaration *decl = program; decl != NULL; decl = decl->next) {
 		generate_bytecode_for_declaration(decl);
 	}
+	
+	arena_init(&masm_context.arena);
 	String masm_source = masm_generate_source();
 	
 	FILE *sf = fopen("generated/generated.asm", "wb+");

@@ -1,5 +1,5 @@
-#ifndef EL_PARSE_C
-#define EL_PARSE_C
+#ifndef EL_AST_PARSE_C
+#define EL_AST_PARSE_C
 
 ////////////////////////////////
 //~ Tokens
@@ -391,17 +391,17 @@ lexeme_from_token(Parse_Context *parser, Token token) {
 
 //- Node constructors
 
-internal Expression *
+internal Ast_Expression *
 make_atom_expression(Parse_Context *parser, Token token) {
-	Expression *node = push_type(parser->arena, Expression);
+	Ast_Expression *node = push_type(parser->arena, Ast_Expression);
 	
 	if (node != NULL) {
 		if (token.kind == Token_Kind_INTEGER) {
-			node->kind   = Expression_Kind_LITERAL;
+			node->kind   = Ast_Expression_Kind_LITERAL;
 			node->lexeme = lexeme_from_token(parser, token);
 			node->value  = token.int_val;
 		} else if (token.kind == Token_Kind_IDENT) {
-			node->kind   = Expression_Kind_IDENT;
+			node->kind   = Ast_Expression_Kind_IDENT;
 			node->lexeme = lexeme_from_token(parser, token);
 			node->ident  = node->lexeme;
 		} else { panic(); }
@@ -410,12 +410,12 @@ make_atom_expression(Parse_Context *parser, Token token) {
 	return node;
 }
 
-internal Expression *
-make_unary_expression(Parse_Context *parser, Token unary, Expression *subexpr) {
-	Expression *node = push_type(parser->arena, Expression);
+internal Ast_Expression *
+make_unary_expression(Parse_Context *parser, Token unary, Ast_Expression *subexpr) {
+	Ast_Expression *node = push_type(parser->arena, Ast_Expression);
 	
 	if (node != NULL) {
-		node->kind    = Expression_Kind_UNARY;
+		node->kind    = Ast_Expression_Kind_UNARY;
 		node->lexeme  = lexeme_from_token(parser, unary);
 		node->unary   = unary_from_token(unary);
 		node->subexpr = subexpr;
@@ -424,12 +424,12 @@ make_unary_expression(Parse_Context *parser, Token unary, Expression *subexpr) {
 	return node;
 }
 
-internal Expression *
-make_binary_expression(Parse_Context *parser, Token binary, Expression *left, Expression *right) {
-	Expression *node = push_type(parser->arena, Expression);
+internal Ast_Expression *
+make_binary_expression(Parse_Context *parser, Token binary, Ast_Expression *left, Ast_Expression *right) {
+	Ast_Expression *node = push_type(parser->arena, Ast_Expression);
 	
 	if (node != NULL) {
-		node->kind   = Expression_Kind_BINARY;
+		node->kind   = Ast_Expression_Kind_BINARY;
 		node->lexeme = lexeme_from_token(parser, binary);
 		node->binary = binary_from_token(binary);
 		node->left   = left;
@@ -439,12 +439,12 @@ make_binary_expression(Parse_Context *parser, Token binary, Expression *left, Ex
 	return node;
 }
 
-internal Expression *
-make_ternary_expression(Parse_Context *parser, Expression *left, Expression *middle, Expression *right) {
-	Expression *node = push_type(parser->arena, Expression);
+internal Ast_Expression *
+make_ternary_expression(Parse_Context *parser, Ast_Expression *left, Ast_Expression *middle, Ast_Expression *right) {
+	Ast_Expression *node = push_type(parser->arena, Ast_Expression);
 	
 	if (node != NULL) {
-		node->kind   = Expression_Kind_TERNARY;
+		node->kind   = Ast_Expression_Kind_TERNARY;
 		node->lexeme = string_from_lit("?:");
 		node->left   = left;
 		node->middle = middle;
@@ -454,17 +454,17 @@ make_ternary_expression(Parse_Context *parser, Expression *left, Expression *mid
 	return node;
 }
 
-//- Parser: Expressions
+//- Parser: Ast_Expressions
 
-global read_only Expression nil_expression = {
+global read_only Ast_Expression nil_expression = {
 	.left   = &nil_expression,
 	.middle = &nil_expression,
 	.right  = &nil_expression,
 };
 
-internal Expression *
+internal Ast_Expression *
 parse_expression(Parse_Context *parser, Precedence caller_precedence) {
-	Expression *left = &nil_expression;
+	Ast_Expression *left = &nil_expression;
 	
 	Token token = peek_token(parser);
 	if (token_is_expression_atom(token)) {
@@ -473,12 +473,12 @@ parse_expression(Parse_Context *parser, Precedence caller_precedence) {
 		left = make_atom_expression(parser, token);
 	} else if (token_is_prefix(token)) {
 		consume_token(parser);
-		Expression *right = parse_expression(parser, prefix_precedence_from_token(token));
+		Ast_Expression *right = parse_expression(parser, prefix_precedence_from_token(token));
 		
 		left = make_unary_expression(parser, token, right);
 	} else if (token.kind == Token_Kind_LPAREN) {
 		consume_token(parser);
-		Expression *grouped = parse_expression(parser, Precedence_NONE);
+		Ast_Expression *grouped = parse_expression(parser, Precedence_NONE);
 		expect_token_kind(parser, Token_Kind_RPAREN, "Expected )");
 		
 		left = grouped;
@@ -503,10 +503,10 @@ parse_expression(Parse_Context *parser, Precedence caller_precedence) {
 			consume_token(parser);
 			
 			if (token.kind == Token_Kind_QMARK) {
-				Expression *middle = parse_expression(parser, Precedence_NONE);
+				Ast_Expression *middle = parse_expression(parser, Precedence_NONE);
 				
 				expect_token_kind(parser, Token_Kind_COLON, "Expected :");
-				Expression *right = parse_expression(parser, precedence);
+				Ast_Expression *right = parse_expression(parser, precedence);
 				
 				left = make_ternary_expression(parser, left, middle, right);
 			} else {
@@ -514,7 +514,7 @@ parse_expression(Parse_Context *parser, Precedence caller_precedence) {
 					precedence = 0;
 				}
 				
-				Expression *right = parse_expression(parser, precedence);
+				Ast_Expression *right = parse_expression(parser, precedence);
 				
 				left = make_binary_expression(parser, token, left, right);
 				
@@ -532,34 +532,34 @@ parse_expression(Parse_Context *parser, Precedence caller_precedence) {
 	return left;
 }
 
-//- Parser: Statements
+//- Parser: Ast_Statements
 
-global read_only Statement nil_statement = {
+global read_only Ast_Statement nil_statement = {
 	.block = &nil_statement,
 	.next  = &nil_statement,
 	.expr  = &nil_expression,
 };
 
-internal Statement *
+internal Ast_Statement *
 parse_statement(Parse_Context *parser) {
-	Statement *result = &nil_statement;
+	Ast_Statement *result = &nil_statement;
 	
 	Token token = peek_token(parser);
 	if (token.kind == Token_Kind_LBRACE) {
 		consume_token(parser); // {
 		
-		result = push_type(parser->arena, Statement);
-		result->kind  = Statement_Kind_BLOCK;
+		result = push_type(parser->arena, Ast_Statement);
+		result->kind  = Ast_Statement_Kind_BLOCK;
 		result->next  = &nil_statement;
 		result->block = &nil_statement;
 		result->expr  = &nil_expression;
 		
 		// Parse statement list inside the braces
-		Statement *block_first = NULL;
-		Statement *block_last  = NULL;
+		Ast_Statement *block_first = NULL;
+		Ast_Statement *block_last  = NULL;
 		
 		for (;;) {
-			Statement *stat = parse_statement(parser);
+			Ast_Statement *stat = parse_statement(parser);
 			if (stat != &nil_statement) { // Otherwise queue_push() will write to read-only memory
 				queue_push(block_first, block_last, stat);
 			}
@@ -580,8 +580,8 @@ parse_statement(Parse_Context *parser) {
 	} else if (token.keyword == Keyword_RETURN) {
 		consume_token(parser); // return
 		
-		result = push_type(parser->arena, Statement);
-		result->kind  = Statement_Kind_RETURN;
+		result = push_type(parser->arena, Ast_Statement);
+		result->kind  = Ast_Statement_Kind_RETURN;
 		result->next  = &nil_statement;
 		result->block = &nil_statement;
 		result->expr  = &nil_expression;
@@ -593,19 +593,26 @@ parse_statement(Parse_Context *parser) {
 	} else if (token.kind == Token_Kind_SEMICOLON) {
 		;
 	} else {
-		result = push_type(parser->arena, Statement);
-		result->kind  = Statement_Kind_EXPR;
+		result = push_type(parser->arena, Ast_Statement);
+		result->kind  = Ast_Statement_Kind_EXPR;
 		result->next  = &nil_statement;
 		result->block = &nil_statement;
 		result->expr  = parse_expression(parser, Precedence_NONE);
 	}
 	
-	if (result->kind != Statement_Kind_BLOCK) {
+	if (result->kind != Ast_Statement_Kind_BLOCK) {
 		expect_token_kind(parser, Token_Kind_SEMICOLON, "Expected ; after statement");
 	}
 	
 	return result;
 }
+
+//- Parser: Ast_Declarations
+
+global read_only Ast_Declaration nil_declaration = {
+	.next = &nil_declaration,
+	.body = &nil_statement,
+};
 
 ////////////////////////////////
 //~ Context
@@ -654,7 +661,7 @@ expect_token_kind(Parse_Context *parser, Token_Kind kind, char *message) {
 ** [ ] Input reading
 */
 
-internal Expression *
+internal Ast_Expression *
 parse_expression_string(Arena *arena, String source) {
 	Parse_Context context = {0};
 	parser_init(&context, arena, source);
@@ -662,7 +669,7 @@ parse_expression_string(Arena *arena, String source) {
 	return parse_expression(&context, Precedence_NONE);
 }
 
-internal Statement *
+internal Ast_Statement *
 parse_statement_string(Arena *arena, String source) {
 	Parse_Context context = {0};
 	parser_init(&context, arena, source);
@@ -675,7 +682,7 @@ test_expression_parser(void) {
 	Arena arena = {0};
 	arena_init(&arena);
 	
-	Expression *tree = &nil_expression;
+	Ast_Expression *tree = &nil_expression;
 	
 	String expr_1 = string_from_lit("1+2");                    // 3
 	String expr_2 = string_from_lit("5 - 4");                  // 1
@@ -747,7 +754,7 @@ test_statement_parser(void) {
 	Arena arena = {0};
 	arena_init(&arena);
 	
-	Statement *tree = &nil_statement;
+	Ast_Statement *tree = &nil_statement;
 	
 	String stat_1 = string_from_lit_const("1 + 2;");
 	String stat_2 = string_from_lit_const("return;");
@@ -804,18 +811,18 @@ test_statement_parser(void) {
 	arena_fini(&arena);
 }
 
-internal Declaration *
+internal Ast_Declaration *
 hardcode_a_declaration(Arena *arena) {
-	Declaration *main_decl = push_type(arena, Declaration);
-	main_decl->kind = Declaration_Kind_PROCEDURE;
+	Ast_Declaration *main_decl = push_type(arena, Ast_Declaration);
+	main_decl->kind = Ast_Declaration_Kind_PROCEDURE;
 	main_decl->ident = string_from_lit("main");
 	main_decl->body = parse_statement_string(arena, string_from_lit("{ return other(); }"));
 	
 	{
-		main_decl->next = push_type(arena, Declaration);
+		main_decl->next = push_type(arena, Ast_Declaration);
 		
-		Declaration *next_decl = main_decl->next;
-		next_decl->kind = Declaration_Kind_PROCEDURE;
+		Ast_Declaration *next_decl = main_decl->next;
+		next_decl->kind = Ast_Declaration_Kind_PROCEDURE;
 		next_decl->ident = string_from_lit("other");
 		next_decl->body = parse_statement_string(arena, string_from_lit("{ return 2*3 + 10/(4+1); 7-0; }"));
 	}

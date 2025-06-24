@@ -1,18 +1,18 @@
-#ifndef EL_TREE_PRINT_C
-#define EL_TREE_PRINT_C
+#ifndef EL_AST_PRINT_C
+#define EL_AST_PRINT_C
 
 internal void
-string_from_expression_tree_internal(Arena *arena, Expression *root, String_List *builder) {
+string_from_expression_tree_internal(Arena *arena, Ast_Expression *root, String_List *builder) {
 	switch (root->kind) {
-		case Expression_Kind_LITERAL: {
+		case Ast_Expression_Kind_LITERAL: {
 			string_list_push(arena, builder, root->lexeme);
 		} break;
 		
-		case Expression_Kind_IDENT: {
+		case Ast_Expression_Kind_IDENT: {
 			string_list_push(arena, builder, root->ident);
 		} break;
 		
-		case Expression_Kind_UNARY: {
+		case Ast_Expression_Kind_UNARY: {
 			switch (root->unary) {
 				case Unary_Operator_PLUS:
 				case Unary_Operator_MINUS: {
@@ -31,7 +31,7 @@ string_from_expression_tree_internal(Arena *arena, Expression *root, String_List
 			}
 		} break;
 		
-		case Expression_Kind_BINARY: {
+		case Ast_Expression_Kind_BINARY: {
 			string_list_push(arena, builder, string_from_lit("("));
 			string_from_expression_tree_internal(arena, root->left, builder);
 			string_list_pushf(arena, builder, ")%.*s(", string_expand(root->lexeme));
@@ -39,7 +39,7 @@ string_from_expression_tree_internal(Arena *arena, Expression *root, String_List
 			string_list_push(arena, builder, string_from_lit(")"));
 		} break;
 		
-		case Expression_Kind_TERNARY: {
+		case Ast_Expression_Kind_TERNARY: {
 			string_list_push(arena, builder, string_from_lit("("));
 			string_from_expression_tree_internal(arena, root->left, builder);
 			string_list_push(arena, builder, string_from_lit(")?("));
@@ -54,7 +54,7 @@ string_from_expression_tree_internal(Arena *arena, Expression *root, String_List
 }
 
 internal String
-string_from_expression_tree(Arena *arena, Expression *root) {
+string_from_expression_tree(Arena *arena, Ast_Expression *root) {
 	Scratch scratch = scratch_begin(&arena, 1);
 	String_List builder = {0};
 	
@@ -66,7 +66,7 @@ string_from_expression_tree(Arena *arena, Expression *root) {
 }
 
 internal void
-print_expression_tree(Expression *root) {
+print_expression_tree(Ast_Expression *root) {
 	Scratch scratch = scratch_begin(0, 0);
 	printf("%.*s\n", string_expand(string_from_expression_tree(scratch.arena, root)));
 	

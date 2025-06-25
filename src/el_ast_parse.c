@@ -814,6 +814,8 @@ parse_program_string(Arena *arena, String source) {
 
 internal void
 test_expression_parser(void) {
+	printf("### Testing expression parser ###\n\n");
+	
 	Arena arena = {0};
 	arena_init(&arena);
 	
@@ -882,10 +884,14 @@ test_expression_parser(void) {
 	print_expression_tree(tree);
 	
 	arena_fini(&arena);
+	
+	printf("\n");
 }
 
 internal void
 test_statement_parser(void) {
+	printf("### Testing statement parser ###\n\n");
+	
 	Arena arena = {0};
 	arena_init(&arena);
 	
@@ -954,10 +960,14 @@ test_statement_parser(void) {
 	print_statement_tree(tree);
 	
 	arena_fini(&arena);
+	
+	printf("\n");
 }
 
 internal void
 test_declaration_parser(void) {
+	printf("### Testing declaration parser ###\n\n");
+	
 	Arena arena = {0};
 	arena_init(&arena);
 	
@@ -995,6 +1005,8 @@ test_declaration_parser(void) {
 	print_declaration_tree(tree);
 	
 	arena_fini(&arena);
+	
+	printf("\n");
 }
 
 #endif

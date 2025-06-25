@@ -514,7 +514,7 @@ make_ternary_expression(Parse_Context *parser, Ast_Expression *left, Ast_Express
 }
 
 internal Ast_Expression *
-parse_expression(Parse_Context *parser, Precedence caller_precedence) {
+parse_expression(Parse_Context *parser, Precedence caller_precedence, bool required) {
 	Ast_Expression *left = &nil_expression;
 	
 	Token token = peek_token(parser);
@@ -524,17 +524,19 @@ parse_expression(Parse_Context *parser, Precedence caller_precedence) {
 		left = make_atom_expression(parser, token);
 	} else if (token_is_prefix(token)) {
 		consume_token(parser);
-		Ast_Expression *right = parse_expression(parser, prefix_precedence_from_token(token));
+		Ast_Expression *right = parse_expression(parser, prefix_precedence_from_token(token), true);
 		
 		left = make_unary_expression(parser, token, right);
 	} else if (token.kind == Token_Kind_LPAREN) {
 		consume_token(parser);
-		Ast_Expression *grouped = parse_expression(parser, Precedence_NONE);
+		Ast_Expression *grouped = parse_expression(parser, Precedence_NONE, true);
 		expect_token_kind(parser, Token_Kind_RPAREN, "Expected )");
 		
 		left = grouped;
 	} else {
-		report_parse_error(parser, string_from_lit("Expected an expression"));
+		if (required) {
+			report_parse_error(parser, string_from_lit("Expected an expression"));
+		}
 	}
 	
 	for (;;) {
@@ -554,29 +556,31 @@ parse_expression(Parse_Context *parser, Precedence caller_precedence) {
 			consume_token(parser);
 			
 			if (token.kind == Token_Kind_QMARK) {
-				Ast_Expression *middle = parse_expression(parser, Precedence_NONE);
+				Ast_Expression *middle = parse_expression(parser, Precedence_NONE, true);
 				
 				expect_token_kind(parser, Token_Kind_COLON, "Expected :");
-				Ast_Expression *right = parse_expression(parser, precedence);
+				Ast_Expression *right = parse_expression(parser, precedence, true);
 				
 				left = make_ternary_expression(parser, left, middle, right);
 			} else {
+				bool subexpr_required = true;
 				if (token.kind == Token_Kind_LPAREN || token.kind == Token_Kind_LBRACK) {
 					precedence = 0;
+					
+					if (token.kind == Token_Kind_LPAREN) {
+						subexpr_required = false;
+					}
 				}
 				
-				Ast_Expression *right = parse_expression(parser, precedence);
+				Ast_Expression *right = parse_expression(parser, precedence, subexpr_required);
 				
 				left = make_binary_expression(parser, token, left, right);
 				
 				if (token.kind == Token_Kind_LPAREN)  expect_token_kind(parser, Token_Kind_RPAREN, "Expected )");
 				if (token.kind == Token_Kind_LBRACK)  expect_token_kind(parser, Token_Kind_RBRACK, "Expected ]");
 			}
-		} else if (token_is_expression_terminator(token)) {
-			break;
 		} else {
-			report_parse_error(parser, string_from_lit("Unexpected character"));
-			consume_token(parser);
+			break;
 		}
 	}
 	
@@ -637,10 +641,14 @@ parse_statement(Parse_Context *parser) {
 		result->block = &nil_statement;
 		result->expr  = &nil_expression;
 		
+#if 0
 		token = peek_token(parser);
 		if (token.kind != Token_Kind_SEMICOLON) {
-			result->expr = parse_expression(parser, Precedence_NONE);
+			result->expr = parse_expression(parser, Precedence_NONE, true);
 		}
+#else
+		result->expr = parse_expression(parser, Precedence_NONE, false);
+#endif
 	} else if (token.kind == Token_Kind_SEMICOLON) {
 		;
 	} else {
@@ -648,7 +656,7 @@ parse_statement(Parse_Context *parser) {
 		result->kind  = Ast_Statement_Kind_EXPR;
 		result->next  = &nil_statement;
 		result->block = &nil_statement;
-		result->expr  = parse_expression(parser, Precedence_NONE);
+		result->expr  = parse_expression(parser, Precedence_NONE, true);
 	}
 	
 	if (result->kind != Ast_Statement_Kind_BLOCK) {
@@ -717,7 +725,7 @@ parse_expression_string(Arena *arena, String source) {
 	Parse_Context context = {0};
 	parser_init(&context, arena, source);
 	
-	return parse_expression(&context, Precedence_NONE);
+	return parse_expression(&context, Precedence_NONE, true);
 }
 
 internal Ast_Statement *

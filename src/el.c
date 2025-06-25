@@ -1279,6 +1279,8 @@ int main(void) {
 	
 	x64_test();
 	
+	printf("\n\n### Main program output ###\n\n");
+	
 	Arena tree_arena = {0};
 	arena_init(&tree_arena);
 	Ast_Declaration *program = hardcode_a_declaration(&tree_arena);

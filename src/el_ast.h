@@ -2,6 +2,23 @@
 #define EL_AST_H
 
 ////////////////////////////////
+//~ Location
+
+typedef struct Location Location;
+struct Location {
+	i64 l0, l1;
+	i64 c0, c1;
+	i64 b0, b1;
+};
+
+internal bool location_is_valid(Location location);
+
+internal bool location_is_zero(Location location);
+internal bool location_is_greater_than(Location location1, Location location2);
+
+internal Location locations_merge(Location location1, Location location2);
+
+////////////////////////////////
 //~ Tokens
 
 //- Token types
@@ -66,8 +83,9 @@ typedef struct Token Token;
 struct Token {
 	Token_Kind kind;
 	Keyword keyword;
-	// int l0, l1, c0, c1;
-	i64 b0, b1; // Byte range
+	
+	Location location;
+	
 	String string_val;
 	i64    int_val;
 };
@@ -137,19 +155,6 @@ internal Binary_Operator binary_from_token_kind(Token_Kind kind);
 
 internal bool token_is_expression_terminator(Token token);
 internal bool token_is_expression_atom(Token token);
-
-////////////////////////////////
-//~ Location
-
-typedef struct Location Location;
-struct Location {
-	i64 l0, l1;
-	i64 c0, c1;
-	i64 b0, b1;
-};
-
-internal bool location_is_zero(Location location);
-internal bool location_is_greater_than(Location location1, Location location2);
 
 ////////////////////////////////
 //~ AST

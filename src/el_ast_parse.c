@@ -2,6 +2,45 @@
 #define EL_AST_PARSE_C
 
 ////////////////////////////////
+//~ Location
+
+internal bool
+location_is_valid(Location location) {
+	return (location.b0 <= location.b1 && location.l0 <= location.l1 &&
+			(location.l0 < location.l1 || location.c0 <= location.c1));
+}
+
+internal bool
+location_is_zero(Location location) {
+	Location zero_location = {0};
+	return memcmp(&location, &zero_location, sizeof(Location)) == 0;
+}
+
+internal bool
+location_is_greater_than(Location location1, Location location2) {
+	return location1.b0 > location2.b0;
+}
+
+internal Location
+locations_merge(Location location1, Location location2) {
+	if (location_is_greater_than(location1, location2)) {
+		Location t = location1; location1 = location2; location2 = t;
+	}
+	
+	Location result = {
+		.l0 = location1.l0,
+		.l1 = location2.l1,
+		.c0 = location1.c0,
+		.c1 = location2.c1,
+		.b0 = location1.b0,
+		.b1 = location2.b1,
+	};
+	
+	assert(location_is_valid(result));
+	return result;
+}
+
+////////////////////////////////
 //~ Tokens
 
 internal Token
@@ -44,7 +83,7 @@ make_token(Parse_Context *parser) {
 		index += 1;
 	}
 	
-	token.b0 = index;
+	token.location.b0 = index;
 	
 	if (index < source.len) {
 		switch (source.data[index]) {
@@ -73,53 +112,53 @@ make_token(Parse_Context *parser) {
 				
 				token.kind = Token_Kind_INTEGER;
 				token.int_val = value;
-				token.b1 = index;
+				token.location.b1 = index;
 			} break;
 			
 			case '+': {
 				token.kind = Token_Kind_PLUS;
-				token.b1 = index + 1;
+				token.location.b1 = index + 1;
 				
 				index += 1;
 			} break;
 			
 			case '-': {
 				token.kind = Token_Kind_DASH;
-				token.b1 = index + 1;
+				token.location.b1 = index + 1;
 				
 				index += 1;
 			} break;
 			
 			case '*': {
 				token.kind = Token_Kind_STAR;
-				token.b1 = index + 1;
+				token.location.b1 = index + 1;
 				
 				index += 1;
 			} break;
 			
 			case '/': {
 				token.kind = Token_Kind_SLASH;
-				token.b1 = index + 1;
+				token.location.b1 = index + 1;
 				
 				index += 1;
 			} break;
 			
 			case '%': {
 				token.kind = Token_Kind_PERCENT;
-				token.b1 = index + 1;
+				token.location.b1 = index + 1;
 				
 				index += 1;
 			} break;
 			
 			case ':': {
 				token.kind = Token_Kind_COLON;
-				token.b1 = index + 1;
+				token.location.b1 = index + 1;
 				
 				index += 1;
 				
 				if (index < source.len && source.data[index] == ':') {
 					token.kind = Token_Kind_DOUBLE_COLON;
-					token.b1 = index + 1;
+					token.location.b1 = index + 1;
 					
 					index += 1;
 				}
@@ -127,77 +166,77 @@ make_token(Parse_Context *parser) {
 			
 			case '?': {
 				token.kind = Token_Kind_QMARK;
-				token.b1 = index + 1;
+				token.location.b1 = index + 1;
 				
 				index += 1;
 			} break;
 			
 			case '(': {
 				token.kind = Token_Kind_LPAREN;
-				token.b1 = index + 1;
+				token.location.b1 = index + 1;
 				
 				index += 1;
 			} break;
 			
 			case ')': {
 				token.kind = Token_Kind_RPAREN;
-				token.b1 = index + 1;
+				token.location.b1 = index + 1;
 				
 				index += 1;
 			} break;
 			
 			case '[': {
 				token.kind = Token_Kind_LBRACK;
-				token.b1 = index + 1;
+				token.location.b1 = index + 1;
 				
 				index += 1;
 			} break;
 			
 			case ']': {
 				token.kind = Token_Kind_RBRACK;
-				token.b1 = index + 1;
+				token.location.b1 = index + 1;
 				
 				index += 1;
 			} break;
 			
 			case '{': {
 				token.kind = Token_Kind_LBRACE;
-				token.b1 = index + 1;
+				token.location.b1 = index + 1;
 				
 				index += 1;
 			} break;
 			
 			case '}': {
 				token.kind = Token_Kind_RBRACE;
-				token.b1 = index + 1;
+				token.location.b1 = index + 1;
 				
 				index += 1;
 			} break;
 			
 			case '.': {
 				token.kind = Token_Kind_DOT;
-				token.b1 = index + 1;
+				token.location.b1 = index + 1;
 				
 				index += 1;
 			} break;
 			
 			case ',': {
 				token.kind = Token_Kind_COMMA;
-				token.b1 = index + 1;
+				token.location.b1 = index + 1;
 				
 				index += 1;
 			} break;
 			
 			case ';': {
 				token.kind = Token_Kind_SEMICOLON;
-				token.b1 = index + 1;
+				token.location.b1 = index + 1;
 				
 				index += 1;
 			} break;
 			
 			case '^': {
 				token.kind = Token_Kind_HAT;
-				token.b1 = index + 1;
+				token.location.b1 = index + 1;
 				
 				index += 1;
 			} break;
@@ -211,7 +250,7 @@ make_token(Parse_Context *parser) {
 						index += 1;
 					}
 					
-					token.b1 = index;
+					token.location.b1 = index;
 					
 					String ident = string_slice(source, start, index);
 					for (int i = 1; i < array_count(keywords); i += 1) {
@@ -223,7 +262,7 @@ make_token(Parse_Context *parser) {
 					}
 				} else {
 					token.kind = Token_Kind_INVALID;
-					token.b1 = index + 1;
+					token.location.b1 = index + 1;
 					
 					index += 1;
 				}
@@ -233,8 +272,8 @@ make_token(Parse_Context *parser) {
 		token.kind = Token_Kind_EOI;
 	}
 	
-	if (token.b1 == 0) {
-		token.b1 = index;
+	if (token.location.b1 == 0) {
+		token.location.b1 = index;
 	}
 	
 	parser->source = source;
@@ -386,27 +425,19 @@ token_is_expression_atom(Token token) {
 
 internal String
 lexeme_from_token(Parse_Context *parser, Token token) {
-	return string_slice(parser->source, token.b0, token.b1);
-}
-
-////////////////////////////////
-//~ Location
-
-internal bool
-location_is_zero(Location location) {
-	Location zero_location = {0};
-	return memcmp(&location, &zero_location, sizeof(Location)) == 0;
-}
-
-internal bool
-location_is_greater_than(Location location1, Location location2) {
-	return location1.b0 > location2.b0;
+	return string_slice(parser->source, token.location.b0, token.location.b1);
 }
 
 ////////////////////////////////
 //~ AST
 
-//- Node constructors
+//- Parser: Ast_Expressions
+
+global read_only Ast_Expression nil_expression = {
+	.left   = &nil_expression,
+	.middle = &nil_expression,
+	.right  = &nil_expression,
+};
 
 internal Ast_Expression *
 make_atom_expression(Parse_Context *parser, Token token) {
@@ -414,13 +445,15 @@ make_atom_expression(Parse_Context *parser, Token token) {
 	
 	if (node != NULL) {
 		if (token.kind == Token_Kind_INTEGER) {
-			node->kind   = Ast_Expression_Kind_LITERAL;
-			node->lexeme = lexeme_from_token(parser, token);
-			node->value  = token.int_val;
+			node->kind     = Ast_Expression_Kind_LITERAL;
+			node->lexeme   = lexeme_from_token(parser, token);
+			node->value    = token.int_val;
+			node->location = token.location;
 		} else if (token.kind == Token_Kind_IDENT) {
-			node->kind   = Ast_Expression_Kind_IDENT;
-			node->lexeme = lexeme_from_token(parser, token);
-			node->ident  = node->lexeme;
+			node->kind     = Ast_Expression_Kind_IDENT;
+			node->lexeme   = lexeme_from_token(parser, token);
+			node->ident    = node->lexeme;
+			node->location = token.location;
 		} else { panic(); }
 	}
 	
@@ -432,10 +465,12 @@ make_unary_expression(Parse_Context *parser, Token unary, Ast_Expression *subexp
 	Ast_Expression *node = push_type(parser->arena, Ast_Expression);
 	
 	if (node != NULL) {
-		node->kind    = Ast_Expression_Kind_UNARY;
-		node->lexeme  = lexeme_from_token(parser, unary);
-		node->unary   = unary_from_token(unary);
-		node->subexpr = subexpr;
+		node->kind     = Ast_Expression_Kind_UNARY;
+		node->lexeme   = lexeme_from_token(parser, unary);
+		node->unary    = unary_from_token(unary);
+		node->subexpr  = subexpr;
+		node->location = unary.location;
+		node->location = locations_merge(node->location, subexpr->location);
 	}
 	
 	return node;
@@ -446,11 +481,15 @@ make_binary_expression(Parse_Context *parser, Token binary, Ast_Expression *left
 	Ast_Expression *node = push_type(parser->arena, Ast_Expression);
 	
 	if (node != NULL) {
-		node->kind   = Ast_Expression_Kind_BINARY;
-		node->lexeme = lexeme_from_token(parser, binary);
-		node->binary = binary_from_token(binary);
-		node->left   = left;
-		node->right  = right;
+		node->kind     = Ast_Expression_Kind_BINARY;
+		node->lexeme   = lexeme_from_token(parser, binary);
+		node->binary   = binary_from_token(binary);
+		node->left     = left;
+		node->right    = right;
+		node->location = binary.location;
+		node->location = locations_merge(node->location, left->location);
+		if (right != NULL && right != &nil_expression)
+			node->location = locations_merge(node->location, right->location);
 	}
 	
 	return node;
@@ -461,23 +500,18 @@ make_ternary_expression(Parse_Context *parser, Ast_Expression *left, Ast_Express
 	Ast_Expression *node = push_type(parser->arena, Ast_Expression);
 	
 	if (node != NULL) {
-		node->kind   = Ast_Expression_Kind_TERNARY;
-		node->lexeme = string_from_lit("?:");
-		node->left   = left;
-		node->middle = middle;
-		node->right  = right;
+		node->kind     = Ast_Expression_Kind_TERNARY;
+		node->lexeme   = string_from_lit("?:");
+		node->left     = left;
+		node->middle   = middle;
+		node->right    = right;
+		node->location = left->location;
+		node->location = locations_merge(node->location, middle->location);
+		node->location = locations_merge(node->location, right->location);
 	}
 	
 	return node;
 }
-
-//- Parser: Ast_Expressions
-
-global read_only Ast_Expression nil_expression = {
-	.left   = &nil_expression,
-	.middle = &nil_expression,
-	.right  = &nil_expression,
-};
 
 internal Ast_Expression *
 parse_expression(Parse_Context *parser, Precedence caller_precedence) {
@@ -637,7 +671,7 @@ global read_only Ast_Declaration nil_declaration = {
 internal void
 report_parse_error(Parse_Context *parser, String message) {
 	if (parser->error_count == 0) {
-		fprintf(stderr, "Error [%lli..%lli]: %.*s.\n", parser->token.b0, parser->token.b1, string_expand(message));
+		fprintf(stderr, "Error [%lli..%lli]: %.*s.\n", parser->token.location.b0, parser->token.location.b1, string_expand(message));
 	}
 	parser->error_count += 1;
 }
@@ -705,13 +739,13 @@ test_expression_parser(void) {
 	String expr_2 = string_from_lit("5 - 4");                  // 1
 	String expr_3 = string_from_lit("(3 * 4) - (10 / 2) + 1"); // 8
 	String expr_4 = string_from_lit("7 + (-2) - (3 - 1)");     // 3
-	String expr_5 = string_from_lit("100_000 * 2");            // 200000
-	String expr_6 = string_from_lit("5 + (+4)");               // 9
-	String expr_7 = string_from_lit("1++2");                   // 3
+	String expr_5 = string_from_lit("5 + (+4)");               // 9
+	String expr_6 = string_from_lit("1++2");                   // 3
+	String expr_7 = string_from_lit("foo()");
 	
 	String expr_8 = string_from_lit("1 2");
 	String expr_9 = string_from_lit("2 (4 + 1)");
-	String expr_0 = string_from_lit("3 * (2 (4 + 1))");
+	String expr_0 = string_from_lit("2 ()");
 	
 	arena_reset(&arena);
 	printf("Parsing sample expression 1:\n");

@@ -136,6 +136,20 @@ scope_lookup(Scope *inner, String ident) {
 }
 
 internal Symbol *
+scope_lookup_inner(Scope *scope, String ident) {
+	Symbol *result = NULL;
+	
+	for (Symbol *entry = scope->first_symbol; entry != NULL; entry = entry->next) {
+		if (string_equals(entry->ident, ident)) {
+			result = entry;
+			break;
+		}
+	}
+	
+	return result;
+}
+
+internal Symbol *
 scope_insert_ident(Arena *arena, Scope *scope, String ident) {
 	Symbol *entry = symbol_alloc(arena);
 	
@@ -218,6 +232,14 @@ build_scope_for_declaration(Arena *arena, Scope *scope, Ast_Declaration *decl) {
 	
 	switch (decl->kind) {
 		case Ast_Declaration_Kind_PROCEDURE: {
+			Symbol *symbol = scope_lookup_inner(scope, decl->ident);
+			if (symbol == NULL) {
+				symbol = scope_insert_ident(arena, scope, decl->ident);
+				symbol->location_declared = decl->location;
+			} else {
+				report_error(string_from_lit("Redefinition of Disco"));
+			}
+			
 			scope = scope_enter(arena, scope);
 			
 			// for each decl in the procedure's formal parameter list:

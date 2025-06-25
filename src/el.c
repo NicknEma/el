@@ -1276,14 +1276,18 @@ masm_generate_source(void) {
 int main(void) {
 	test_expression_parser();
 	test_statement_parser();
+	test_declaration_parser();
 	
 	x64_test();
 	
 	printf("\n\n### Main program output ###\n\n");
 	
+	String source = string_from_lit("main :: () { return other(); }"
+									"other :: () { return 2*3 + 10/(4+1); 7-0; }");
+	
 	Arena tree_arena = {0};
 	arena_init(&tree_arena);
-	Ast_Declaration *program = hardcode_a_declaration(&tree_arena);
+	Ast_Declaration *program = parse_program_string(&tree_arena, source);
 	
 	build_scope(program);
 	

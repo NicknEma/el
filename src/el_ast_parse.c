@@ -613,19 +613,21 @@ parse_statement(Parse_Context *parser) {
 		Ast_Statement *block_first = NULL;
 		Ast_Statement *block_last  = NULL;
 		
-		for (;;) {
-			Ast_Statement *stat = parse_statement(parser);
-			if (stat != &nil_statement) { // Otherwise queue_push() will write to read-only memory
-				queue_push(block_first, block_last, stat);
-			}
-			
-			Token curr_token = peek_token(parser);
-			if (curr_token.kind == Token_Kind_RBRACE) {
-				consume_token(parser);
-				break;
-			} else if (curr_token.kind == Token_Kind_EOI) {
-				report_parse_error(parser, string_from_lit("Expected }"));
-				break;
+		if (peek_token(parser).kind != '}') { // Allow empty blocks like {} (without a semicolon in the middle)
+			for (;;) {
+				Ast_Statement *stat = parse_statement(parser);
+				if (stat != &nil_statement) { // Otherwise queue_push() will write to read-only memory
+					queue_push(block_first, block_last, stat);
+				}
+				
+				Token curr_token = peek_token(parser);
+				if (curr_token.kind == Token_Kind_RBRACE) {
+					consume_token(parser);
+					break;
+				} else if (curr_token.kind == Token_Kind_EOI) {
+					report_parse_error(parser, string_from_lit("Expected }"));
+					break;
+				}
 			}
 		}
 		
@@ -645,14 +647,12 @@ parse_statement(Parse_Context *parser) {
 		if (result->expr != NULL && result->expr != &nil_expression) {
 			result->location = locations_merge(result->location, result->expr->location);
 		}
-	} else if (token.kind == Token_Kind_SEMICOLON) {
-		;
 	} else {
 		result = push_type(parser->arena, Ast_Statement);
 		result->kind     = Ast_Statement_Kind_EXPR;
 		result->next     = &nil_statement;
 		result->block    = &nil_statement;
-		result->expr     = parse_expression(parser, Precedence_NONE, true);
+		result->expr     = parse_expression(parser, Precedence_NONE, false);
 		result->location = result->expr->location;
 	}
 	
@@ -669,6 +669,69 @@ global read_only Ast_Declaration nil_declaration = {
 	.next = &nil_declaration,
 	.body = &nil_statement,
 };
+
+internal Ast_Declaration *
+parse_declaration(Parse_Context *parser) {
+	Ast_Declaration *result = &nil_declaration;
+	
+	Token token = peek_token(parser);
+	if (token.kind == Token_Kind_IDENT) {
+		Token ident = token;
+		consume_token(parser); // ident
+		
+		token = peek_token(parser);
+		
+		if (token.kind == Token_Kind_DOUBLE_COLON) {
+			consume_token(parser); // ::
+			
+			token = peek_token(parser);
+			
+			if (token.kind == '(') {
+				consume_token(parser); // (
+				
+				expect_token_kind(parser, ')', "Procedures cannot have arguments for now");
+				
+				result = push_type(parser->arena, Ast_Declaration);
+				result->kind     = Ast_Declaration_Kind_PROCEDURE;
+				result->ident    = lexeme_from_token(parser, ident);
+				result->location = ident.location;
+				result->body     = parse_statement(parser);
+			} else {
+				report_parse_error(parser, string_from_lit("Only proc declarations are supported for now"));
+			}
+		} else {
+			report_parse_error(parser, string_from_lit("Unknown declarator"));
+		}
+	} else {
+		report_parse_error(parser, string_from_lit("Not a declaration"));
+	}
+	
+	return result;
+}
+
+////////////////////////////////
+//~ Program
+
+internal Ast_Declaration *
+parse_program(Parse_Context *parser) {
+	Ast_Declaration *result = &nil_declaration;
+	
+	Ast_Declaration *first_decl = NULL;
+	Ast_Declaration *last_decl  = NULL;
+	
+	for (;;) {
+		Ast_Declaration *decl = parse_declaration(parser);
+		if (decl == NULL || decl == &nil_declaration) break;
+		
+		queue_push(first_decl, last_decl, decl);
+	}
+	
+	if (first_decl != NULL) {
+		result = first_decl;
+	}
+	
+	return result;
+}
 
 ////////////////////////////////
 //~ Context
@@ -731,6 +794,22 @@ parse_statement_string(Arena *arena, String source) {
 	parser_init(&context, arena, source);
 	
 	return parse_statement(&context);
+}
+
+internal Ast_Declaration *
+parse_declaration_string(Arena *arena, String source) {
+	Parse_Context context = {0};
+	parser_init(&context, arena, source);
+	
+	return parse_declaration(&context);
+}
+
+internal Ast_Declaration *
+parse_program_string(Arena *arena, String source) {
+	Parse_Context context = {0};
+	parser_init(&context, arena, source);
+	
+	return parse_program(&context);
 }
 
 internal void
@@ -867,23 +946,42 @@ test_statement_parser(void) {
 	arena_fini(&arena);
 }
 
-internal Ast_Declaration *
-hardcode_a_declaration(Arena *arena) {
-	Ast_Declaration *main_decl = push_type(arena, Ast_Declaration);
-	main_decl->kind = Ast_Declaration_Kind_PROCEDURE;
-	main_decl->ident = string_from_lit("main");
-	main_decl->body = parse_statement_string(arena, string_from_lit("{ return other(); }"));
+internal void
+test_declaration_parser(void) {
+	Arena arena = {0};
+	arena_init(&arena);
 	
-	{
-		main_decl->next = push_type(arena, Ast_Declaration);
-		
-		Ast_Declaration *next_decl = main_decl->next;
-		next_decl->kind = Ast_Declaration_Kind_PROCEDURE;
-		next_decl->ident = string_from_lit("other");
-		next_decl->body = parse_statement_string(arena, string_from_lit("{ return 2*3 + 10/(4+1); 7-0; }"));
-	}
+	Ast_Declaration *tree = &nil_declaration;
 	
-	return main_decl;
+	String decl_1 = string_from_lit_const("foo :: () { }");
+	String decl_2 = string_from_lit_const("foo :: () { ; }");
+#if 0
+	String decl_3 = string_from_lit_const("return 0;");
+	String decl_4 = string_from_lit_const("return 1 + 2;");
+	String decl_5 = string_from_lit_const("return (1 + 2);");
+	String decl_6 = string_from_lit_const("{ return; return; }");
+	String decl_7 = string_from_lit_const("{ ;; }");
+#endif
+	
+	String decl_8 = string_from_lit_const("foo :: (");
+#if 0
+	String decl_9 = string_from_lit_const("{ return } ");
+	String decl_0 = string_from_lit_const("{ return; ");
+#endif
+	
+	arena_reset(&arena);
+	printf("Parsing sample declaration 1:\n");
+	tree = parse_declaration_string(&arena, decl_1);
+	
+	arena_reset(&arena);
+	printf("Parsing sample declaration 2:\n");
+	tree = parse_declaration_string(&arena, decl_2);
+	
+	arena_reset(&arena);
+	printf("Parsing sample declaration 8:\n");
+	tree = parse_declaration_string(&arena, decl_8);
+	
+	arena_fini(&arena);
 }
 
 #endif

@@ -244,6 +244,8 @@ struct Ast_Declaration {
 	Ast_Declaration *next;
 };
 
+internal Ast_Declaration *parse_declaration(Parse_Context *parser);
+
 ////////////////////////////////
 //~ Context
 

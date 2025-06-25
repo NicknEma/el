@@ -1,6 +1,9 @@
 #ifndef EL_AST_PRINT_C
 #define EL_AST_PRINT_C
 
+////////////////////////////////
+//~ Expressions
+
 internal void
 string_from_expression_tree_internal(Arena *arena, Ast_Expression *root, String_List *builder) {
 	switch (root->kind) {
@@ -73,6 +76,58 @@ print_expression_tree(Ast_Expression *root) {
 	scratch_end(scratch);
 }
 
+////////////////////////////////
+//~ Statements
+
+internal void
+string_from_statement_tree_internal(Arena *arena, Ast_Statement *root, String_List *builder) {
+	switch (root->kind) {
+		case Ast_Statement_Kind_EXPR: {
+			string_from_expression_tree_internal(arena, root->expr, builder);
+		} break;
+		
+		case Ast_Statement_Kind_RETURN: {
+			string_list_push(arena, builder, string_from_lit("return "));
+			string_from_expression_tree_internal(arena, root->expr, builder);
+		} break;
+		
+		case Ast_Statement_Kind_BLOCK: {
+			string_list_push(arena, builder, string_from_lit("{ "));
+			
+			for (Ast_Statement *stat = root->block; stat != NULL && stat != &nil_statement; stat = stat->next) {
+				string_from_statement_tree_internal(arena, stat, builder);
+			}
+			
+			string_list_push(arena, builder, string_from_lit("}"));
+		} break;
+		
+		default: break;
+	}
+	
+	if (root->kind != Ast_Statement_Kind_BLOCK) {
+		string_list_push(arena, builder, string_from_lit("; "));
+	}
+}
+
+internal String
+string_from_statement_tree(Arena *arena, Ast_Statement *root) {
+	Scratch scratch = scratch_begin(&arena, 1);
+	String_List builder = {0};
+	
+	string_from_statement_tree_internal(scratch.arena, root, &builder);
+	String result = string_from_list(arena, builder);
+	
+	scratch_end(scratch);
+	return result;
+}
+
+internal void
+print_statement_tree(Ast_Statement *root) {
+	Scratch scratch = scratch_begin(0, 0);
+	printf("%.*s\n", string_expand(string_from_statement_tree(scratch.arena, root)));
+	
+	scratch_end(scratch);
+}
 
 #if 0
 internal int

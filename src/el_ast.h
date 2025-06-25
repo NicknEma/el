@@ -224,6 +224,9 @@ struct Ast_Statement {
 
 internal Ast_Statement *parse_statement(Parse_Context *parser);
 
+internal String string_from_statement_tree(Arena *arena, Ast_Statement *root);
+internal void print_statement_tree(Ast_Statement *root);
+
 //- Ast_Declarations
 
 typedef enum Ast_Declaration_Kind {

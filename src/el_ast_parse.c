@@ -906,42 +906,52 @@ test_statement_parser(void) {
 	arena_reset(&arena);
 	printf("Parsing sample statement 1:\n");
 	tree = parse_statement_string(&arena, stat_1);
+	print_statement_tree(tree);
 	
 	arena_reset(&arena);
 	printf("Parsing sample statement 2:\n");
 	tree = parse_statement_string(&arena, stat_2);
+	print_statement_tree(tree);
 	
 	arena_reset(&arena);
 	printf("Parsing sample statement 3:\n");
 	tree = parse_statement_string(&arena, stat_3);
+	print_statement_tree(tree);
 	
 	arena_reset(&arena);
 	printf("Parsing sample statement 4:\n");
 	tree = parse_statement_string(&arena, stat_4);
+	print_statement_tree(tree);
 	
 	arena_reset(&arena);
 	printf("Parsing sample statement 5:\n");
 	tree = parse_statement_string(&arena, stat_5);
+	print_statement_tree(tree);
 	
 	arena_reset(&arena);
 	printf("Parsing sample statement 6:\n");
 	tree = parse_statement_string(&arena, stat_6);
+	print_statement_tree(tree);
 	
 	arena_reset(&arena);
 	printf("Parsing sample statement 7:\n");
 	tree = parse_statement_string(&arena, stat_7);
+	print_statement_tree(tree);
 	
 	arena_reset(&arena);
 	printf("Parsing sample statement 8:\n");
 	tree = parse_statement_string(&arena, stat_8);
+	print_statement_tree(tree);
 	
 	arena_reset(&arena);
 	printf("Parsing sample statement 9:\n");
 	tree = parse_statement_string(&arena, stat_9);
+	print_statement_tree(tree);
 	
 	arena_reset(&arena);
 	printf("Parsing sample statement 0:\n");
 	tree = parse_statement_string(&arena, stat_0);
+	print_statement_tree(tree);
 	
 	arena_fini(&arena);
 }

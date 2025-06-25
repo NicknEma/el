@@ -58,6 +58,7 @@ typedef enum Token_Kind {
 	/* 127 .. */
 	
 	Token_Kind_DOUBLE_COLON = 127,
+	Token_Kind_COLON_EQUALS,
 	
 	Token_Kind_INTEGER,
 	Token_Kind_STRING,
@@ -156,6 +157,8 @@ internal Binary_Operator binary_from_token_kind(Token_Kind kind);
 internal bool token_is_expression_terminator(Token token);
 internal bool token_is_expression_atom(Token token);
 
+internal bool token_is_declarator(Token token);
+
 ////////////////////////////////
 //~ AST
 
@@ -210,14 +213,17 @@ typedef enum Ast_Statement_Kind {
 	Ast_Statement_Kind_COUNT,
 } Ast_Statement_Kind;
 
+typedef struct Ast_Declaration Ast_Declaration;
+
 typedef struct Ast_Statement Ast_Statement;
 struct Ast_Statement {
 	Ast_Statement_Kind kind;
 	
 	Location location;
 	
-	Ast_Statement  *block;
-	Ast_Expression *expr;
+	Ast_Statement   *block;
+	Ast_Expression  *expr;
+	Ast_Declaration *decl;
 	
 	Ast_Statement *next;
 };
@@ -230,6 +236,8 @@ internal void print_statement_tree(Ast_Statement *root);
 //- Ast_Declarations
 
 typedef enum Ast_Declaration_Kind {
+	Ast_Declaration_Kind_NULL = 0,
+	Ast_Declaration_Kind_TYPE,
 	Ast_Declaration_Kind_VARIABLE,
 	Ast_Declaration_Kind_PROCEDURE,
 	Ast_Declaration_Kind_COUNT,
@@ -242,12 +250,16 @@ struct Ast_Declaration {
 	String   ident;
 	Location location;
 	
-	Ast_Statement *body;
+	Ast_Declaration *first_param;
+	Ast_Statement   *body;
+	
+	Type type;
 	
 	Ast_Declaration *next;
 };
 
 internal Ast_Declaration *parse_declaration(Parse_Context *parser);
+internal Ast_Declaration *parse_declaration_after_idents(Parse_Context *parser, Token *idents, i64 ident_count);
 
 internal String string_from_declaration_tree(Arena *arena, Ast_Declaration *root);
 internal void print_declaration_tree(Ast_Declaration *root);
@@ -261,6 +273,7 @@ struct Parse_Context {
 	String source;
 	i64    index;
 	
+	i64    rollback_index;
 	Token  token;
 	
 	int error_count;

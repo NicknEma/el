@@ -982,14 +982,17 @@ test_declaration_parser(void) {
 	arena_reset(&arena);
 	printf("Parsing sample declaration 1:\n");
 	tree = parse_declaration_string(&arena, decl_1);
+	print_declaration_tree(tree);
 	
 	arena_reset(&arena);
 	printf("Parsing sample declaration 2:\n");
 	tree = parse_declaration_string(&arena, decl_2);
+	print_declaration_tree(tree);
 	
 	arena_reset(&arena);
 	printf("Parsing sample declaration 8:\n");
 	tree = parse_declaration_string(&arena, decl_8);
+	print_declaration_tree(tree);
 	
 	arena_fini(&arena);
 }

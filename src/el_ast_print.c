@@ -129,6 +129,48 @@ print_statement_tree(Ast_Statement *root) {
 	scratch_end(scratch);
 }
 
+////////////////////////////////
+//~ Declarations
+
+internal void
+string_from_declaration_tree_internal(Arena *arena, Ast_Declaration *root, String_List *builder) {
+	switch (root->kind) {
+		case Ast_Declaration_Kind_PROCEDURE: {
+			string_list_pushf(arena, builder, "%.*s :: (", string_expand(root->ident));
+			
+			// TODO: Parameter list
+			
+			string_list_push(arena, builder, string_from_lit(") "));
+			
+			string_from_statement_tree_internal(arena, root->body, builder);
+		} break;
+		
+		default: break;
+	}
+	
+	string_list_push(arena, builder, string_from_lit("\n"));
+}
+
+internal String
+string_from_declaration_tree(Arena *arena, Ast_Declaration *root) {
+	Scratch scratch = scratch_begin(&arena, 1);
+	String_List builder = {0};
+	
+	string_from_declaration_tree_internal(scratch.arena, root, &builder);
+	String result = string_from_list(arena, builder);
+	
+	scratch_end(scratch);
+	return result;
+}
+
+internal void
+print_declaration_tree(Ast_Declaration *root) {
+	Scratch scratch = scratch_begin(0, 0);
+	printf("%.*s\n", string_expand(string_from_declaration_tree(scratch.arena, root)));
+	
+	scratch_end(scratch);
+}
+
 #if 0
 internal int
 compute_expression_tree_width(Expression *root) {

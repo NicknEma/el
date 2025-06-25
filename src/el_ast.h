@@ -249,6 +249,9 @@ struct Ast_Declaration {
 
 internal Ast_Declaration *parse_declaration(Parse_Context *parser);
 
+internal String string_from_declaration_tree(Arena *arena, Ast_Declaration *root);
+internal void print_declaration_tree(Ast_Declaration *root);
+
 ////////////////////////////////
 //~ Context
 

@@ -70,7 +70,7 @@ symbol_alloc(Arena *arena) {
 		stack_pop_nz(first_free_symbol, next_free, check_null);
 		memset(result, 0, sizeof(Symbol));
 	} else {
-		push_type(arena, Symbol);
+		result = push_type(arena, Symbol);
 	}
 	
 	return result;
@@ -201,7 +201,7 @@ build_scope_for_statement(Arena *arena, Scope *scope, Ast_Statement *stat) {
 			scope = scope_enter(arena, scope);
 			
 			for (Ast_Statement *curr = stat->block; curr != NULL && curr != &nil_statement; curr = curr->next) {
-				build_scope_for_expression(arena, scope, stat->expr);
+				build_scope_for_statement(arena, scope, curr);
 			}
 			
 			scope = scope_leave(scope);

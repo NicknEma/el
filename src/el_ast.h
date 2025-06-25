@@ -124,16 +124,6 @@ typedef enum Binary_Operator {
 	Binary_Operator_COUNT,
 } Binary_Operator;
 
-typedef struct Location Location;
-struct Location {
-	i64 l0, l1;
-	i64 c0, c1;
-	i64 b0, b1;
-};
-
-////////////////////////////////
-//~ AST
-
 internal bool token_is_prefix(Token token);
 internal bool token_is_postfix(Token token);
 internal bool token_is_infix(Token token);
@@ -148,6 +138,22 @@ internal Binary_Operator binary_from_token_kind(Token_Kind kind);
 internal bool token_is_expression_terminator(Token token);
 internal bool token_is_expression_atom(Token token);
 
+////////////////////////////////
+//~ Location
+
+typedef struct Location Location;
+struct Location {
+	i64 l0, l1;
+	i64 c0, c1;
+	i64 b0, b1;
+};
+
+internal bool location_is_zero(Location location);
+internal bool location_is_greater_than(Location location1, Location location2);
+
+////////////////////////////////
+//~ AST
+
 //- Expressions
 
 typedef enum Ast_Expression_Kind {
@@ -160,7 +166,6 @@ typedef enum Ast_Expression_Kind {
 	Ast_Expression_Kind_COUNT,
 } Ast_Expression_Kind;
 
-// TODO: Add a Runtime_Type field
 typedef struct Ast_Expression Ast_Expression;
 struct Ast_Expression {
 	Ast_Expression_Kind kind;
@@ -223,7 +228,9 @@ typedef struct Ast_Declaration Ast_Declaration;
 struct Ast_Declaration {
 	Ast_Declaration_Kind kind;
 	Ast_Declaration     *next;
-	String               ident;
+	
+	String   ident;
+	Location location;
 	
 	Ast_Statement *body;
 };

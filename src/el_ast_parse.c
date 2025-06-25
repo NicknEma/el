@@ -244,7 +244,7 @@ make_token(Parse_Context *parser) {
 }
 
 ////////////////////////////////
-//~ AST
+//~ Operators
 
 //- Parsing helpers: Prefix/Infix/Postfix
 
@@ -388,6 +388,23 @@ internal String
 lexeme_from_token(Parse_Context *parser, Token token) {
 	return string_slice(parser->source, token.b0, token.b1);
 }
+
+////////////////////////////////
+//~ Location
+
+internal bool
+location_is_zero(Location location) {
+	Location zero_location = {0};
+	return memcmp(&location, &zero_location, sizeof(Location)) == 0;
+}
+
+internal bool
+location_is_greater_than(Location location1, Location location2) {
+	return location1.b0 > location2.b0;
+}
+
+////////////////////////////////
+//~ AST
 
 //- Node constructors
 

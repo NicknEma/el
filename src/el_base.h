@@ -101,6 +101,8 @@ static size_t fsize(FILE *fp);
 
 //- Assertions
 
+#define implies(p, q) (!(p) || (q))
+
 #define allow_break() do { int __x__ = 0; (void)__x__; } while (0)
 #define panic(...) assert(0)
 #define unimplemented(...) assert(0)

@@ -637,20 +637,14 @@ parse_statement(Parse_Context *parser) {
 		consume_token(parser); // return
 		
 		result = push_type(parser->arena, Ast_Statement);
-		result->kind  = Ast_Statement_Kind_RETURN;
-		result->next  = &nil_statement;
-		result->block = &nil_statement;
-		result->expr  = &nil_expression;
-		
-#if 0
-		Token curr_token = peek_token(parser);
-		if (curr_token.kind != Token_Kind_SEMICOLON) {
-			result->expr = parse_expression(parser, Precedence_NONE, true);
+		result->kind     = Ast_Statement_Kind_RETURN;
+		result->next     = &nil_statement;
+		result->block    = &nil_statement;
+		result->expr     = parse_expression(parser, Precedence_NONE, false);
+		result->location = token.location;
+		if (result->expr != NULL && result->expr != &nil_expression) {
+			result->location = locations_merge(result->location, result->expr->location);
 		}
-#else
-		result->expr = parse_expression(parser, Precedence_NONE, false);
-#endif
-		result->location = locations_merge(token.location, result->expr->location);
 	} else if (token.kind == Token_Kind_SEMICOLON) {
 		;
 	} else {

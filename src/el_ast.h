@@ -213,10 +213,13 @@ typedef enum Ast_Statement_Kind {
 typedef struct Ast_Statement Ast_Statement;
 struct Ast_Statement {
 	Ast_Statement_Kind kind;
-	Ast_Statement     *next;
-	Ast_Statement     *block;
 	
+	Location location;
+	
+	Ast_Statement  *block;
 	Ast_Expression *expr;
+	
+	Ast_Statement *next;
 };
 
 internal Ast_Statement *parse_statement(Parse_Context *parser);
@@ -232,12 +235,13 @@ typedef enum Ast_Declaration_Kind {
 typedef struct Ast_Declaration Ast_Declaration;
 struct Ast_Declaration {
 	Ast_Declaration_Kind kind;
-	Ast_Declaration     *next;
 	
 	String   ident;
 	Location location;
 	
 	Ast_Statement *body;
+	
+	Ast_Declaration *next;
 };
 
 ////////////////////////////////

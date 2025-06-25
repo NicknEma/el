@@ -619,18 +619,19 @@ parse_statement(Parse_Context *parser) {
 				queue_push(block_first, block_last, stat);
 			}
 			
-			token = peek_token(parser);
-			if (token.kind == Token_Kind_RBRACE) {
+			Token curr_token = peek_token(parser);
+			if (curr_token.kind == Token_Kind_RBRACE) {
 				consume_token(parser);
 				break;
-			} else if (token.kind == Token_Kind_EOI) {
+			} else if (curr_token.kind == Token_Kind_EOI) {
 				report_parse_error(parser, string_from_lit("Expected }"));
 				break;
 			}
 		}
 		
 		if (block_first != NULL) {
-			result->block = block_first;
+			result->block    = block_first;
+			result->location = locations_merge(token.location, peek_token(parser).location);
 		}
 	} else if (token.keyword == Keyword_RETURN) {
 		consume_token(parser); // return
@@ -642,21 +643,23 @@ parse_statement(Parse_Context *parser) {
 		result->expr  = &nil_expression;
 		
 #if 0
-		token = peek_token(parser);
-		if (token.kind != Token_Kind_SEMICOLON) {
+		Token curr_token = peek_token(parser);
+		if (curr_token.kind != Token_Kind_SEMICOLON) {
 			result->expr = parse_expression(parser, Precedence_NONE, true);
 		}
 #else
 		result->expr = parse_expression(parser, Precedence_NONE, false);
 #endif
+		result->location = locations_merge(token.location, result->expr->location);
 	} else if (token.kind == Token_Kind_SEMICOLON) {
 		;
 	} else {
 		result = push_type(parser->arena, Ast_Statement);
-		result->kind  = Ast_Statement_Kind_EXPR;
-		result->next  = &nil_statement;
-		result->block = &nil_statement;
-		result->expr  = parse_expression(parser, Precedence_NONE, true);
+		result->kind     = Ast_Statement_Kind_EXPR;
+		result->next     = &nil_statement;
+		result->block    = &nil_statement;
+		result->expr     = parse_expression(parser, Precedence_NONE, true);
+		result->location = result->expr->location;
 	}
 	
 	if (result->kind != Ast_Statement_Kind_BLOCK) {

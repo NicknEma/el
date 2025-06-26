@@ -120,6 +120,13 @@ make_token(Parse_Context *parser) {
 				token.location.b1 = index + 1;
 				
 				index += 1;
+				
+				if (index < source.len && source.data[index] == '=') {
+					token.kind = Token_Kind_PLUS_EQUALS;
+					token.location.b1 = index + 1;
+					
+					index += 1;
+				}
 			} break;
 			
 			case '-': {
@@ -127,6 +134,23 @@ make_token(Parse_Context *parser) {
 				token.location.b1 = index + 1;
 				
 				index += 1;
+				
+				if (index < source.len && source.data[index] == '=') {
+					token.kind = Token_Kind_DASH_EQUALS;
+					token.location.b1 = index + 1;
+					
+					index += 1;
+				} else if (index < source.len && source.data[index] == '>') {
+					token.kind = Token_Kind_FORWARD_ARROW;
+					token.location.b1 = index + 1;
+					
+					index += 1;
+				} else if (index+1 < source.len && source.data[index] == '-' && source.data[index+1] == '-') {
+					token.kind = Token_Kind_TRIPLE_DASH;
+					token.location.b1 = index + 2;
+					
+					index += 2;
+				}
 			} break;
 			
 			case '*': {
@@ -134,6 +158,13 @@ make_token(Parse_Context *parser) {
 				token.location.b1 = index + 1;
 				
 				index += 1;
+				
+				if (index < source.len && source.data[index] == '=') {
+					token.kind = Token_Kind_STAR_EQUALS;
+					token.location.b1 = index + 1;
+					
+					index += 1;
+				}
 			} break;
 			
 			case '/': {
@@ -141,6 +172,13 @@ make_token(Parse_Context *parser) {
 				token.location.b1 = index + 1;
 				
 				index += 1;
+				
+				if (index < source.len && source.data[index] == '=') {
+					token.kind = Token_Kind_SLASH_EQUALS;
+					token.location.b1 = index + 1;
+					
+					index += 1;
+				}
 			} break;
 			
 			case '%': {
@@ -148,6 +186,13 @@ make_token(Parse_Context *parser) {
 				token.location.b1 = index + 1;
 				
 				index += 1;
+				
+				if (index < source.len && source.data[index] == '=') {
+					token.kind = Token_Kind_PERCENT_EQUALS;
+					token.location.b1 = index + 1;
+					
+					index += 1;
+				}
 			} break;
 			
 			case ':': {

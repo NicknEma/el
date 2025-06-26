@@ -57,9 +57,19 @@ typedef enum Token_Kind {
 	
 	/* 127 .. */
 	
-	Token_Kind_DOUBLE_COLON = 127,
-	Token_Kind_COLON_EQUALS,
+	Token_Kind_DOUBLE_EQUALS = 127,
 	Token_Kind_PLUS_EQUALS,
+	Token_Kind_DASH_EQUALS,
+	Token_Kind_STAR_EQUALS,
+	Token_Kind_SLASH_EQUALS,
+	Token_Kind_PERCENT_EQUALS,
+	Token_Kind_EMARK_EQUALS,
+	Token_Kind_PIPE_EQUALS,
+	Token_Kind_AMPER_EQUALS,
+	Token_Kind_TILDE_EQUALS,
+	Token_Kind_COLON_EQUALS,
+	
+	Token_Kind_DOUBLE_COLON,
 	Token_Kind_TRIPLE_DASH,
 	Token_Kind_FORWARD_ARROW,
 	

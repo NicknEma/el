@@ -1446,52 +1446,52 @@ test_statement_parser(void) {
 	String stat_0 = string_from_lit_const("{ return; ");
 	
 	arena_reset(&arena);
-	printf("Parsing sample statement 1:\n");
+	printf("Parsing sample statement %.*s:\n", string_expand(stat_1));
 	tree = parse_statement_string(&arena, stat_1);
 	print_statement_tree(tree);
 	
 	arena_reset(&arena);
-	printf("Parsing sample statement 2:\n");
+	printf("Parsing sample statement %.*s:\n", string_expand(stat_2));
 	tree = parse_statement_string(&arena, stat_2);
 	print_statement_tree(tree);
 	
 	arena_reset(&arena);
-	printf("Parsing sample statement 3:\n");
+	printf("Parsing sample statement %.*s:\n", string_expand(stat_3));
 	tree = parse_statement_string(&arena, stat_3);
 	print_statement_tree(tree);
 	
 	arena_reset(&arena);
-	printf("Parsing sample statement 4:\n");
+	printf("Parsing sample statement %.*s:\n", string_expand(stat_4));
 	tree = parse_statement_string(&arena, stat_4);
 	print_statement_tree(tree);
 	
 	arena_reset(&arena);
-	printf("Parsing sample statement 5:\n");
+	printf("Parsing sample statement %.*s:\n", string_expand(stat_5));
 	tree = parse_statement_string(&arena, stat_5);
 	print_statement_tree(tree);
 	
 	arena_reset(&arena);
-	printf("Parsing sample statement 6:\n");
+	printf("Parsing sample statement %.*s:\n", string_expand(stat_6));
 	tree = parse_statement_string(&arena, stat_6);
 	print_statement_tree(tree);
 	
 	arena_reset(&arena);
-	printf("Parsing sample statement 7:\n");
+	printf("Parsing sample statement %.*s:\n", string_expand(stat_7));
 	tree = parse_statement_string(&arena, stat_7);
 	print_statement_tree(tree);
 	
 	arena_reset(&arena);
-	printf("Parsing sample statement 8:\n");
+	printf("Parsing sample statement %.*s:\n", string_expand(stat_8));
 	tree = parse_statement_string(&arena, stat_8);
 	print_statement_tree(tree);
 	
 	arena_reset(&arena);
-	printf("Parsing sample statement 9:\n");
+	printf("Parsing sample statement %.*s:\n", string_expand(stat_9));
 	tree = parse_statement_string(&arena, stat_9);
 	print_statement_tree(tree);
 	
 	arena_reset(&arena);
-	printf("Parsing sample statement 0:\n");
+	printf("Parsing sample statement %.*s:\n", string_expand(stat_0));
 	tree = parse_statement_string(&arena, stat_0);
 	print_statement_tree(tree);
 	

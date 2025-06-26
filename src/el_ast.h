@@ -389,7 +389,7 @@ struct Parse_Context {
 
 internal void parser_init(Parse_Context *parser, Arena *arena, String source);
 
-internal void report_parse_error(Parse_Context *parser, String message);
+internal void report_parse_error(Parse_Context *parser, char *message);
 internal void report_parse_errorf(Parse_Context *parser, char *format, ...);
 
 internal void expect_token_kind(Parse_Context *parser, Token_Kind kind, char *message);

@@ -604,7 +604,7 @@ parse_expression(Parse_Context *parser, Precedence caller_precedence, bool requi
 		left = grouped;
 	} else {
 		if (required) {
-			report_parse_error(parser, string_from_lit("Expected an expression"));
+			report_parse_error(parser, "Expected an expression");
 		}
 	}
 	
@@ -688,7 +688,7 @@ parse_statement(Parse_Context *parser) {
 					consume_token(parser);
 					break;
 				} else if (curr_token.kind == Token_Kind_EOI) {
-					report_parse_error(parser, string_from_lit("Expected }"));
+					report_parse_error(parser, "Expected }");
 					break;
 				}
 			}
@@ -774,7 +774,7 @@ parse_statement(Parse_Context *parser) {
 		} else if (kind == Ast_Statement_Kind_ASSIGNMENT) {
 			if (first == NULL) {
 				// TODO: This can also be checked later... decide what to do.
-				report_parse_error(parser, string_from_lit("At least one expression must be on the left of the assignment"));
+				report_parse_error(parser, "At least one expression must be on the left of the assignment");
 			}
 			
 			Token assigner = peek_token(parser);
@@ -814,7 +814,7 @@ parse_statement(Parse_Context *parser) {
 		} else if (kind == Ast_Statement_Kind_DECLARATION) {
 			if (first == NULL) {
 				// TODO: This can also be checked later... decide what to do.
-				report_parse_error(parser, string_from_lit("At least one expression must be on the left of the declaration"));
+				report_parse_error(parser, "At least one expression must be on the left of the declaration");
 			}
 			
 			i64 expr_count = 0;
@@ -841,7 +841,7 @@ parse_statement(Parse_Context *parser) {
 				result->decl     = parse_declaration_after_lhs(parser, idents, ident_count);
 				result->location = declarator.location;
 			} else {
-				report_parse_error(parser, string_from_lit("Mismatching number of idents in declaration"));
+				report_parse_error(parser, "Mismatching number of idents in declaration");
 			}
 			
 			scratch_end(scratch);
@@ -875,13 +875,13 @@ parse_declaration(Parse_Context *parser) {
 			consume_token(parser); // ident
 			string_list_push(scratch.arena, &ident_list, lexeme_from_token(parser, token));
 		} else {
-			report_parse_error(parser, string_from_lit("Unexpected token"));
+			report_parse_error(parser, "Unexpected token");
 		}
 		
 		token = peek_token(parser);
 		if (token_is_declarator(token)) break;
 		if (token.kind != ',') {
-			report_parse_error(parser, string_from_lit("Unexpected token"));
+			report_parse_error(parser, "Unexpected token");
 			break;
 		}
 	}
@@ -923,7 +923,7 @@ parse_declaration_after_lhs(Parse_Context *parser, String *idents, i64 ident_cou
 			type_annotation_present = true;
 			type_annotation.ident = lexeme_from_token(parser, token);
 		} else {
-			report_parse_error(parser, string_from_lit("Expected type annotation"));
+			report_parse_error(parser, "Expected type annotation");
 		}
 		
 		if (token.kind == '=' || token.kind == ':') {
@@ -975,7 +975,7 @@ parse_declaration_after_lhs(Parse_Context *parser, String *idents, i64 ident_cou
 				decl = decl->next;
 			}
 		} else {
-			report_parse_error(parser, string_from_lit("Incorrect number of initializers for declaration"));
+			report_parse_error(parser, "Incorrect number of initializers for declaration");
 		}
 		
 	} else {
@@ -1044,7 +1044,7 @@ parse_declaration_rhs(Parse_Context *parser, String ident) {
 			decl->entity = Ast_Declaration_Entity_PROCEDURE;
 			decl->body   = parse_statement(parser);
 		} else {
-			report_parse_error(parser, string_from_lit("Unexpected token after proc declaration, did you miss --- ?"));
+			report_parse_error(parser, "Unexpected token after proc declaration, did you miss --- ?");
 		}
 		
 	} else if (token.keyword == Keyword_STRUCT) {
@@ -1115,13 +1115,13 @@ parse_proc_header(Parse_Context *parser) {
 				consume_token(parser); // ident
 				string_list_push(scratch.arena, &arg_names, lexeme_from_token(parser, token));
 			} else {
-				report_parse_error(parser, string_from_lit("Unexpected token"));
+				report_parse_error(parser, "Unexpected token");
 			}
 			
 			token = peek_token(parser);
 			if (token.kind == ':' || token.kind == Token_Kind_COLON_EQUALS) break;
 			if (token.kind != ',') {
-				report_parse_error(parser, string_from_lit("Unexpected token"));
+				report_parse_error(parser, "Unexpected token");
 				break;
 			}
 		}
@@ -1140,7 +1140,7 @@ parse_proc_header(Parse_Context *parser) {
 				type_annotation_present = true;
 				type_annotation.ident = lexeme_from_token(parser, token);
 			} else {
-				report_parse_error(parser, string_from_lit("Expected type annotation"));
+				report_parse_error(parser, "Expected type annotation");
 			}
 			
 			if (token.kind == '=') {
@@ -1149,7 +1149,7 @@ parse_proc_header(Parse_Context *parser) {
 		} else if (token.kind == Token_Kind_COLON_EQUALS) {
 			parse_default_values = true;
 		} else {
-			report_parse_error(parser, string_from_lit("Unexpected token"));
+			report_parse_error(parser, "Unexpected token");
 			break;
 		}
 		
@@ -1162,7 +1162,7 @@ parse_proc_header(Parse_Context *parser) {
 				queue_push(first, last, first_arg); // TODO: Wrong though... first_arg could have a next ptr
 			}
 #else
-			report_parse_error(parser, string_from_lit("Default values not supported"));
+			report_parse_error(parser, "Default values not supported");
 #endif
 			
 		} else {
@@ -1182,7 +1182,7 @@ parse_proc_header(Parse_Context *parser) {
 		token = peek_token(parser);
 		if (token.kind == ')') break;
 		if (token.kind != ',') {
-			report_parse_error(parser, string_from_lit("Unexpected token"));
+			report_parse_error(parser, "Unexpected token");
 			break;
 		}
 		
@@ -1247,9 +1247,10 @@ parse_program(Parse_Context *parser) {
 //~ Context
 
 internal void
-report_parse_error(Parse_Context *parser, String message) {
+report_parse_error(Parse_Context *parser, char *message) {
 	if (parser->error_count == 0) {
-		fprintf(stderr, "Error [%lli..%lli]: %.*s.\n", parser->token.location.b0, parser->token.location.b1, string_expand(message));
+		String span = lexeme_from_token(parser, parser->token);
+		fprintf(stderr, "Syntax error (%lli..%lli): %s.\n\t%.*s\n\n", parser->token.location.b0, parser->token.location.b1, message, string_expand(span));
 	}
 	parser->error_count += 1;
 }
@@ -1261,7 +1262,7 @@ report_parse_errorf(Parse_Context *parser, char *format, ...) {
 	Scratch scratch = scratch_begin(0, 0);
 	
 	String formatted_message = push_stringf_va_list(scratch.arena, format, args);
-	report_parse_error(parser, formatted_message);
+	report_parse_error(parser, cstring_from_string(scratch.arena, formatted_message));
 	
 	scratch_end(scratch);
 	va_end(args);
@@ -1277,7 +1278,7 @@ parser_init(Parse_Context *parser, Arena *arena, String source) {
 internal void
 expect_token_kind(Parse_Context *parser, Token_Kind kind, char *message) {
 	if (peek_token(parser).kind != kind) {
-		report_parse_error(parser, string_from_cstring(message));
+		report_parse_error(parser, message);
 	}
 	consume_token(parser);
 }

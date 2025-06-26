@@ -175,6 +175,7 @@ internal bool token_is_expression_terminator(Token token);
 internal bool token_is_expression_atom(Token token);
 
 internal bool token_is_declarator(Token token);
+internal bool token_is_assigner(Token token);
 
 internal String lexeme_from_token(Parse_Context *parser, Token token);
 

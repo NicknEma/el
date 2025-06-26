@@ -474,6 +474,14 @@ token_is_declarator(Token token) {
 	return k == ':' || k == Token_Kind_COLON_EQUALS || k == Token_Kind_DOUBLE_COLON;
 }
 
+internal bool
+token_is_assigner(Token token) {
+	Token_Kind k = token.kind;
+	return k == '=' || k == Token_Kind_PLUS_EQUALS || k == Token_Kind_DASH_EQUALS || k == Token_Kind_STAR_EQUALS ||
+		k == Token_Kind_SLASH_EQUALS || k == Token_Kind_PERCENT_EQUALS || k == Token_Kind_AMPER_EQUALS ||
+		k == Token_Kind_EMARK_EQUALS;
+}
+
 internal String
 lexeme_from_token(Parse_Context *parser, Token token) {
 	return string_slice(parser->source, token.location.b0, token.location.b1);
@@ -753,8 +761,8 @@ parse_statement(Parse_Context *parser) {
 			Token curr_token = peek_token(parser);
 			if (curr_token.kind != ',') break;
 			
-			if (curr_token.kind == '=' || curr_token.kind == Token_Kind_PLUS_EQUALS) { // TODO: Add more
 				kind = Ast_Statement_Kind_ASSIGNMENT;
+			if (token_is_assigner(curr_token)) {
 				break;
 			}
 			

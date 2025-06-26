@@ -1365,57 +1365,57 @@ test_expression_parser(void) {
 	String expr_6 = string_from_lit("1++2");                   // 3
 	String expr_7 = string_from_lit("foo()");
 	
-	String expr_8 = string_from_lit("1 2");
-	String expr_9 = string_from_lit("2 (4 + 1)");
-	String expr_0 = string_from_lit("2 ()");
+	String expr_8 = string_from_lit("+");
+	String expr_9 = string_from_lit("(4 + 1");
+	String expr_0 = string_from_lit("foo(");
 	
 	arena_reset(&arena);
-	printf("Parsing sample expression 1:\n");
+	printf("Parsing sample expression %.*s:\n", string_expand(expr_1));
 	tree = parse_expression_string(&arena, expr_1);
 	print_expression_tree(tree);
 	
 	arena_reset(&arena);
-	printf("Parsing sample expression 2:\n");
+	printf("Parsing sample expression %.*s:\n", string_expand(expr_2));
 	tree = parse_expression_string(&arena, expr_2);
 	print_expression_tree(tree);
 	
 	arena_reset(&arena);
-	printf("Parsing sample expression 3:\n");
+	printf("Parsing sample expression %.*s:\n", string_expand(expr_3));
 	tree = parse_expression_string(&arena, expr_3);
 	print_expression_tree(tree);
 	
 	arena_reset(&arena);
-	printf("Parsing sample expression 4:\n");
+	printf("Parsing sample expression %.*s:\n", string_expand(expr_4));
 	tree = parse_expression_string(&arena, expr_4);
 	print_expression_tree(tree);
 	
 	arena_reset(&arena);
-	printf("Parsing sample expression 5:\n");
+	printf("Parsing sample expression %.*s:\n", string_expand(expr_5));
 	tree = parse_expression_string(&arena, expr_5);
 	print_expression_tree(tree);
 	
 	arena_reset(&arena);
-	printf("Parsing sample expression 6:\n");
+	printf("Parsing sample expression %.*s:\n", string_expand(expr_6));
 	tree = parse_expression_string(&arena, expr_6);
 	print_expression_tree(tree);
 	
 	arena_reset(&arena);
-	printf("Parsing sample expression 7:\n");
+	printf("Parsing sample expression %.*s:\n", string_expand(expr_7));
 	tree = parse_expression_string(&arena, expr_7);
 	print_expression_tree(tree);
 	
 	arena_reset(&arena);
-	printf("Parsing sample expression 8:\n");
+	printf("Parsing sample expression %.*s:\n", string_expand(expr_8));
 	tree = parse_expression_string(&arena, expr_8);
 	print_expression_tree(tree);
 	
 	arena_reset(&arena);
-	printf("Parsing sample expression 9:\n");
+	printf("Parsing sample expression %.*s:\n", string_expand(expr_9));
 	tree = parse_expression_string(&arena, expr_9);
 	print_expression_tree(tree);
 	
 	arena_reset(&arena);
-	printf("Parsing sample expression 0:\n");
+	printf("Parsing sample expression %.*s:\n", string_expand(expr_0));
 	tree = parse_expression_string(&arena, expr_0);
 	print_expression_tree(tree);
 	

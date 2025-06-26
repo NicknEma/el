@@ -675,75 +675,90 @@ parse_statement(Parse_Context *parser) {
 	if (token.kind == Token_Kind_LBRACE) {
 		consume_token(parser); // {
 		
-		result = push_type(parser->arena, Ast_Statement);
-		result->kind  = Ast_Statement_Kind_BLOCK;
-		result->next  = &nil_statement;
-		result->block = &nil_statement;
-		result->expr  = &nil_expression;
+		result = ast_statement_alloc(parser->arena);
+		result->kind     = Ast_Statement_Kind_BLOCK;
+		result->location = token.location;
 		
 		// Parse statement list inside the braces
-		Ast_Statement *block_first = NULL;
-		Ast_Statement *block_last  = NULL;
+		Ast_Statement *first = NULL;
+		Ast_Statement *last  = NULL;
 		
-		if (peek_token(parser).kind != '}') { // Allow empty blocks like {} (without a semicolon in the middle)
+		token = peek_token(parser);
+		if (token.kind != '}') { // Allow empty blocks like {} (without a semicolon in the middle)
 			for (;;) {
 				Ast_Statement *stat = parse_statement(parser);
-				if (stat != &nil_statement) { // Otherwise queue_push() will write to read-only memory
-					queue_push(block_first, block_last, stat);
+				if (stat != &nil_statement) {
+					// Avoid writing to read-only memory (*but continue trying,
+					// since nil-statements can also mean empty statements and not
+					// only that the parse failed).
+					queue_push(first, last, stat);
 				}
 				
-				Token curr_token = peek_token(parser);
-				if (curr_token.kind == Token_Kind_RBRACE) {
+				token = peek_token(parser);
+				if (token.kind == Token_Kind_RBRACE) {
 					consume_token(parser);
 					break;
-				} else if (curr_token.kind == Token_Kind_EOI) {
+				} else if (token.kind == Token_Kind_EOI) {
 					report_parse_error(parser, "Expected }");
 					break;
 				}
 			}
 		}
 		
-		if (block_first != NULL) {
-			result->block    = block_first;
-			result->location = locations_merge(token.location, peek_token(parser).location);
+		if (first != NULL) {
+			result->block    = first;
+			result->location = locations_merge(result->location, peek_token(parser).location);
 		}
 	} else if (token.keyword == Keyword_RETURN) {
 		consume_token(parser); // return
 		
-		Location location = token.location;
+		result = ast_statement_alloc(parser->arena);
+		result->kind     = Ast_Statement_Kind_RETURN;
+		result->location = token.location;
 		
+		// Parse return values: either nothing, or an expression list.
+		//
+		// Do not require an expression to begin with (it could be a "void" return),
+		// but require one more expression after each comma.
 		Ast_Expression *first = NULL;
 		Ast_Expression *last  = NULL;
 		
 		// TODO: Good candidate for a do-while loop
-		for (;;) {
+		for (bool is_expr_list = false; ; is_expr_list = true) {
 			Ast_Expression *expr = parse_expression(parser, Precedence_NONE, false);
 			if (expr == &nil_expression) {
+				if (is_expr_list) {
+					assert(parser->error_count > 0);
+				}
+				
 				break; // Avoid writing to read-only memory
 			}
 			
-			if (peek_token(parser).kind != ',') break;
-			
 			queue_push(first, last, expr);
-			location = locations_merge(location, expr->location);
+			result->location = locations_merge(result->location, expr->location);
+			
+			token = peek_token(parser);
+			if (token.kind != ',') break; // That was the last expr in the list
 		}
 		
-		result = ast_statement_alloc(parser->arena);
-		result->kind     = Ast_Statement_Kind_RETURN;
-		result->expr     = first;
-		result->location = location;
+		if (first != NULL) result->expr = first;
+		
 	} else {
-		Location location = token.location;
+		// Do *NOT* consume the first token as it will be part of the first expression/lhs.
 		
-		Ast_Expression *first = NULL;
-		Ast_Expression *last  = NULL;
-		
-		Ast_Statement_Kind kind = Ast_Statement_Kind_EXPR;
+		result = ast_statement_alloc(parser->arena);
+		result->kind     = Ast_Statement_Kind_EXPR;
+		result->location = token.location;
 		
 		// Parse an expression list, stopping at any 'assigner' or 'declarator' token,
 		// or when there are no more expressions.
-		// Do not REQUIRE an expression at the start (it could be the empty statement),
-		// but after the first expression-comma pair, start requiring another one after.
+		//
+		// Do not require an expression to begin with (it could be the empty statement),
+		// but require one more expression after each comma.
+		Ast_Expression *first = NULL;
+		Ast_Expression *last  = NULL;
+		i64 count = 0;
+		
 		// TODO: Good candidate for a do-while loop
 		for (bool is_expr_list = false; ; is_expr_list = true) {
 			Ast_Expression *expr = parse_expression(parser, Precedence_NONE, is_expr_list);
@@ -755,49 +770,49 @@ parse_statement(Parse_Context *parser) {
 				break; // Avoid writing to read-only memory
 			}
 			
+			count += 1;
 			queue_push(first, last, expr);
-			location = locations_merge(location, expr->location);
+			result->location = locations_merge(result->location, expr->location);
 			
-			Token curr_token = peek_token(parser);
-			if (curr_token.kind != ',') break;
+			token = peek_token(parser);
+			if (token.kind != ',') break; // That was the last expr in the list
 			
-				kind = Ast_Statement_Kind_ASSIGNMENT;
-			if (token_is_assigner(curr_token)) {
+			if (token_is_assigner(token)) {
+				result->kind = Ast_Statement_Kind_ASSIGNMENT;
 				break;
 			}
 			
-			if (token_is_declarator(curr_token)) {
-				kind = Ast_Statement_Kind_DECLARATION;
+			if (token_is_declarator(token)) {
+				result->kind = Ast_Statement_Kind_DECLARATION;
 				break;
 			}
 		}
 		
-		if (kind == Ast_Statement_Kind_EXPR) {
+		if (result->kind == Ast_Statement_Kind_EXPR) {
 			
-			result = ast_statement_alloc(parser->arena);
-			result->kind     = Ast_Statement_Kind_EXPR;
-			result->expr     = first;
-			result->location = location;
+			if (first != NULL) result->expr = first;
 			
-		} else if (kind == Ast_Statement_Kind_ASSIGNMENT) {
-			if (first == NULL) {
-				// TODO: This can also be checked later... decide what to do.
-				report_parse_error(parser, "At least one expression must be on the left of the assignment");
+		} else if (result->kind == Ast_Statement_Kind_ASSIGNMENT) {
+			
+			if (count == 0) {
+				report_parse_error(parser, "Cannot assign to nothing. At least one expression must be on the left of the assignment");
 			}
 			
 			Token assigner = peek_token(parser);
 			consume_token(parser); // assigner
 			
-			Ast_Expression *lhs_first = first;
-			Ast_Expression *lhs_last  = last;
-			
-			first = NULL;
-			last  = NULL;
-			
-			// Parse expression list, stopping when there are no more expressions.
+			// Parse assignment right-hand-side, stopping when there are no more expressions.
+			//
 			// At least one is required, and every comma requires another one after, so
 			// they are all required. The list ends when there are no more commas after
 			// the expression.
+			Ast_Expression *lhs_first = first;
+			Ast_Expression *lhs_last  = last;
+			i64 lhs_count = count;
+			first = NULL;
+			last  = NULL;
+			count = 0;
+			
 			// TODO: Good candidate for a do-while loop
 			for (;;) {
 				Ast_Expression *expr = parse_expression(parser, Precedence_NONE, true);
@@ -806,50 +821,52 @@ parse_statement(Parse_Context *parser) {
 					break; // Avoid writing to read-only memory
 				}
 				
+				count += 1;
 				queue_push(first, last, expr);
 				
-				Token curr_token = peek_token(parser);
-				if (curr_token.kind != ',') break;
+				token = peek_token(parser);
+				if (token.kind != ',') break; // That was the last expr in the list
 			}
 			
-			result = ast_statement_alloc(parser->arena);
-			result->kind     = Ast_Statement_Kind_ASSIGNMENT;
+			// Do *NOT* report an error if lhs_count != count: it's not the number of expressions
+			// that matters, but the number of values. One expression could yield multiple values,
+			// e.g. a function call with multiple returns.
+			
 			result->lhs      = lhs_first;
 			result->rhs      = first;
 			result->location = assigner.location;
 			result->assigner = assigner.kind;
 			
-		} else if (kind == Ast_Statement_Kind_DECLARATION) {
-			if (first == NULL) {
-				// TODO: This can also be checked later... decide what to do.
-				report_parse_error(parser, "At least one expression must be on the left of the declaration");
+		} else if (result->kind == Ast_Statement_Kind_DECLARATION) {
+			
+			if (count == 0) {
+				report_parse_error(parser, "Cannot declare nothing. At least one identifier must be on the left of the declaration");
 			}
 			
-			i64 expr_count = 0;
-			for (Ast_Expression *expr = first; expr != NULL && expr != &nil_expression; expr = expr->next) {
-				expr_count += 1;
-			}
-			
+			// Check that all expressions on the left of the declarator are identifiers
+			// (you can only declare identifiers), while also storing them in an array
+			// for passing them to parse_declaration_after_lhs().
 			Scratch scratch = scratch_begin(&parser->arena, 1);
 			
-			String *idents  = push_array(scratch.arena, String, expr_count);
+			String *idents  = push_array(scratch.arena, String, count);
 			i64 ident_count = 0;
 			for (Ast_Expression *expr = first; expr != NULL && expr != &nil_expression; expr = expr->next) {
 				if (expr->kind == Ast_Expression_Kind_IDENT) {
 					ident_count += 1;
+				} else {
+					report_parse_error(parser, "Only identifiers are allowed on the left of a declaration");
 				}
 			}
 			
-			if (expr_count == ident_count) {
+			if (count == ident_count) {
 				Token declarator = peek_token(parser);
 				consume_token(parser); // declarator
 				
-				result = ast_statement_alloc(parser->arena);
 				result->kind     = Ast_Statement_Kind_DECLARATION;
 				result->decl     = parse_declaration_after_lhs(parser, idents, ident_count);
 				result->location = declarator.location;
 			} else {
-				report_parse_error(parser, "Mismatching number of idents in declaration");
+				assert(parser->error_count > 0);
 			}
 			
 			scratch_end(scratch);

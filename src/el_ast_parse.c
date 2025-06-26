@@ -718,7 +718,6 @@ parse_statement(Parse_Context *parser) {
 		for (;;) {
 			Ast_Expression *expr = parse_expression(parser, Precedence_NONE, false);
 			if (expr == NULL || expr == &nil_expression) {
-				assert(parser->error_count > 0);
 				break;
 			}
 			

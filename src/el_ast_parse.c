@@ -350,7 +350,7 @@ binary_from_token_kind(Token_Kind kind) {
 		case Token_Kind_STAR:    { binary = Binary_Operator_TIMES; } break;
 		case Token_Kind_SLASH:   { binary = Binary_Operator_DIVIDE; } break;
 		case Token_Kind_PERCENT: { binary = Binary_Operator_MODULUS; } break;
-		case Token_Kind_COMMA:   { binary = Binary_Operator_COMMA; } break;
+		// case Token_Kind_COMMA:   { binary = Binary_Operator_COMMA; } break;
 		case Token_Kind_DOT:     { binary = Binary_Operator_MEMBER; } break;
 		case Token_Kind_LPAREN:  { binary = Binary_Operator_CALL; } break;
 		case Token_Kind_LBRACK:  { binary = Binary_Operator_ARRAY_ACCESS; } break;
@@ -365,7 +365,7 @@ internal Precedence
 infix_precedence_from_token(Token token) {
 	Precedence precedence = Precedence_NONE;
 	switch (token.kind) {
-		case Token_Kind_COMMA: precedence = Precedence_COMMA; break;
+		// case Token_Kind_COMMA: precedence = Precedence_COMMA; break;
 		
 		// case Token_Kind_EQUALS: precedence = Precedence_ASSIGNMENT; break;
 		
@@ -423,6 +423,12 @@ token_is_expression_atom(Token token) {
 	return k == Token_Kind_INTEGER || k == Token_Kind_STRING || k == Token_Kind_IDENT;
 }
 
+internal bool
+token_is_declarator(Token token) {
+	Token_Kind k = token.kind;
+	return k == ':' || k == Token_Kind_COLON_EQUALS || k == Token_Kind_DOUBLE_COLON;
+}
+
 internal String
 lexeme_from_token(Parse_Context *parser, Token token) {
 	return string_slice(parser->source, token.location.b0, token.location.b1);
@@ -431,28 +437,35 @@ lexeme_from_token(Parse_Context *parser, Token token) {
 ////////////////////////////////
 //~ AST
 
-global read_only Ast_Expression nil_expression = {
-	.left   = &nil_expression,
-	.middle = &nil_expression,
-	.right  = &nil_expression,
-};
+internal Ast_Expression *
+ast_expression_alloc(Arena *arena) {
+	Ast_Expression *expr = push_type(arena, Ast_Expression);
+	memcpy(expr, &nil_expression, sizeof(Ast_Expression));
+	
+	return expr;
+}
 
-global read_only Ast_Statement nil_statement = {
-	.block = &nil_statement,
-	.next  = &nil_statement,
-	.expr  = &nil_expression,
-};
+internal Ast_Statement *
+ast_statement_alloc(Arena *arena) {
+	Ast_Statement *stat = push_type(arena, Ast_Statement);
+	memcpy(stat, &nil_statement, sizeof(Ast_Statement));
+	
+	return stat;
+}
 
-global read_only Ast_Declaration nil_declaration = {
-	.next = &nil_declaration,
-	.body = &nil_statement,
-};
+internal Ast_Declaration *
+ast_declaration_alloc(Arena *arena) {
+	Ast_Declaration *decl = push_type(arena, Ast_Declaration);
+	memcpy(decl, &nil_declaration, sizeof(Ast_Declaration));
+	
+	return decl;
+}
 
-//- Parser: Ast_Expressions
+//- Parser: Expressions
 
 internal Ast_Expression *
 make_atom_expression(Parse_Context *parser, Token token) {
-	Ast_Expression *node = push_type(parser->arena, Ast_Expression);
+	Ast_Expression *node = ast_expression_alloc(parser->arena);
 	
 	if (node != NULL) {
 		if (token.kind == Token_Kind_INTEGER) {
@@ -473,7 +486,7 @@ make_atom_expression(Parse_Context *parser, Token token) {
 
 internal Ast_Expression *
 make_unary_expression(Parse_Context *parser, Token unary, Ast_Expression *subexpr) {
-	Ast_Expression *node = push_type(parser->arena, Ast_Expression);
+	Ast_Expression *node = ast_expression_alloc(parser->arena);
 	
 	if (node != NULL) {
 		node->kind     = Ast_Expression_Kind_UNARY;
@@ -489,7 +502,7 @@ make_unary_expression(Parse_Context *parser, Token unary, Ast_Expression *subexp
 
 internal Ast_Expression *
 make_binary_expression(Parse_Context *parser, Token binary, Ast_Expression *left, Ast_Expression *right) {
-	Ast_Expression *node = push_type(parser->arena, Ast_Expression);
+	Ast_Expression *node = ast_expression_alloc(parser->arena);
 	
 	if (node != NULL) {
 		node->kind     = Ast_Expression_Kind_BINARY;
@@ -508,7 +521,7 @@ make_binary_expression(Parse_Context *parser, Token binary, Ast_Expression *left
 
 internal Ast_Expression *
 make_ternary_expression(Parse_Context *parser, Ast_Expression *left, Ast_Expression *middle, Ast_Expression *right) {
-	Ast_Expression *node = push_type(parser->arena, Ast_Expression);
+	Ast_Expression *node = ast_expression_alloc(parser->arena);
 	
 	if (node != NULL) {
 		node->kind     = Ast_Expression_Kind_TERNARY;
@@ -643,90 +656,155 @@ parse_statement(Parse_Context *parser) {
 	} else if (token.keyword == Keyword_RETURN) {
 		consume_token(parser); // return
 		
-		result = push_type(parser->arena, Ast_Statement);
-		result->kind     = Ast_Statement_Kind_RETURN;
-		result->next     = &nil_statement;
-		result->block    = &nil_statement;
-		result->expr     = parse_expression(parser, Precedence_NONE, false);
-		result->location = token.location;
-		if (result->expr != NULL && result->expr != &nil_expression) {
-			result->location = locations_merge(result->location, result->expr->location);
-		}
-	} else {
-		i64  ident_count = 0;
-		bool is_ident_list = true;
-		{
-			Token_Kind last_seen = 0;
-			parser->rollback_index = parser->token.location.b0;
-			for (;;) {
-				Token lookahead = peek_token(parser);
-				if (token_is_declarator(lookahead)) {
-					break;
-				}
-				
-				if (lookahead.kind == Token_Kind_IDENT) {
-					ident_count += 1;
-					
-					if (last_seen != ',' && last_seen != 0) {
-						is_ident_list = false;
-					}
-				} else if (lookahead.kind == ',') {
-					if (last_seen != Token_Kind_IDENT) {
-						is_ident_list = false;
-					}
-				} else {
-					is_ident_list = false;
-				}
-				
-				last_seen = lookahead.kind;
-				
-				if (!is_ident_list) {
-					break;
-				}
+		Location location = token.location;
+		
+		Ast_Expression *first = NULL;
+		Ast_Expression *last  = NULL;
+		
+		// TODO: Good candidate for a do-while loop
+		for (;;) {
+			Ast_Expression *expr = parse_expression(parser, Precedence_NONE, false);
+			if (expr == NULL || expr == &nil_expression) {
+				assert(parser->error_count > 0);
+				break;
 			}
 			
-			parser->index = parser->rollback_index;
-			consume_token(parser);
+			if (peek_token(parser).kind != ',') break;
+			
+			queue_push(first, last, expr);
+			location = locations_merge(location, expr->location);
 		}
 		
-		if (is_ident_list) {
-			Scratch scratch = scratch_begin(&parser->arena, 1);
-			
-			Token *idents = push_array(scratch.arena, ident_count);
-			ident_count = 0;
-			
-			for (;;) {
-				Token curr_token = peek_token(parser);
-				if (token_is_declarator(curr_token)) {
-					break;
-				} else if (curr_token.kind == Token_Kind_IDENT) {
-					assert(ident_count < array_count(idents));
-					idents[ident_count] = curr_token;
-					ident_count += 1;
-				} else {
-					assert(curr_token.kind == ',');
+		result = ast_statement_alloc(parser->arena);
+		result->kind     = Ast_Statement_Kind_RETURN;
+		result->expr     = first;
+		result->location = location;
+	} else {
+		Location location = token.location;
+		
+		Ast_Expression *first = NULL;
+		Ast_Expression *last  = NULL;
+		
+		Ast_Statement_Kind kind = Ast_Statement_Kind_EXPR;
+		
+		// Parse an expression list, stopping at any 'assigner' or 'declarator' token,
+		// or when there are no more expressions.
+		// Do not REQUIRE an expression at the start (it could be the empty statement),
+		// but after the first expression-comma pair, start requiring another one after.
+		// TODO: Good candidate for a do-while loop
+		for (bool is_expr_list = false; ; is_expr_list = true) {
+			Ast_Expression *expr = parse_expression(parser, Precedence_NONE, is_expr_list);
+			if (expr == NULL || expr == &nil_expression) {
+				if (is_expr_list) {
+					assert(parser->error_count > 0);
 				}
 				
-				consume_token(parser);
+				break;
 			}
 			
-			result = push_type(parser->arena, Ast_Statement);
-			result->kind     = Ast_Statement_Kind_DECLARATION;
-			result->next     = &nil_statement;
-			result->block    = &nil_statement;
-			result->decl     = parse_declaration_after_idents(parser, idents, ident_count);
-			// result->location = result->expr->location;
+			Token curr_token = peek_token(parser);
+			if (curr_token.kind != ',') break;
+			
+			if (curr_token.kind == '=' || curr_token.kind == Token_Kind_PLUS_EQUALS) { // TODO: Add more
+				kind = Ast_Statement_Kind_ASSIGNMENT;
+				break;
+			}
+			
+			if (token_is_declarator(curr_token)) {
+				kind = Ast_Statement_Kind_DECLARATION;
+				break;
+			}
+			
+			queue_push(first, last, expr);
+			location = locations_merge(location, expr->location);
+		}
+		
+		if (kind == Ast_Statement_Kind_EXPR) {
+			
+			result = ast_statement_alloc(parser->arena);
+			result->kind     = Ast_Statement_Kind_EXPR;
+			result->expr     = first;
+			result->location = location;
+			
+		} else if (kind == Ast_Statement_Kind_ASSIGNMENT) {
+			if (first == NULL) {
+				// TODO: This can also be checked later... decide what to do.
+				report_parse_error(parser, string_from_lit("At least one expression must be on the left of the assignment"));
+			}
+			
+			Token assigner = peek_token(parser);
+			consume_token(parser); // assigner
+			
+			Ast_Expression *lhs_first = first;
+			Ast_Expression *lhs_last  = last;
+			
+			first = NULL;
+			last  = NULL;
+			
+			// Parse expression list, stopping when there are no more expressions.
+			// At least one is required, and every comma requires another one after, so
+			// they are all required. The list ends when there are no more commas after
+			// the expression.
+			// TODO: Good candidate for a do-while loop
+			for (;;) {
+				Ast_Expression *expr = parse_expression(parser, Precedence_NONE, true);
+				if (expr == NULL || expr == &nil_expression) {
+					assert(parser->error_count > 0);
+					break;
+				}
+				
+				Token curr_token = peek_token(parser);
+				if (curr_token.kind != ',') break;
+				
+				queue_push(first, last, expr);
+			}
+			
+			result = ast_statement_alloc(parser->arena);
+			result->kind     = Ast_Statement_Kind_ASSIGNMENT;
+			result->lhs      = lhs_first;
+			result->rhs      = first;
+			result->location = assigner.location;
+			result->assigner = assigner.kind;
+			
+		} else if (kind == Ast_Statement_Kind_DECLARATION) {
+			if (first == NULL) {
+				// TODO: This can also be checked later... decide what to do.
+				report_parse_error(parser, string_from_lit("At least one expression must be on the left of the declaration"));
+			}
+			
+			i64 expr_count = 0;
+			for (Ast_Expression *expr = first; expr != NULL && expr != &nil_expression; expr = expr->next) {
+				expr_count += 1;
+			}
+			
+			Scratch scratch = scratch_begin(&parser->arena, 1);
+			
+			String *idents  = push_array(scratch.arena, String, expr_count);
+			i64 ident_count = 0;
+			for (Ast_Expression *expr = first; expr != NULL && expr != &nil_expression; expr = expr->next) {
+				if (expr->kind == Ast_Expression_Kind_IDENT) {
+					ident_count += 1;
+				}
+			}
+			
+			if (expr_count == ident_count) {
+				Token declarator = peek_token(parser);
+				consume_token(parser); // declarator
+				
+				result = ast_statement_alloc(parser->arena);
+				result->kind     = Ast_Statement_Kind_DECLARATION;
+				result->decl     = parse_declaration_after_lhs(parser, idents, ident_count);
+				result->location = declarator.location;
+			} else {
+				report_parse_error(parser, string_from_lit("Mismatching number of idents in declaration"));
+			}
 			
 			scratch_end(scratch);
 		} else {
-			result = push_type(parser->arena, Ast_Statement);
-			result->kind     = Ast_Statement_Kind_EXPR;
-			result->next     = &nil_statement;
-			result->block    = &nil_statement;
-			result->decl     = &nil_declaration;
-			result->expr     = parse_expression(parser, Precedence_NONE, false);
-			result->location = result->expr->location;
+			panic("Invalid codepath");
 		}
+		
+		allow_break();
 	}
 	
 	if (result->kind != Ast_Statement_Kind_BLOCK) {
@@ -741,20 +819,223 @@ parse_statement(Parse_Context *parser) {
 internal Ast_Declaration *
 parse_declaration(Parse_Context *parser) {
 	Ast_Declaration *result = &nil_declaration;
+	Scratch scratch = scratch_begin(&parser->arena, 1);
 	
-	Opt_Ident_List ident_list = try_parse_ident_list(scratch.arena, parser, token_is_declarator);
-	if (ident_list.ok) {
-		result = parse_declaration_after_idents(parser, ident_list.idents, ident_list.ident_count);
-	} else {
-		report_parse_error(parser, string_from_lit("Not a declaration"));
+	String_List ident_list = {0};
+	
+	Token token = {0};
+	for (;;) {
+		token = peek_token(parser);
+		if (token.kind == Token_Kind_IDENT) {
+			consume_token(parser); // ident
+			string_list_push(scratch.arena, &ident_list, lexeme_from_token(parser, token));
+		} else {
+			report_parse_error(parser, string_from_lit("Unexpected token"));
+		}
+		
+		token = peek_token(parser);
+		if (token_is_declarator(token)) break;
+		if (token.kind != ',') {
+			report_parse_error(parser, string_from_lit("Unexpected token"));
+			break;
+		}
 	}
+	
+	i64 ident_count = 0;
+	String *idents = push_array(scratch.arena, String, ident_list.node_count);
+	for (String_Node *node = ident_list.first; node != NULL; node = node->next) {
+		idents[ident_count] = node->str;
+		ident_count += 1;
+	}
+	
+	result = parse_declaration_after_lhs(parser, idents, ident_count);
+	
+	scratch_end(scratch);
+	return result;
+}
+
+internal Ast_Declaration *
+parse_declaration_after_lhs(Parse_Context *parser, String *idents, i64 ident_count) {
+	Ast_Declaration *result = &nil_declaration;
+	
+	bool parse_initializers = false;
+	bool type_annotation_present = false;
+	bool is_constant = false;
+	Type_Ann type_annotation = {0};
+	
+	Token token = peek_token(parser);
+	if (token.kind == ':') {
+		consume_token(parser); // :
+		
+		// ':' alone (NOT ':=' or '::') means there MUST be an explicit type annotation,
+		// so we parse that.
+		// TODO: For now the only valid type annotations are identifiers.
+		
+		token = peek_token(parser);
+		if (token.kind == Token_Kind_IDENT) {
+			consume_token(parser); // type ident
+			
+			type_annotation_present = true;
+			type_annotation.ident = lexeme_from_token(parser, token);
+		} else {
+			report_parse_error(parser, string_from_lit("Expected type annotation"));
+		}
+		
+		if (token.kind == '=' || token.kind == ':') {
+			consume_token(parser); // = or :
+			parse_initializers = true;
+			
+			if (token.kind == ':') is_constant = true;
+		}
+	} else if (token.kind == Token_Kind_COLON_EQUALS ||
+			   token.kind == Token_Kind_DOUBLE_COLON) {
+		consume_token(parser); // := or ::
+		parse_initializers = true;
+		
+		if (token.kind == Token_Kind_DOUBLE_COLON) is_constant = true;
+	} else {
+		fprintf(stderr, "Internal error, expected declarator\n");
+	}
+	
+	Ast_Declaration *first = NULL;
+	Ast_Declaration *last  = NULL;
+	
+	if (parse_initializers) {
+		
+		Ast_Declaration_Flags decl_flags = 0;
+		if (type_annotation_present) decl_flags |= Ast_Declaration_Flag_TYPE_ANNOTATION;
+		if (is_constant) decl_flags |= Ast_Declaration_Flag_CONSTANT;
+		
+		i64 count = 0;
+		for (;;) {
+			Ast_Declaration *decl = parse_declaration_rhs(parser, string_from_lit(""));
+			if (decl != &nil_declaration) {
+				queue_push(first, last, decl);
+			}
+			
+			count += 1;
+			
+			if (token.kind != ',') break;
+		}
+		
+		if (count == ident_count) {
+			Ast_Declaration *decl = first;
+			for (i64 ident_index = 0; ident_index < ident_count; ident_index += 1) {
+				String ident = idents[ident_index];
+				
+				decl->ident = ident;
+				decl->flags = decl_flags;
+				decl->type_annotation = type_annotation;
+				
+				decl = decl->next;
+			}
+		} else {
+			report_parse_error(parser, string_from_lit("Incorrect number of initializers for declaration"));
+		}
+		
+	} else {
+		assert(type_annotation_present);
+		
+		// The declaration only has a type annotation, without initializers.
+		// Make new declaration nodes from the given idents.
+		
+		Ast_Declaration_Flags decl_flags = Ast_Declaration_Flag_TYPE_ANNOTATION;
+		if (is_constant) decl_flags |= Ast_Declaration_Flag_CONSTANT;
+		
+		Ast_Declaration_Entity entity = 0;
+		switch (type_annotation.kind) {
+			case Type_Ann_Kind_IDENT: {
+				entity = Ast_Declaration_Entity_UNKNOWN;
+			} break;
+			
+			default: break;
+		}
+		
+		for (i64 ident_index = 0; ident_index < ident_count; ident_index += 1) {
+			String ident = idents[ident_index];
+			
+			Ast_Declaration *decl = ast_declaration_alloc(parser->arena);
+			decl->ident  = ident;
+			decl->flags  = decl_flags;
+			decl->entity = entity;
+			decl->type_annotation = type_annotation;
+			
+			// TODO: location
+			
+			queue_push(first, last, decl);
+		}
+		
+	}
+	
+	if (first != NULL) result = first;
 	
 	return result;
 }
 
-internal Type
-parse_type(Parse_Context *parser) {
-	Type result = {0};
+internal Ast_Declaration *
+parse_declaration_rhs(Parse_Context *parser, String ident) {
+	Ast_Declaration *decl = &nil_declaration;
+	
+	Token token = peek_token(parser);
+	if (token.keyword == Keyword_PROC) {
+		// Starting with the keyword 'proc', this is a
+		// proc definition OR a proc TYPE definition.
+		
+		consume_token(parser); // proc
+		
+		decl = ast_declaration_alloc(parser->arena);
+		decl->entity        = Ast_Declaration_Entity_PROCEDURE_TYPE;
+		decl->first_param   = parse_proc_header(parser);
+		
+		token = peek_token(parser);
+		
+		if (token.kind == Token_Kind_TRIPLE_DASH) {
+			// This is a procedure prototype.
+			
+			decl->entity = Ast_Declaration_Entity_PROCEDURE_PROTO;
+		} else if (token.kind == '{') {
+			// This is a procedure definition.
+			
+			decl->entity = Ast_Declaration_Entity_PROCEDURE;
+			decl->body   = parse_statement(parser);
+		} else {
+			report_parse_error(parser, string_from_lit("Unexpected token after proc declaration, did you miss --- ?"));
+		}
+		
+	} else if (token.keyword == Keyword_STRUCT) {
+		// Starting with the keyword 'struct', this is a
+		// struct definition.
+		
+		consume_token(parser); // struct
+		
+		decl = ast_declaration_alloc(parser->arena);
+		decl->entity        = Ast_Declaration_Entity_STRUCT;
+		// decl->first_member  = parse_struct_definition(parser);
+		
+	} else {
+		// start_lookahead(parser);
+		// end_lookahead(parser);
+		
+		decl = ast_declaration_alloc(parser->arena);
+		decl->entity      = Ast_Declaration_Entity_UNKNOWN;
+		decl->initializer = parse_expression(parser, Precedence_NONE, true);
+		
+		// TODO: Remember to fixup the decl kind later in case the "expression" is just an ident
+		// and that ident is a proc or a type
+	}
+	
+	// TODO: 'distinct'
+	// [
+	// ^
+	// 'enum'
+	// 'union'
+	
+	return decl;
+}
+
+internal Type_Ann
+parse_type_annotation(Parse_Context *parser) {
+	Type_Ann result = {0};
 	
 	Token token = peek_token(parser);
 	
@@ -767,96 +1048,131 @@ parse_type(Parse_Context *parser) {
 }
 
 internal Ast_Declaration *
-parse_declaration_after_idents(Parse_Context *parser, Token *idents, i64 ident_count) {
+parse_proc_header(Parse_Context *parser) {
 	Ast_Declaration *result = &nil_declaration;
+	Scratch scratch = scratch_begin(&parser->arena, 1);
 	
-	Token token = peek_token(parser);
-	if (!token_is_declarator(token)) {
-		fprintf(stderr, "Internal error, expected declarator\n");
-	}
+	// Parse argument list
 	
-	if (token.kind == ':') {
-		consume_token(parser); // :
-		
-		Type explicit_type = parse_type(parser);
-		
-		if (token.kind == '=' || token.kind == ':') {
-			consume_token(parser);
-			result = parse_declaration_after_declarator(parser, idents, ident_count);
-		} else {
-			report_parse_error(parser, string_from_lit("Unexpected token"));
-		}
-		
-	} else if (token.kind == Token_Kind_COLON_EQUALS ||
-			   token.kind == Token_Kind_DOUBLE_COLON) {
-		consume_token(parser); // := or ::
-		result = parse_declaration_after_declarator(parser, idents, ident_count);
-	}
-	
-	return result;
-}
-
-internal Ast_Declaration *
-parse_proc(Parse_Context *parser) {
-	Ast_Declaration *result = &nil_declaration;
-	
-	return result;
-}
-
-internal Ast_Declaration *
-parse_declaration_after_declarator(Parse_Context *parser, Token *idents, i64 ident_count) {
-	Ast_Declaration *result = &nil_declaration;
+	expect_token_kind(parser, '(', "Expected (");
 	
 	Ast_Declaration *first = NULL;
 	Ast_Declaration *last  = NULL;
 	
-	Token token = peek_token(parser);
+	// TODO: Good candidates for do-while loops
 	for (;;) {
-		Ast_Declaration *decl = NULL;
+		String_List arg_names = {0};
 		
-		if (token.keyword == Keyword_PROC) {
-			consume_token(parser); // proc
+		Token token = {0};
+		for (;;) {
+			token = peek_token(parser);
+			if (token.kind == Token_Kind_IDENT) {
+				consume_token(parser); // ident
+				string_list_push(scratch.arena, &arg_names, lexeme_from_token(parser, token));
+			} else {
+				report_parse_error(parser, string_from_lit("Unexpected token"));
+			}
 			
-			decl = push_type(arena, Ast_Declaration);
-			decl->kind        = Ast_Declaration_Kind_TYPE;
-			decl->first_param = &nil_declaration;
-			decl->body        = &nil_statement;
-			decl->expr        = &nil_expression;
-			
-			// TODO: parse proc header (without body)
-		} else if (token.keyword == Keyword_STRUCT) {
-			consume_token(parser); // struct
-			
-			decl = push_type(arena, Ast_Declaration);
-			decl->kind        = Ast_Declaration_Kind_TYPE;
-			decl->first_param = &nil_declaration;
-			decl->body        = &nil_statement;
-			decl->expr        = &nil_expression;
-			
-			// TODO: parse struct definition
-		} else {
-			// TODO: lookahead to see if it is the start of a procedure (either with or without body).
-			// if not, parse expression
-			// TODO: Remember to fixup the decl kind later in case the "expression" is just an ident
-			// and that ident is a proc or a type
-			
-			Parse_Expression_Flags flags = Parse_Expression_Flag_ONLY_FIRST;
-			Ast_Expression *expr = parse_expression(parser, Precedence_NONE, flags);
-			
-			decl = push_type(arena, Ast_Declaration);
-			decl->kind        = Ast_Initializer_Kind_EXPR;
-			decl->first_param = &nil_declaration;
-			decl->body        = &nil_statement;
-			decl->expr        = expr;
+			token = peek_token(parser);
+			if (token.kind == ':' || token.kind == Token_Kind_COLON_EQUALS) break;
+			if (token.kind != ',') {
+				report_parse_error(parser, string_from_lit("Unexpected token"));
+				break;
+			}
 		}
 		
-		queue_push(first, last, decl);
+		bool parse_default_values = false;
+		Type_Ann  type_annotation = {0};
+		bool type_annotation_present = false;
 		
-		if (token.kind != ',') break;
+		if (token.kind == ':') {
+			consume_token(parser); // :
+			
+			token = peek_token(parser);
+			if (token.kind == Token_Kind_IDENT) {
+				consume_token(parser); // type ident
+				
+				type_annotation_present = true;
+				type_annotation.ident = lexeme_from_token(parser, token);
+			} else {
+				report_parse_error(parser, string_from_lit("Expected type annotation"));
+			}
+			
+			if (token.kind == '=') {
+				parse_default_values = true;
+			}
+		} else if (token.kind == Token_Kind_COLON_EQUALS) {
+			parse_default_values = true;
+		} else {
+			report_parse_error(parser, string_from_lit("Unexpected token"));
+			break;
+		}
+		
+		if (parse_default_values) {
+#if 0
+			// TODO: Copy explicit_type into all the args in the list
+			// TODO: Copy arg names into the list
+			Ast_Declaration *first_arg = parse_declaration_rhs_list(parser);
+			if (first_arg != &nil_declaration) {
+				queue_push(first, last, first_arg); // TODO: Wrong though... first_arg could have a next ptr
+			}
+#else
+			report_parse_error(parser, string_from_lit("Default values not supported"));
+#endif
+			
+		} else {
+			assert(type_annotation_present);
+			
+			for (String_Node *arg_name = arg_names.first; arg_name != NULL; arg_name = arg_name->next) {
+				Ast_Declaration *decl = ast_declaration_alloc(parser->arena);
+				decl->entity = Ast_Declaration_Entity_UNKNOWN;
+				decl->ident  = arg_name->str;
+				decl->type_annotation = type_annotation;
+				
+				queue_push(first, last, decl);
+			}
+			
+		}
+		
+		token = peek_token(parser);
+		if (token.kind == ')') break;
+		if (token.kind != ',') {
+			report_parse_error(parser, string_from_lit("Unexpected token"));
+			break;
+		}
+		
+		arena_reset(scratch.arena);
 	}
 	
 	if (first != NULL) result = first;
 	
+	expect_token_kind(parser, ')', "Expected )");
+	
+	// Parse return types
+	
+	Token token = peek_token(parser);
+	if (token.kind == Token_Kind_FORWARD_ARROW) {
+		consume_token(parser); // ->
+		
+		String_List ret_types = {0};
+		
+		for (;;) {
+			token = peek_token(parser);
+			if (token.kind == Token_Kind_IDENT) {
+				consume_token(parser); // type ident
+				string_list_push(scratch.arena, &ret_types, lexeme_from_token(parser, token));
+			}
+			
+			token = peek_token(parser);
+			if (token.kind != ',') break;
+		}
+		
+		// TODO: Add to explicit_type
+	}
+	
+	// TODO: Eventually parse other annotations
+	
+	scratch_end(scratch);
 	return result;
 }
 
@@ -877,9 +1193,7 @@ parse_program(Parse_Context *parser) {
 		queue_push(first_decl, last_decl, decl);
 	}
 	
-	if (first_decl != NULL) {
-		result = first_decl;
-	}
+	if (first_decl != NULL) result = first_decl;
 	
 	return result;
 }

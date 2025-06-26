@@ -134,8 +134,8 @@ print_statement_tree(Ast_Statement *root) {
 
 internal void
 string_from_declaration_tree_internal(Arena *arena, Ast_Declaration *root, String_List *builder) {
-	switch (root->kind) {
-		case Ast_Declaration_Kind_PROCEDURE: {
+	switch (root->entity) {
+		case Ast_Declaration_Entity_PROCEDURE: {
 			string_list_pushf(arena, builder, "%.*s :: (", string_expand(root->ident));
 			
 			// TODO: Parameter list

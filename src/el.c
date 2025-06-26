@@ -19,27 +19,6 @@ report_error(String message) {
 }
 
 ////////////////////////////////
-//~ Types
-
-typedef enum Type_Kind {
-	Type_Kind_VOID = 0,
-	Type_Kind_INTEGER,
-	Type_Kind_STRING,
-	Type_Kind_STRUCT,
-	Type_Kind_POINTER,
-	Type_Kind_PROC,
-	Type_Kind_COUNT,
-} Type_Kind;
-
-typedef struct Type Type;
-struct Type {
-	Type_Kind kind;
-	
-	Type *members;
-	i64   member_count;
-};
-
-////////////////////////////////
 //~ Scope and Symbols
 
 typedef struct Symbol Symbol;
@@ -49,7 +28,8 @@ struct Symbol {
 	Symbol *next_free;
 	
 	String ident;
-	Ast_Declaration_Kind decl_kind;
+	Ast_Declaration_Entity decl_kind;
+	Ast_Declaration_Flags decl_flags;
 	Location location_declared;
 	Location locations_used[32]; // Arbitrary number for now
 	i64 locations_used_count;
@@ -230,8 +210,8 @@ build_scope_for_statement(Arena *arena, Scope *scope, Ast_Statement *stat) {
 internal void
 build_scope_for_declaration(Arena *arena, Scope *scope, Ast_Declaration *decl) {
 	
-	switch (decl->kind) {
-		case Ast_Declaration_Kind_PROCEDURE: {
+	switch (decl->entity) {
+		case Ast_Declaration_Entity_PROCEDURE: {
 			Symbol *symbol = scope_lookup_inner(scope, decl->ident);
 			if (symbol == NULL) {
 				symbol = scope_insert_ident(arena, scope, decl->ident);
@@ -333,7 +313,7 @@ rearrange_scope(Arena *arena, Scope *scope) {
 					// Since the identifier is used before its declaration (or it was not declared),
 					// react accordingly depending on the type of declaration.
 					
-					bool is_local_var = (entry->decl_kind == Ast_Declaration_Kind_VARIABLE) && (scope->parent != NULL);
+					bool is_local_var = ((entry->decl_flags & Ast_Declaration_Flag_CONSTANT) == 0) && (scope->parent != NULL);
 					if (is_local_var || !declared) {
 						// If it's a local variable (meaning we don't care about out-of-order
 						// declarations) or the ident wasn't declared at all: report error.
@@ -825,7 +805,7 @@ generate_bytecode_for_expression(Ast_Expression *expr) {
 				// after the call instruction, pop all registers that were pushed before
 				dests.regs[0] = 0;
 				dests.reg_count = 1;
-			} else if (binary == Binary_Operator_COMMA) {
+			} else if (0 /*&& binary == Binary_Operator_COMMA*/) {
 				Reg_Group left_dests  = generate_bytecode_for_expression(expr->left);
 				Reg_Group right_dests = generate_bytecode_for_expression(expr->right);
 				assert(left_dests.reg_count >= 1); // Same as above
@@ -970,8 +950,8 @@ generate_bytecode_for_statement(Ast_Statement *statement) {
 
 internal void
 generate_bytecode_for_declaration(Ast_Declaration *declaration) {
-	switch (declaration->kind) {
-		case Ast_Declaration_Kind_PROCEDURE: {
+	switch (declaration->entity) {
+		case Ast_Declaration_Entity_PROCEDURE: {
 			Instr instr = {0};
 			
 			instr.label      = declaration->ident;

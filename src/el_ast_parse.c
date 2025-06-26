@@ -661,6 +661,7 @@ parse_expression(Parse_Context *parser, Precedence caller_precedence, bool requi
 		}
 	}
 	
+	assert(left != NULL);
 	return left;
 }
 
@@ -717,8 +718,8 @@ parse_statement(Parse_Context *parser) {
 		// TODO: Good candidate for a do-while loop
 		for (;;) {
 			Ast_Expression *expr = parse_expression(parser, Precedence_NONE, false);
-			if (expr == NULL || expr == &nil_expression) {
-				break;
+			if (expr == &nil_expression) {
+				break; // Avoid writing to read-only memory
 			}
 			
 			if (peek_token(parser).kind != ',') break;
@@ -746,12 +747,12 @@ parse_statement(Parse_Context *parser) {
 		// TODO: Good candidate for a do-while loop
 		for (bool is_expr_list = false; ; is_expr_list = true) {
 			Ast_Expression *expr = parse_expression(parser, Precedence_NONE, is_expr_list);
-			if (expr == NULL || expr == &nil_expression) {
+			if (expr == &nil_expression) {
 				if (is_expr_list) {
 					assert(parser->error_count > 0);
 				}
 				
-				break;
+				break; // Avoid writing to read-only memory
 			}
 			
 			queue_push(first, last, expr);
@@ -800,9 +801,9 @@ parse_statement(Parse_Context *parser) {
 			// TODO: Good candidate for a do-while loop
 			for (;;) {
 				Ast_Expression *expr = parse_expression(parser, Precedence_NONE, true);
-				if (expr == NULL || expr == &nil_expression) {
+				if (expr == &nil_expression) {
 					assert(parser->error_count > 0);
-					break;
+					break; // Avoid writing to read-only memory
 				}
 				
 				Token curr_token = peek_token(parser);

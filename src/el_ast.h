@@ -286,6 +286,7 @@ global read_only Ast_Statement nil_statement = {
 	.block = &nil_statement,
 	.lhs   = &nil_expression,
 	.rhs   = &nil_expression,
+	// .decl = &nil_declaration, // TODO: How to do this?
 	.next  = &nil_statement,
 };
 

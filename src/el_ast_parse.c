@@ -806,10 +806,10 @@ parse_statement(Parse_Context *parser) {
 					break; // Avoid writing to read-only memory
 				}
 				
+				queue_push(first, last, expr);
+				
 				Token curr_token = peek_token(parser);
 				if (curr_token.kind != ',') break;
-				
-				queue_push(first, last, expr);
 			}
 			
 			result = ast_statement_alloc(parser->arena);

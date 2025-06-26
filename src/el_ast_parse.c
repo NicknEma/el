@@ -747,6 +747,9 @@ parse_statement(Parse_Context *parser) {
 				break;
 			}
 			
+			queue_push(first, last, expr);
+			location = locations_merge(location, expr->location);
+			
 			Token curr_token = peek_token(parser);
 			if (curr_token.kind != ',') break;
 			
@@ -759,9 +762,6 @@ parse_statement(Parse_Context *parser) {
 				kind = Ast_Statement_Kind_DECLARATION;
 				break;
 			}
-			
-			queue_push(first, last, expr);
-			location = locations_merge(location, expr->location);
 		}
 		
 		if (kind == Ast_Statement_Kind_EXPR) {

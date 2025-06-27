@@ -692,6 +692,10 @@ parse_statement(Parse_Context *parser) {
 					// since nil-statements can also mean empty statements and not
 					// only that the parse failed).
 					queue_push(first, last, stat);
+					
+					// TODO: This overwrites the next pointer to be 0x0 and not &nil_statement.
+					// Should we re-write it to be &nil_statement here, or remember to
+					// also check for NULL every time later?
 				}
 				
 				token = peek_token(parser);
@@ -881,6 +885,7 @@ parse_statement(Parse_Context *parser) {
 		expect_token_kind(parser, Token_Kind_SEMICOLON, "Expected ; after statement");
 	}
 	
+	assert(result != NULL && result->next != NULL);
 	return result;
 }
 
@@ -928,10 +933,10 @@ internal Ast_Declaration *
 parse_declaration_after_lhs(Parse_Context *parser, String *idents, i64 ident_count) {
 	Ast_Declaration *result = &nil_declaration;
 	
-	bool parse_initializers = false;
-	bool type_annotation_present = false;
-	bool is_constant = false;
-	Type_Ann type_annotation = {0};
+	// Determine the kind of declaration
+	bool     parse_initializers = false;
+	Type_Ann    type_annotation = {0};
+	Ast_Declaration_Flags flags = 0;
 	
 	Token token = peek_token(parser);
 	if (token.kind == ':') {
@@ -945,106 +950,124 @@ parse_declaration_after_lhs(Parse_Context *parser, String *idents, i64 ident_cou
 		if (token.kind == Token_Kind_IDENT) {
 			consume_token(parser); // type ident
 			
-			type_annotation_present = true;
+			flags |= Ast_Declaration_Flag_TYPE_ANNOTATION;
 			type_annotation.ident = lexeme_from_token(parser, token);
 		} else {
-			report_parse_error(parser, "Expected type annotation");
+			report_parse_error(parser, "Expected type annotation after :");
 		}
 		
 		if (token.kind == '=' || token.kind == ':') {
 			consume_token(parser); // = or :
 			parse_initializers = true;
 			
-			if (token.kind == ':') is_constant = true;
+			if (token.kind == ':') flags |= Ast_Declaration_Flag_CONSTANT;
 		}
 	} else if (token.kind == Token_Kind_COLON_EQUALS ||
 			   token.kind == Token_Kind_DOUBLE_COLON) {
 		consume_token(parser); // := or ::
 		parse_initializers = true;
 		
-		if (token.kind == Token_Kind_DOUBLE_COLON) is_constant = true;
+		if (token.kind == Token_Kind_DOUBLE_COLON) flags |= Ast_Declaration_Flag_CONSTANT;
 	} else {
-		fprintf(stderr, "Internal error, expected declarator\n");
+		fprintf(stderr, "Internal error: parse_declaration_after_lhs() expects a declarator to be the first token, got %d\n", token.kind);
 	}
 	
-	Ast_Declaration *first = NULL;
-	Ast_Declaration *last  = NULL;
-	
-	if (parse_initializers) {
+	if (token_is_declarator) {
+		// Build the declaration: either by parsing the initializers,
+		// or by looking at the type annotation.
 		
-		Ast_Declaration_Flags decl_flags = 0;
-		if (type_annotation_present) decl_flags |= Ast_Declaration_Flag_TYPE_ANNOTATION;
-		if (is_constant) decl_flags |= Ast_Declaration_Flag_CONSTANT;
+		result = ast_declaration_alloc(parser->arena);
+		result->flags           = flags;
+		result->entity_count    = ident_count;
+		result->entities        = push_array(parser->arena, Entity, ident_count);
+		result->type_annotation = type_annotation;
 		
-		i64 count = 0;
-		for (;;) {
-			Ast_Declaration *decl = parse_declaration_rhs(parser, string_from_lit(""));
-			if (decl != &nil_declaration) {
-				queue_push(first, last, decl);
-			}
-			
-			count += 1;
-			
-			if (token.kind != ',') break;
+		for (i64 i = 0; i < ident_count; i += 1) {
+			result->entities[i].kind  = Entity_Kind_UNKNOWN;
+			result->entities[i].ident = idents[i];
+			// result->entities[i].location = ; // TODO.
 		}
 		
-		if (count == ident_count) {
-			Ast_Declaration *decl = first;
-			for (i64 ident_index = 0; ident_index < ident_count; ident_index += 1) {
-				String ident = idents[ident_index];
+		if (parse_initializers) {
+			Scratch scratch = scratch_begin(&parser->arena, 1);
+			
+			typedef struct Initter_Node Initter_Node;
+			struct Initter_Node { Initter initter; Initter_Node *next; };
+			Initter_Node *first = NULL;
+			Initter_Node *last  = NULL;
+			
+			i64 count = 0;
+			for (;;) {
+				Initter initter = parse_declaration_rhs(parser);
+				if (initter.kind == Initter_Kind_NONE) {
+					assert(parser->error_count > 0);
+					break;
+				}
 				
-				decl->ident = ident;
-				decl->flags = decl_flags;
-				decl->type_annotation = type_annotation;
+				Initter_Node *node = push_type(scratch.arena, Initter_Node);
+				node->initter = initter;
 				
-				decl = decl->next;
+				count += 1;
+				queue_push(first, last, node);
+				
+				token = peek_token(parser);
+				if (token.kind != ',') break; // That was the last decl in the list
 			}
+			
+			// Do *NOT* report an error if ident_count != count: it's not the number of initializers
+			// that matters, but the number of values. One expression could yield multiple values,
+			// e.g. a function call with multiple returns.
+			
+			result->initter_count = count;
+			result->initters      = push_array(parser->arena, Initter, result->entity_count);
+			
+			i64 i = 0;
+			for (Initter_Node *node = first; node != NULL; node = node->next) {
+				result->initters[i] = node->initter;
+				i += 1;
+			}
+			
+			// TODO: location?
+			
+			scratch_end(scratch);
 		} else {
-			report_parse_error(parser, "Incorrect number of initializers for declaration");
+			assert((flags & Ast_Declaration_Flag_TYPE_ANNOTATION) || parser->error_count > 0);
+			
+			// The declaration only has a type annotation, without initializers.
+			// Make new declaration nodes from the given idents.
+			
+			// See if we can infer the entity/entities being declared by looking at the
+			// type annotation.
+			// If we can't (e.g. the annotation is a plain identifier), we'll infer it
+			// later during type-checking.
+			Entity_Kind entity = Entity_Kind_NULL;
+			switch (type_annotation.kind) {
+				case Type_Ann_Kind_IDENT: {
+					entity = Entity_Kind_UNKNOWN;
+				} break;
+				
+				// TODO: Other kinds of type annotations
+				
+				default: break;
+			}
+			
+			result->initter_count = 0;
+			result->initters      = NULL;
+			
+			// TODO: location?
 		}
-		
-	} else {
-		assert(type_annotation_present);
-		
-		// The declaration only has a type annotation, without initializers.
-		// Make new declaration nodes from the given idents.
-		
-		Ast_Declaration_Flags decl_flags = Ast_Declaration_Flag_TYPE_ANNOTATION;
-		if (is_constant) decl_flags |= Ast_Declaration_Flag_CONSTANT;
-		
-		Ast_Declaration_Entity entity = 0;
-		switch (type_annotation.kind) {
-			case Type_Ann_Kind_IDENT: {
-				entity = Ast_Declaration_Entity_UNKNOWN;
-			} break;
-			
-			default: break;
-		}
-		
-		for (i64 ident_index = 0; ident_index < ident_count; ident_index += 1) {
-			String ident = idents[ident_index];
-			
-			Ast_Declaration *decl = ast_declaration_alloc(parser->arena);
-			decl->ident  = ident;
-			decl->flags  = decl_flags;
-			decl->entity = entity;
-			decl->type_annotation = type_annotation;
-			
-			// TODO: location
-			
-			queue_push(first, last, decl);
-		}
-		
 	}
 	
-	if (first != NULL) result = first;
+	if (parser->error_count > 0) {
+		result = &nil_declaration; // TODO: @Leak, @Hack
+	}
 	
 	return result;
 }
 
-internal Ast_Declaration *
-parse_declaration_rhs(Parse_Context *parser, String ident) {
-	Ast_Declaration *decl = &nil_declaration;
+internal Initter
+parse_declaration_rhs(Parse_Context *parser) {
+	Initter result = {0};
 	
 	Token token = peek_token(parser);
 	if (token.keyword == Keyword_PROC) {
@@ -1053,21 +1076,19 @@ parse_declaration_rhs(Parse_Context *parser, String ident) {
 		
 		consume_token(parser); // proc
 		
-		decl = ast_declaration_alloc(parser->arena);
-		decl->entity        = Ast_Declaration_Entity_PROCEDURE_TYPE;
-		decl->first_param   = parse_proc_header(parser);
+		result.kind = Initter_Kind_PROCEDURE_TYPE;
+		result.first_param = parse_proc_header(parser);
 		
 		token = peek_token(parser);
-		
 		if (token.kind == Token_Kind_TRIPLE_DASH) {
 			// This is a procedure prototype.
 			
-			decl->entity = Ast_Declaration_Entity_PROCEDURE_PROTO;
+			result.kind = Initter_Kind_PROCEDURE_PROTO;
 		} else if (token.kind == '{') {
 			// This is a procedure definition.
 			
-			decl->entity = Ast_Declaration_Entity_PROCEDURE;
-			decl->body   = parse_statement(parser);
+			result.kind = Initter_Kind_PROCEDURE;
+			result.body = parse_statement(parser);
 		} else {
 			report_parse_error(parser, "Unexpected token after proc declaration, did you miss --- ?");
 		}
@@ -1078,20 +1099,15 @@ parse_declaration_rhs(Parse_Context *parser, String ident) {
 		
 		consume_token(parser); // struct
 		
-		decl = ast_declaration_alloc(parser->arena);
-		decl->entity        = Ast_Declaration_Entity_STRUCT;
-		// decl->first_member  = parse_struct_definition(parser);
+		result.kind = Initter_Kind_STRUCT;
+		// result.initializer.first_member = parse_struct_definition(parser);
 		
 	} else {
-		// start_lookahead(parser);
-		// end_lookahead(parser);
+		// Starting in any other way, we treat is as a generic expression,
+		// and we figure out later what exactly that is.
 		
-		decl = ast_declaration_alloc(parser->arena);
-		decl->entity      = Ast_Declaration_Entity_UNKNOWN;
-		decl->initializer = parse_expression(parser, Precedence_NONE, true);
-		
-		// TODO: Remember to fixup the decl kind later in case the "expression" is just an ident
-		// and that ident is a proc or a type
+		result.kind = Initter_Kind_EXPR;
+		result.expr = parse_expression(parser, Precedence_NONE, true);
 	}
 	
 	// TODO: 'distinct'
@@ -1100,7 +1116,7 @@ parse_declaration_rhs(Parse_Context *parser, String ident) {
 	// 'enum'
 	// 'union'
 	
-	return decl;
+	return result;
 }
 
 internal Type_Ann
@@ -1126,6 +1142,7 @@ parse_proc_header(Parse_Context *parser) {
 	
 	expect_token_kind(parser, '(', "Expected (");
 	
+#if 0 // No arguments for now
 	Ast_Declaration *first = NULL;
 	Ast_Declaration *last  = NULL;
 	
@@ -1215,6 +1232,7 @@ parse_proc_header(Parse_Context *parser) {
 	}
 	
 	if (first != NULL) result = first;
+#endif
 	
 	expect_token_kind(parser, ')', "Expected )");
 	

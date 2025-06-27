@@ -134,6 +134,7 @@ print_statement_tree(Ast_Statement *root) {
 
 internal void
 string_from_declaration_tree_internal(Arena *arena, Ast_Declaration *root, String_List *builder) {
+#if 0
 	switch (root->entity) {
 		case Ast_Declaration_Entity_PROCEDURE: {
 			string_list_pushf(arena, builder, "%.*s :: (", string_expand(root->ident));
@@ -147,6 +148,7 @@ string_from_declaration_tree_internal(Arena *arena, Ast_Declaration *root, Strin
 		
 		default: break;
 	}
+#endif
 	
 	string_list_push(arena, builder, string_from_lit("\n"));
 }

@@ -183,8 +183,10 @@ internal String lexeme_from_token(Parse_Context *parser, Token token);
 //~ Types
 
 typedef enum Type_Kind {
-	Type_Kind_VOID = 0,
+	Type_Kind_UNKNOWN = 0,
+	Type_Kind_VOID,
 	Type_Kind_TYPE,
+	Type_Kind_BOOLEAN,
 	Type_Kind_INTEGER,
 	Type_Kind_STRING,
 	Type_Kind_STRUCT,
@@ -196,6 +198,9 @@ typedef enum Type_Kind {
 typedef struct Type Type;
 struct Type {
 	Type_Kind kind;
+	
+	// For pointers
+	Type *pointed;
 	
 	// For structs
 	Type *members;
@@ -233,6 +238,8 @@ struct Ast_Expression {
 	String ident;
 	i64    value;
 	
+	Type   type;
+	
 	Ast_Expression *next;
 	void  *user;
 };
@@ -268,6 +275,8 @@ typedef enum Ast_Statement_Kind {
 
 typedef struct Ast_Declaration Ast_Declaration;
 
+typedef struct Scope Scope;
+
 typedef struct Ast_Statement Ast_Statement;
 struct Ast_Statement {
 	Ast_Statement_Kind kind;
@@ -280,6 +289,9 @@ struct Ast_Statement {
 	Ast_Expression  *rhs;
 	Ast_Declaration *decl;
 	
+	Scope *scope;
+	
+	bool typechecked;
 	Ast_Statement *next;
 };
 
@@ -311,20 +323,92 @@ struct Type_Ann {
 	String ident;
 };
 
+
+typedef enum Entity_Kind {
+	Entity_Kind_NULL = 0,
+	Entity_Kind_UNKNOWN, // For things that don't have an initializer but just a type annotation, or for when the initializer is a generic expression (of which we obviously don't know the type yet)
+	Entity_Kind_STRUCT,
+	Entity_Kind_PROCEDURE,
+	Entity_Kind_PROCEDURE_TYPE,
+	Entity_Kind_PROCEDURE_PROTO,
+	Entity_Kind_COUNT,
+} Entity_Kind;
+
+typedef struct Entity Entity;
+struct Entity {
+	Entity_Kind kind;
+	
+	String   ident;
+	Location location;
+};
+
+
+typedef enum Initter_Kind {
+	Initter_Kind_NONE = 0,
+	Initter_Kind_EXPR,
+	Initter_Kind_STRUCT,
+	Initter_Kind_PROCEDURE,
+	Initter_Kind_PROCEDURE_TYPE,
+	Initter_Kind_PROCEDURE_PROTO,
+	Initter_Kind_COUNT,
+} Initter_Kind;
+
+typedef struct Initter Initter;
+struct Initter {
+	Initter_Kind kind;
+	
+	union { Ast_Declaration *first_param; Ast_Declaration *first_member; };
+	Ast_Statement  *body;
+	Ast_Expression *expr;
+};
+
+
 typedef enum Ast_Declaration_Flags {
 	Ast_Declaration_Flag_TYPE_ANNOTATION = (1<<0),
 	Ast_Declaration_Flag_CONSTANT = (1<<1),
 } Ast_Declaration_Flags;
 
-typedef enum Ast_Declaration_Entity {
-	Ast_Declaration_Entity_NULL = 0,
-	Ast_Declaration_Entity_UNKNOWN, // For things that don't have an initializer but just a type annotation, or for when the initializer is a generic expression (of which we obviously don't know the type yet)
-	Ast_Declaration_Entity_STRUCT,
-	Ast_Declaration_Entity_PROCEDURE,
-	Ast_Declaration_Entity_PROCEDURE_TYPE,
-	Ast_Declaration_Entity_PROCEDURE_PROTO,
-	Ast_Declaration_Entity_COUNT,
-} Ast_Declaration_Entity;
+typedef struct Ast_Declaration Ast_Declaration;
+struct Ast_Declaration {
+	Ast_Declaration_Flags flags;
+	
+	i64      entity_count;
+	Entity  *entities;
+	
+	i64      initter_count;
+	Initter *initters;
+	
+	Location location;
+	Type_Ann type_annotation;
+	
+	Ast_Declaration *next;
+};
+
+global read_only Ast_Declaration nil_declaration = {
+	.next = &nil_declaration,
+};
+
+global read_only Initter nil_initializer = {
+	.first_param = &nil_declaration,
+	.body = &nil_statement,
+	.expr = &nil_expression,
+};
+
+// TODO: We probabily don't need this; parse_declaration_rhs() can just return an Initter,
+// since the Entity_Kind is inferred later during type-checking.
+typedef struct Ast_Declaration_Rhs Ast_Declaration_Rhs;
+struct Ast_Declaration_Rhs { Entity_Kind entity; Initter initter; };
+
+internal Ast_Declaration *parse_declaration(Parse_Context *parser);
+internal Ast_Declaration *parse_declaration_after_lhs(Parse_Context *parser, String *idents, i64 ident_count);
+internal Initter          parse_declaration_rhs(Parse_Context *parser);
+
+internal Ast_Declaration *parse_proc_header(Parse_Context *parser);
+internal Type_Ann         parse_type_annotation(Parse_Context *parser);
+
+internal String string_from_declaration_tree(Arena *arena, Ast_Declaration *root);
+internal void print_declaration_tree(Ast_Declaration *root);
+
 
 #if 0
 // TODO: Parsing declarations in parameter lists, struct bodies or in a generic contexts have
@@ -338,41 +422,6 @@ typedef enum Ast_Declaration_List_Context {
 	Ast_Declaration_List_Context_COUNT,
 } Ast_Declaration_List_Context;
 #endif
-
-typedef struct Ast_Declaration Ast_Declaration;
-struct Ast_Declaration {
-	Ast_Declaration_Flags  flags;
-	Ast_Declaration_Entity entity;
-	
-	String   ident;
-	Location location;
-	
-	union { Ast_Declaration *first_param; Ast_Declaration *first_member; };
-	Ast_Statement  *body;
-	Ast_Expression *initializer;
-	
-	Type_Ann type_annotation;
-	Type     runtime_type;
-	
-	Ast_Declaration *next;
-};
-
-global read_only Ast_Declaration nil_declaration = {
-	.first_param = &nil_declaration,
-	.body = &nil_statement,
-	.next = &nil_declaration,
-	.initializer = &nil_expression,
-};
-
-internal Ast_Declaration *parse_declaration(Parse_Context *parser);
-
-internal Ast_Declaration *parse_declaration_after_lhs(Parse_Context *parser, String *idents, i64 ident_count);
-internal Ast_Declaration *parse_declaration_rhs(Parse_Context *parser, String ident);
-internal Ast_Declaration *parse_proc_header(Parse_Context *parser);
-internal Type_Ann         parse_type_annotation(Parse_Context *parser);
-
-internal String string_from_declaration_tree(Arena *arena, Ast_Declaration *root);
-internal void print_declaration_tree(Ast_Declaration *root);
 
 ////////////////////////////////
 //~ Context

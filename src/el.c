@@ -23,16 +23,25 @@ report_error(String message) {
 
 typedef struct Symbol Symbol;
 struct Symbol {
+	// Data structure management:
 	Symbol *next;
 	Symbol *prev;
 	Symbol *next_free;
 	
+	// Parser handles:
+	Ast_Declaration *decl;
+	i64 entity_index;
+	
+	// Scope-building results:
 	String ident;
-	Ast_Declaration_Entity decl_kind;
-	Ast_Declaration_Flags decl_flags;
 	Location location_declared;
 	Location locations_used[32]; // Arbitrary number for now
 	i64 locations_used_count;
+	
+	// Type-checking results...? TODO.
+	Initter *initter;
+	
+	// Runtime info:
 	Type type;
 	i64  size;
 	i64  addr;
@@ -181,6 +190,7 @@ build_scope_for_expression(Arena *arena, Scope *scope, Ast_Expression *expr) {
 
 internal void
 build_scope_for_statement(Arena *arena, Scope *scope, Ast_Statement *stat) {
+	stat->scope = scope;
 	
 	switch (stat->kind) {
 		case Ast_Statement_Kind_EXPR: {
@@ -210,27 +220,63 @@ build_scope_for_statement(Arena *arena, Scope *scope, Ast_Statement *stat) {
 internal void
 build_scope_for_declaration(Arena *arena, Scope *scope, Ast_Declaration *decl) {
 	
-	switch (decl->entity) {
-		case Ast_Declaration_Entity_PROCEDURE: {
-			Symbol *symbol = scope_lookup_inner(scope, decl->ident);
-			if (symbol == NULL) {
-				symbol = scope_insert_ident(arena, scope, decl->ident);
-				symbol->location_declared = decl->location;
-			} else {
-				report_error(string_from_lit("Redefinition of Disco"));
-			}
-			
-			scope = scope_enter(arena, scope);
-			
-			// for each decl in the procedure's formal parameter list:
-			//   build_scope_for_declaration()
-			
-			build_scope_for_statement(arena, scope, decl->body);
-			
-			scope = scope_leave(scope);
-		} break;
+	for (i64 i = 0; i < decl->entity_count; i += 1) {
+		Entity e = decl->entities[i];
 		
-		default: break;
+		Symbol *symbol = scope_lookup_inner(scope, e.ident);
+		if (symbol == NULL) {
+			symbol = scope_insert_ident(arena, scope, e.ident);
+			symbol->location_declared = e.location;
+		} else {
+			report_error(string_from_lit("Redefinition of Disco"));
+		}
+		
+		// TODO: Make this less of a hack
+		symbol->decl = decl;
+		symbol->entity_index = i;
+	}
+	
+	for (i64 i = 0; i < decl->initter_count; i += 1) {
+		switch (decl->initters[i].kind) {
+			case Initter_Kind_PROCEDURE: {
+				scope = scope_enter(arena, scope);
+				
+				// TODO:
+				// for each decl in the procedure's formal parameter list:
+				//   build_scope_for_declaration()
+				
+				build_scope_for_statement(arena, scope, decl->initters[i].body);
+				
+				scope = scope_leave(scope);
+			} break;
+			
+			case Initter_Kind_STRUCT: {
+				// TODO:
+				// For each of the members, you need to add its type_annotation ident to the symbol table,
+				// as a usage.
+				// If its type_annotation is not an ident, I have no idea.
+			} break;
+			
+			case Initter_Kind_PROCEDURE_TYPE: {
+				// TODO:
+				// For each of the params, you need to add its type_annotation ident to the symbol table,
+				// as a usage.
+				// If its type_annotation is not an ident, I have no idea.
+			} break;
+			
+			case Initter_Kind_PROCEDURE_PROTO: {
+				// TODO:
+				// For each of the params, you need to add its type_annotation ident to the symbol table,
+				// as a usage.
+				// If its type_annotation is not an ident, I have no idea.
+			} break;
+			
+			case Initter_Kind_EXPR: {
+				build_scope_for_expression(arena, scope, decl->initters[i].expr);
+			} break;
+			
+			default: break;
+		}
 	}
 	
 	return;
@@ -313,7 +359,7 @@ rearrange_scope(Arena *arena, Scope *scope) {
 					// Since the identifier is used before its declaration (or it was not declared),
 					// react accordingly depending on the type of declaration.
 					
-					bool is_local_var = ((entry->decl_flags & Ast_Declaration_Flag_CONSTANT) == 0) && (scope->parent != NULL);
+					bool is_local_var = ((entry->decl->flags & Ast_Declaration_Flag_CONSTANT) == 0) && (scope->parent != NULL);
 					if (is_local_var || !declared) {
 						// If it's a local variable (meaning we don't care about out-of-order
 						// declarations) or the ident wasn't declared at all: report error.
@@ -355,20 +401,20 @@ build_scope(Ast_Declaration *root) {
 ////////////////////////////////
 //~ Type-checking
 
-#if 0
-internal Typed_Expression *
+internal bool
 analyse_expression(Arena *arena, Ast_Expression *expr, Scope *scope, String_List *unresolved) {
-	Typed_Expression *result = &nil_typed_expression;
+	bool progress = false;
+	
+	if (expr->type.kind != Type_Kind_UNKNOWN) {
+		return false; // We already have a type
+	}
 	
 	switch (expr->kind) {
 		case Ast_Expression_Kind_LITERAL: {
-			result = typed_expression_from_ast_expression(expr);
-			result->value = expr->value;
-			result->types = push_array(arena, Type, 1);
-			result->type_count = 1;
-			result->types[0].kind = Type_Kind_INTEGER;
+			expr->type.kind = Type_Kind_INTEGER;
 		} break;
 		
+#if 0
 		case Ast_Expression_Kind_IDENT: {
 			Decl *found = NULL;
 			Scope *where = scope;
@@ -398,35 +444,52 @@ analyse_expression(Arena *arena, Ast_Expression *expr, Scope *scope, String_List
 				}
 			}
 		} break;
+#endif
 		
 		case Ast_Expression_Kind_UNARY: {
-			Typed_Expression *subresult = analyse_expression(arena, expr->subexpr, scope, unresolved);
+			if (!analyse_expression(arena, expr->subexpr, scope, unresolved)) break;
 			
 			switch (expr->unary) {
 				case Unary_Operator_PLUS:
 				case Unary_Operator_MINUS: {
-					if (subresult->type_count != 1) {
-						report_error(string_from_lit("Cannot apply + or - to multiple types"));
-					} else if (subresult->types[0] != Type_Kind_INTEGER) {
+					// These operators only work on single expressions, not lists:
+					// If the sub-expr is a list, it's an error.
+					//
+					// TODO: This is very unlikely to happen and it probabily means there's
+					// a bug in the parser...
+					
+					bool ok = true;
+					if (expr->subexpr->next != &nil_expression) {
+						report_error(string_from_lit("Cannot apply + or - to multiple expressions"));
+						ok = false;
+					}
+					
+					if (ok && expr->subexpr->type.kind != Type_Kind_INTEGER) {
 						report_error(string_from_lit("Cannot apply + or - to this type"));
-					} else {
-						result = typed_expression_from_ast_expression(expr);
-						result->type_count = 1;
-						result->types = push_array(arena, Type, result->type_count);
-						result->types[0] = subresult->types[0];
+						ok = false;
+					}
+					
+					if (ok) {
+						expr->type.kind = Type_Kind_INTEGER;
 					}
 				} break;
 				
 				case Unary_Operator_DEREFERENCE: {
-					if (subresult->type_count != 1) {
-						report_error(string_from_lit("Cannot apply ^ to multiple types"));
-					} else if (subresult->types[0] != Type_Kind_INTEGER) {
+					// Same as above.
+					
+					bool ok = true;
+					if (expr->subexpr->next != &nil_expression) {
+						report_error(string_from_lit("Cannot apply ^ to multiple expressions"));
+						ok = false;
+					}
+					
+					if (ok && expr->subexpr->type.kind != Type_Kind_POINTER) {
 						report_error(string_from_lit("Cannot apply ^ to this type"));
-					} else {
-						result = typed_expression_from_ast_expression(expr);
-						result->type_count = 1;
-						result->types = push_array(arena, Type, result->type_count);
-						result->types[0] = subresult->types[0];
+						ok = false;
+					}
+					
+					if (ok) {
+						expr->type = *expr->subexpr->type.pointed;
 					}
 				} break;
 				
@@ -436,8 +499,8 @@ analyse_expression(Arena *arena, Ast_Expression *expr, Scope *scope, String_List
 		} break;
 		
 		case Ast_Expression_Kind_BINARY: {
-			Typed_Expression *typed_left  = analyse_expression(arena, expr->left,    scope, unresolved);
-			Typed_Expression *typed_right = analyse_expression(arena, expr->right,   scope, unresolved);
+			if (!analyse_expression(arena, expr->left,  scope, unresolved)) break;
+			if (!analyse_expression(arena, expr->right, scope, unresolved)) break;
 			
 			switch (expr->binary) {
 				case Binary_Operator_PLUS:
@@ -445,30 +508,43 @@ analyse_expression(Arena *arena, Ast_Expression *expr, Scope *scope, String_List
 				case Binary_Operator_TIMES:
 				case Binary_Operator_DIVIDE:
 				case Binary_Operator_MODULUS: {
-					if (typed_left->type_count == 1 && typed_right->type_count == 1) {
-						report_error(string_from_lit("Too many expressions on left or right of this operator"));
-					} else if (typed_left->types[0] != Type_Kind_INTEGER && typed_right->types[0] != Type_Kind_INTEGER) {
+					// These operators only work on single expressions, not lists:
+					// If either left or right are lists, it's an error.
+					//
+					// TODO: This is very unlikely to happen and it probabily means there's
+					// a bug in the parser...
+					
+					bool ok = true;
+					if (expr->left->next != &nil_expression || expr->right->next != &nil_expression) {
+						if (expr->left->next  != &nil_expression) {
+							report_error(string_from_lit("Too many expressions on the left of this operator"));
+						}
+						
+						if (expr->right->next != &nil_expression) {
+							report_error(string_from_lit("Too many expressions on the right of this operator"));
+						}
+						
+						ok = false;
+					}
+					
+					// These operators only work on integers. If either side is not an integer
+					// (but it has another known type), it's an error.
+					//
+					// TODO: Types here can never be UNKNOWN if we 'break;' right when we check
+					// the result of previous analyse_expression()...
+					
+					if (ok && expr->left->type.kind != Type_Kind_INTEGER && expr->left->type.kind != Type_Kind_UNKNOWN &&
+						expr->right->type.kind != Type_Kind_INTEGER && expr->right->type.kind != Type_Kind_UNKNOWN) {
 						report_error(string_from_lit("Cannot apply operator to this type"));
-					} else {
-						result = typed_expression_from_ast_expression(expr);
-						result->type_count = 1;
-						result->types = push_array(arena, Type, result->type_count);
-						result->types[0] = typed_left->types[0];
+						ok = false;
+					}
+					
+					if (ok) {
+						expr->type.kind = Type_Kind_INTEGER;
 					}
 				} break;
 				
-				case Binary_Operator_COMMA: {
-					result = typed_expression_from_ast_expression(expr);
-					result->type_count = typed_left->type_count + typed_right->type_count;
-					result->types = push_array(arena, Type, result->type_count);
-					for (i64 i = 0; i < typed_left->type_count; i += 1) {
-						result->types[i] = typed_left->types[i];
-					}
-					for (i64 i = typed_left->type_count; i < typed_right->type_count; i += 1) {
-						result->types[i] = typed_right->types[i];
-					}
-				} break;
-				
+#if 0
 				case Binary_Operator_CALL: {
 					// TODO: For now, every call's left expr is an identifier
 					
@@ -495,66 +571,104 @@ analyse_expression(Arena *arena, Ast_Expression *expr, Scope *scope, String_List
 						result->ident = expr->ident;
 					}
 				} break;
+#endif
 				
 				default: break;
 			}
 			
 		} break;
 		
-#if 0
 		case Ast_Expression_Kind_TERNARY: {
-			analyse_expression(arena, expr->left,    scope, unresolved);
-			analyse_expression(arena, expr->middle,  scope, unresolved);
-			analyse_expression(arena, expr->right,   scope, unresolved);
+			if (!analyse_expression(arena, expr->left,   scope, unresolved)) break;
+			if (!analyse_expression(arena, expr->middle, scope, unresolved)) break;
+			if (!analyse_expression(arena, expr->right,  scope, unresolved)) break;
+			
+			// The ternary operator only works on single expressions, not lists:
+			// If either of the subexprs are lists, it's an error.
+			//
+			// TODO: This is very unlikely to happen and it probabily means there's
+			// a bug in the parser...
+			
+			
+			bool ok = true;
+			if (expr->left->next != &nil_expression || expr->middle->next != &nil_expression || expr->right->next != &nil_expression) {
+				// TODO: Better error messages...
+				if (expr->left->next   != &nil_expression) {
+					report_error(string_from_lit("Too many expressions on the left of this operator"));
+				}
+				
+				if (expr->middle->next != &nil_expression) {
+					report_error(string_from_lit("Too many expressions in the middle of this operator"));
+				}
+				
+				if (expr->right->next  != &nil_expression) {
+					report_error(string_from_lit("Too many expressions on the right of this operator"));
+				}
+				
+				ok = false;
+			}
+			
+			if (ok && (expr->left->type.kind != Type_Kind_BOOLEAN && expr->left->type.kind != Type_Kind_POINTER)) {
+				report_error(string_from_lit("Cannot apply operator to this type"));
+				ok = false;
+			}
+			
+			if (ok && expr->middle->type.kind != expr->right->type.kind) { // TODO: Exact match, not only the kinds
+				report_error(string_from_lit("Types must match"));
+				ok = false;
+			}
+			
+			if (ok) {
+				expr->type = expr->middle->type;
+			}
 		} break;
-#endif
 		
 		default: break;
 	}
 	
-	return result;
+	progress = expr->type.kind != Type_Kind_UNKNOWN;
+	return progress;
 }
 
-typedef struct Typed_Statement Typed_Statement;
-struct Typed_Statement {
-	Ast_Statement_Kind kind;
-	Typed_Statement   *next;
-	Typed_Statement   *block;
+internal bool
+analyse_statement(Arena *arena, Ast_Statement *stat, String_List *unresolved) {
+	bool progress = false;
 	
-	Typed_Expression *expr;
-};
-
-internal Typed_Statement *
-analyse_statement(Arena *arena, Ast_Statement *stat, Scope *scope, String_List *unresolved) {
-	Typed_Statement *result = &nil_typed_statement;
-	
-	switch (stat->kind) {
-		case Ast_Statement_Kind_EXPR: {
-			(void) analyse_expression(arena, stat->expr, scope, unresolved);
-		} break;
-		
-		case Ast_Statement_Kind_RETURN: {
-			(void) analyse_expression(arena, stat->expr, scope, unresolved);
-		} break;
-		
-		case Ast_Statement_Kind_BLOCK: {
-			scope = push_scope(scope);
+	if (!stat->typechecked) {
+		switch (stat->kind) {
+			case Ast_Statement_Kind_EXPR: {
+				progress = analyse_expression(arena, stat->expr, stat->scope, unresolved);
+				if (stat->expr->type.kind != Type_Kind_UNKNOWN) {
+					stat->typechecked = true;
+				}
+			} break;
 			
-			// TODO: First do all DECL statements so that local functions and types are added to the
-			// scope;
-			// then do all other statements.
+			case Ast_Statement_Kind_RETURN: {
+				progress = analyse_expression(arena, stat->expr, stat->scope, unresolved);
+				if (stat->expr->type.kind != Type_Kind_UNKNOWN) {
+					stat->typechecked = true;
+				}
+			} break;
 			
-			for (Ast_Statement *curr = stat->block; curr != NULL && curr != &nil_statement; curr = curr->next) {
-				(void) analyse_statement(arena, curr, scope, unresolved);
-			}
+			case Ast_Statement_Kind_BLOCK: {
+				for (Ast_Statement *curr = stat->block; curr != NULL && curr != &nil_statement; curr = curr->next) {
+					progress = progress || analyse_statement(arena, curr, unresolved);
+					stat->typechecked = stat->typechecked && curr->typechecked;
+				}
+			} break;
 			
-			scope = pop_scope(scope);
-		} break;
+			case Ast_Statement_Kind_NULL: {
+				stat->typechecked = true;
+			} break;
+			
+			default: break;
+		}
 	}
 	
-	return result;
+	return progress;
 }
 
+#if 0
 internal void
 analyse_declarations(Ast_Declaration *first) {
 	Scratch scratch = scratch_begin(0, 0);
@@ -950,6 +1064,7 @@ generate_bytecode_for_statement(Ast_Statement *statement) {
 
 internal void
 generate_bytecode_for_declaration(Ast_Declaration *declaration) {
+#if 0
 	switch (declaration->entity) {
 		case Ast_Declaration_Entity_PROCEDURE: {
 			Instr instr = {0};
@@ -970,6 +1085,7 @@ generate_bytecode_for_declaration(Ast_Declaration *declaration) {
 		
 		default: break;
 	}
+#endif
 }
 
 ////////////////////////////////
@@ -1254,11 +1370,11 @@ masm_generate_source(void) {
 }
 
 int main(void) {
-	test_expression_parser();
-	test_statement_parser();
-	test_declaration_parser();
+	// test_expression_parser();
+	// test_statement_parser();
+	// test_declaration_parser();
 	
-	x64_test();
+	// x64_test();
 	
 	printf("\n\n### Main program output ###\n\n");
 	
@@ -1274,7 +1390,14 @@ int main(void) {
 	
 	// TODO: Type-checking here
 	
-	for (Ast_Declaration *decl = program; decl != NULL; decl = decl->next) {
+	{
+		Arena idk_arena = {0};
+		arena_init(&idk_arena);
+		
+		Ast_Statement *stat = parse_statement_string(&idk_arena, string_from_lit("{ return 0+2; }"));
+		analyse_statement(&idk_arena, stat, NULL);
+	}
+	
 	for (Ast_Declaration *decl = program; decl != NULL && decl != &nil_declaration; decl = decl->next) {
 		generate_bytecode_for_declaration(decl);
 	}

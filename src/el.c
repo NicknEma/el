@@ -1267,13 +1267,15 @@ int main(void) {
 	
 	Arena tree_arena = {0};
 	arena_init(&tree_arena);
-	Ast_Declaration *program = parse_program_string(&tree_arena, source);
+	Ast_Declaration *program = &nil_declaration;
+	// program = parse_program_string(&tree_arena, source);
 	
 	build_scope(program);
 	
 	// TODO: Type-checking here
 	
 	for (Ast_Declaration *decl = program; decl != NULL; decl = decl->next) {
+	for (Ast_Declaration *decl = program; decl != NULL && decl != &nil_declaration; decl = decl->next) {
 		generate_bytecode_for_declaration(decl);
 	}
 	

@@ -73,29 +73,29 @@ test_statement_parser(void) {
 	
 #if 0
 	{
-		test_statement_parser_single(string_from_lit("1 + 2;"));
-		test_statement_parser_single(string_from_lit("return;"));
-		test_statement_parser_single(string_from_lit("return 0;"));
-		test_statement_parser_single(string_from_lit("return 1 + 2;"));
-		test_statement_parser_single(string_from_lit("return (1 + 2);"));
-		test_statement_parser_single(string_from_lit("{ return; return; }"));
-		test_statement_parser_single(string_from_lit("{ ;; }"));
+		test_statement_parser_single((String)string_from_lit_const("1 + 2;"));
+		test_statement_parser_single((String)string_from_lit_const("return;"));
+		test_statement_parser_single((String)string_from_lit_const("return 0;"));
+		test_statement_parser_single((String)string_from_lit_const("return 1 + 2;"));
+		test_statement_parser_single((String)string_from_lit_const("return (1 + 2);"));
+		test_statement_parser_single((String)string_from_lit_const("{ return; return; }"));
+		test_statement_parser_single((String)string_from_lit_const("{ ;; }"));
 		
-		test_statement_parser_single(string_from_lit("1 + 2"));
-		test_statement_parser_single(string_from_lit("{ return } "));
-		test_statement_parser_single(string_from_lit("{ return; "));
+		test_statement_parser_single((String)string_from_lit_const("1 + 2"));
+		test_statement_parser_single((String)string_from_lit_const("{ return } "));
+		test_statement_parser_single((String)string_from_lit_const("{ return; "));
 	}
 #endif
 	
 #if 1
 	{
-		test_statement_parser_single(string_from_lit("a = 0;"));
-		test_statement_parser_single(string_from_lit("a, b = 0;"));
-		test_statement_parser_single(string_from_lit("a, b = 0, 0;"));
-		test_statement_parser_single(string_from_lit("a := 0;"));
-		test_statement_parser_single(string_from_lit("a : int = 0;"));
-		test_statement_parser_single(string_from_lit("a :: proc();"));
-		test_statement_parser_single(string_from_lit("a :: proc() ---;"));
+		test_statement_parser_single((String)string_from_lit_const("a = 0;"));
+		test_statement_parser_single((String)string_from_lit_const("a, b = 0;"));
+		test_statement_parser_single((String)string_from_lit_const("a, b = 0, 0;"));
+		test_statement_parser_single((String)string_from_lit_const("a := 0;"));
+		test_statement_parser_single((String)string_from_lit_const("a : int = 0;"));
+		test_statement_parser_single((String)string_from_lit_const("a :: proc();"));
+		test_statement_parser_single((String)string_from_lit_const("a :: proc() ---;"));
 	}
 #endif
 	

@@ -382,11 +382,6 @@ struct Ast_Declaration {
 	Ast_Declaration *next;
 };
 
-// TODO: We probabily don't need this; parse_declaration_rhs() can just return an Initter,
-// since the Entity_Kind is inferred later during type-checking.
-typedef struct Ast_Declaration_Rhs Ast_Declaration_Rhs;
-struct Ast_Declaration_Rhs { Entity_Kind entity; Initter initter; };
-
 internal Ast_Declaration *parse_declaration(Parse_Context *parser);
 internal Ast_Declaration *parse_declaration_after_lhs(Parse_Context *parser, String *idents, i64 ident_count);
 internal Initter          parse_declaration_rhs(Parse_Context *parser);

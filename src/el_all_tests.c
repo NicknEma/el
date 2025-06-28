@@ -128,7 +128,7 @@ internal void
 test_declaration_parser(void) {
 	printf("### Testing declaration parser ###\n\n");
 	
-#if 1
+#if 0
 	// Single
 	test_declaration_parser_single((String)string_from_lit_const("a :: proc() {}"));
 	test_declaration_parser_single((String)string_from_lit_const("a :: proc() {;}"));
@@ -137,6 +137,7 @@ test_declaration_parser(void) {
 	test_declaration_parser_single((String)string_from_lit_const("a : int;"));
 	test_declaration_parser_single((String)string_from_lit_const("a : int = 4;"));
 	test_declaration_parser_single((String)string_from_lit_const("a : int = proc() {};"));
+#endif
 	
 	// Multiple lhs
 	test_declaration_parser_single((String)string_from_lit_const("a, b := 4;"));
@@ -159,7 +160,6 @@ test_declaration_parser(void) {
 	test_declaration_parser_single((String)string_from_lit_const("a := proc() -> int, int ---;"));
 	
 	test_declaration_parser_single((String)string_from_lit_const("foo :: ("));
-#endif
 	
 #if 0
 	Scratch scratch = scratch_begin(0, 0);

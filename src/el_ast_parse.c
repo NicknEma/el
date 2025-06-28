@@ -1587,6 +1587,7 @@ test_expression_parser(void) {
 	
 	Scratch scratch = scratch_begin(0, 0);
 	
+	srand(5);
 	String expr_rand_1 = push_rand_string(scratch.arena, 16);
 	String expr_rand_2 = push_rand_string(scratch.arena, 32);
 	String expr_rand_3 = push_rand_string(scratch.arena, 64);

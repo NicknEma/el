@@ -223,6 +223,12 @@ struct Type {
 ////////////////////////////////
 //~ AST
 
+typedef struct Ast_Expression Ast_Expression;
+typedef struct Ast_Statement Ast_Statement;
+typedef struct Ast_Declaration Ast_Declaration;
+
+typedef struct Scope Scope;
+
 //- Expressions
 
 typedef enum Ast_Expression_Kind {
@@ -235,7 +241,6 @@ typedef enum Ast_Expression_Kind {
 	Ast_Expression_Kind_COUNT,
 } Ast_Expression_Kind;
 
-typedef struct Ast_Expression Ast_Expression;
 struct Ast_Expression {
 	Ast_Expression_Kind kind;
 	Unary_Operator      unary;
@@ -257,16 +262,6 @@ struct Ast_Expression {
 	void  *user;
 };
 
-global read_only Ast_Expression nil_expression = {
-	.left   = &nil_expression,
-	.middle = &nil_expression,
-	.right  = &nil_expression,
-	.next   = &nil_expression,
-};
-
-#define check_nil_expression(p) ((p)==0||(p)==&nil_expression)
-#define set_nil_expression(p) ((p)=&nil_expression)
-
 internal Ast_Expression *make_atom_expression(Parse_Context *parser, Token token);
 internal Ast_Expression *make_unary_expression(Parse_Context *parser, Token unary, Ast_Expression *subexpr);
 internal Ast_Expression *make_binary_expression(Parse_Context *parser, Token binary, Ast_Expression *left, Ast_Expression *right);
@@ -277,7 +272,7 @@ internal Ast_Expression *parse_expression(Parse_Context *parser, Precedence call
 internal String string_from_expression_tree(Arena *arena, Ast_Expression *root);
 internal void print_expression_tree(Ast_Expression *root);
 
-//- Ast_Statements
+//- Statements
 
 typedef enum Ast_Statement_Kind {
 	Ast_Statement_Kind_NULL = 0,
@@ -289,11 +284,6 @@ typedef enum Ast_Statement_Kind {
 	Ast_Statement_Kind_COUNT,
 } Ast_Statement_Kind;
 
-typedef struct Ast_Declaration Ast_Declaration;
-
-typedef struct Scope Scope;
-
-typedef struct Ast_Statement Ast_Statement;
 struct Ast_Statement {
 	Ast_Statement_Kind kind;
 	Token_Kind assigner;
@@ -311,23 +301,12 @@ struct Ast_Statement {
 	Ast_Statement *next;
 };
 
-global read_only Ast_Statement nil_statement = {
-	.block = &nil_statement,
-	.lhs   = &nil_expression,
-	.rhs   = &nil_expression,
-	// .decl = &nil_declaration, // TODO: How to do this?
-	.next  = &nil_statement,
-};
-
-#define check_nil_statement(p) ((p)==0||(p)==&nil_statement)
-#define set_nil_statement(p) ((p)=&nil_statement)
-
 internal Ast_Statement *parse_statement(Parse_Context *parser);
 
 internal String string_from_statement_tree(Arena *arena, Ast_Statement *root);
 internal void print_statement_tree(Ast_Statement *root);
 
-//- Ast_Declarations
+//- Declarations
 
 // TODO: In the type-checking phase, decls must either have an explicit type or an initializer, or something...
 typedef enum Type_Ann_Kind {
@@ -403,19 +382,6 @@ struct Ast_Declaration {
 	Ast_Declaration *next;
 };
 
-global read_only Ast_Declaration nil_declaration = {
-	.next = &nil_declaration,
-};
-
-#define check_nil_declaration(p) ((p)==0||(p)==&nil_declaration)
-#define set_nil_declaration(p) ((p)=&nil_declaration)
-
-global read_only Initter nil_initializer = {
-	.first_param = &nil_declaration,
-	.body = &nil_statement,
-	.expr = &nil_expression,
-};
-
 // TODO: We probabily don't need this; parse_declaration_rhs() can just return an Initter,
 // since the Entity_Kind is inferred later during type-checking.
 typedef struct Ast_Declaration_Rhs Ast_Declaration_Rhs;
@@ -430,6 +396,44 @@ internal Type_Ann         parse_type_annotation(Parse_Context *parser);
 
 internal String string_from_declaration_tree(Arena *arena, Ast_Declaration *root);
 internal void print_declaration_tree(Ast_Declaration *root);
+
+////////////////////////////////
+//~ Nil objects
+
+global read_only Ast_Expression nil_expression = {
+	.left   = &nil_expression,
+	.middle = &nil_expression,
+	.right  = &nil_expression,
+	.next   = &nil_expression,
+};
+
+#define check_nil_expression(p) ((p)==0||(p)==&nil_expression)
+#define set_nil_expression(p) ((p)=&nil_expression)
+
+global read_only Ast_Declaration nil_declaration;
+global read_only Ast_Statement nil_statement = {
+	.block = &nil_statement,
+	.lhs   = &nil_expression,
+	.rhs   = &nil_expression,
+	.decl  = &nil_declaration,
+	.next  = &nil_statement,
+};
+
+#define check_nil_statement(p) ((p)==0||(p)==&nil_statement)
+#define set_nil_statement(p) ((p)=&nil_statement)
+
+global read_only Ast_Declaration nil_declaration = {
+	.next = &nil_declaration,
+};
+
+#define check_nil_declaration(p) ((p)==0||(p)==&nil_declaration)
+#define set_nil_declaration(p) ((p)=&nil_declaration)
+
+global read_only Initter nil_initializer = {
+	.first_param = &nil_declaration,
+	.body = &nil_statement,
+	.expr = &nil_expression,
+};
 
 
 #if 0

@@ -366,7 +366,6 @@ typedef enum Ast_Declaration_Flags {
 	Ast_Declaration_Flag_CONSTANT = (1<<1),
 } Ast_Declaration_Flags;
 
-typedef struct Ast_Declaration Ast_Declaration;
 struct Ast_Declaration {
 	Ast_Declaration_Flags flags;
 	

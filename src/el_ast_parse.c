@@ -1363,13 +1363,19 @@ parse_program_string(Arena *arena, String source) {
 }
 
 internal void
+test_expression_parser_single(String source) {
+	Scratch scratch = scratch_begin(0, 0);
+	
+	printf("Parsing sample expression %.*s:\n", string_expand(source));
+	Ast_Expression *tree = parse_expression_string(scratch.arena, source);
+	print_expression_tree(tree);
+	
+	scratch_end(scratch);
+}
+
+internal void
 test_expression_parser(void) {
 	printf("### Testing expression parser ###\n\n");
-	
-	Arena arena = {0};
-	arena_init(&arena);
-	
-	Ast_Expression *tree = &nil_expression;
 	
 	String expr_1 = string_from_lit("1+2");                    // 3
 	String expr_2 = string_from_lit("5 - 4");                  // 1
@@ -1383,57 +1389,28 @@ test_expression_parser(void) {
 	String expr_9 = string_from_lit("(4 + 1");
 	String expr_0 = string_from_lit("foo(");
 	
-	arena_reset(&arena);
-	printf("Parsing sample expression %.*s:\n", string_expand(expr_1));
-	tree = parse_expression_string(&arena, expr_1);
-	print_expression_tree(tree);
+	test_expression_parser_single(expr_1);
+	test_expression_parser_single(expr_2);
+	test_expression_parser_single(expr_3);
+	test_expression_parser_single(expr_4);
+	test_expression_parser_single(expr_5);
+	test_expression_parser_single(expr_6);
+	test_expression_parser_single(expr_7);
+	test_expression_parser_single(expr_8);
+	test_expression_parser_single(expr_9);
+	test_expression_parser_single(expr_0);
 	
-	arena_reset(&arena);
-	printf("Parsing sample expression %.*s:\n", string_expand(expr_2));
-	tree = parse_expression_string(&arena, expr_2);
-	print_expression_tree(tree);
+	Scratch scratch = scratch_begin(0, 0);
 	
-	arena_reset(&arena);
-	printf("Parsing sample expression %.*s:\n", string_expand(expr_3));
-	tree = parse_expression_string(&arena, expr_3);
-	print_expression_tree(tree);
+	String expr_rand_1 = push_rand_string(scratch.arena, 16);
+	String expr_rand_2 = push_rand_string(scratch.arena, 32);
+	String expr_rand_3 = push_rand_string(scratch.arena, 64);
 	
-	arena_reset(&arena);
-	printf("Parsing sample expression %.*s:\n", string_expand(expr_4));
-	tree = parse_expression_string(&arena, expr_4);
-	print_expression_tree(tree);
+	test_expression_parser_single(expr_rand_1);
+	test_expression_parser_single(expr_rand_2);
+	test_expression_parser_single(expr_rand_3);
 	
-	arena_reset(&arena);
-	printf("Parsing sample expression %.*s:\n", string_expand(expr_5));
-	tree = parse_expression_string(&arena, expr_5);
-	print_expression_tree(tree);
-	
-	arena_reset(&arena);
-	printf("Parsing sample expression %.*s:\n", string_expand(expr_6));
-	tree = parse_expression_string(&arena, expr_6);
-	print_expression_tree(tree);
-	
-	arena_reset(&arena);
-	printf("Parsing sample expression %.*s:\n", string_expand(expr_7));
-	tree = parse_expression_string(&arena, expr_7);
-	print_expression_tree(tree);
-	
-	arena_reset(&arena);
-	printf("Parsing sample expression %.*s:\n", string_expand(expr_8));
-	tree = parse_expression_string(&arena, expr_8);
-	print_expression_tree(tree);
-	
-	arena_reset(&arena);
-	printf("Parsing sample expression %.*s:\n", string_expand(expr_9));
-	tree = parse_expression_string(&arena, expr_9);
-	print_expression_tree(tree);
-	
-	arena_reset(&arena);
-	printf("Parsing sample expression %.*s:\n", string_expand(expr_0));
-	tree = parse_expression_string(&arena, expr_0);
-	print_expression_tree(tree);
-	
-	arena_fini(&arena);
+	scratch_end(scratch);
 	
 	printf("\n");
 }

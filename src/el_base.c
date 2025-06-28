@@ -643,6 +643,24 @@ string_slice(String s, i64 start, i64 end) {
 	return string_skip(string_stop(s, end), start);
 }
 
+internal String
+push_rand_string(Arena *arena, i64 len) {
+	String result = {
+		.data = push_nozero(arena, len),
+		.len  = len,
+	};
+	
+	if (result.data != NULL) {
+		for (i64 i = 0; i < result.len; i += 1) {
+			result.data[i] = rand() & U8_MAX;
+		}
+	} else {
+		result.len = 0;
+	}
+	
+	return result;
+}
+
 ////////////////////////////////
 //~ String List
 

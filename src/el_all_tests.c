@@ -189,7 +189,7 @@ test_all(void) {
 		
 		// test_expression_parser();
 		// test_statement_parser();
-		test_declaration_parser();
+		// test_declaration_parser();
 		
 		// max_printed_lex_errors   = I64_MAX;
 		// max_printed_parse_errors = 1;

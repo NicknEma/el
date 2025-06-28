@@ -1358,10 +1358,11 @@ test_expression_parser(void) {
 	
 	Scratch scratch = scratch_begin(0, 0);
 	
-	srand(5);
-	String expr_rand_1 = push_rand_string(scratch.arena, 16);
-	String expr_rand_2 = push_rand_string(scratch.arena, 32);
-	String expr_rand_3 = push_rand_string(scratch.arena, 64);
+	srand(rand());
+	char filter[] = { 0x7, 0x0 }; // Bell
+	String expr_rand_1 = push_rand_string(scratch.arena, 16, string_from_lit(filter));
+	String expr_rand_2 = push_rand_string(scratch.arena, 32, string_from_lit(filter));
+	String expr_rand_3 = push_rand_string(scratch.arena, 64, string_from_lit(filter));
 	
 	test_expression_parser_single(expr_rand_1);
 	test_expression_parser_single(expr_rand_2);

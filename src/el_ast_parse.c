@@ -184,6 +184,20 @@ make_token(Parse_Context *parser) {
 			token.location.b1 = index;
 		}
 		
+		if (token.kind == Token_Kind_INVALID && source.data[index] == '"') {
+			token.kind = Token_Kind_STRING;
+			
+			i64 start = index;
+			index += 1;
+			while (index < source.len && !(source.data[index] == '"' && source.data[index-1] != '\\')) {
+				index += 1;
+			}
+			index += 1;
+			
+			token.string_val  = string_slice(source, token.location.b0+1, index-1);
+			token.location.b1 = index;
+		}
+		
 		if (token.kind == Token_Kind_INVALID) {
 			i64    best_match_len = 0;
 			Token_Kind best_match = Token_Kind_INVALID;
@@ -462,9 +476,14 @@ make_atom_expression(Parse_Context *parser, Token token) {
 	
 	if (node != NULL) {
 		if (token.kind == Token_Kind_INTEGER) {
-			node->kind     = Ast_Expression_Kind_LITERAL;
+			node->kind     = Ast_Expression_Kind_INT_LITERAL;
 			node->lexeme   = lexeme_from_token(parser, token);
 			node->value    = token.int_val;
+			node->location = token.location;
+		} else if (token.kind == Token_Kind_STRING) {
+			node->kind     = Ast_Expression_Kind_STRING_LITERAL;
+			node->lexeme   = lexeme_from_token(parser, token);
+			// node->value    = token.string_val;
 			node->location = token.location;
 		} else if (token.kind == Token_Kind_IDENT) {
 			node->kind     = Ast_Expression_Kind_IDENT;

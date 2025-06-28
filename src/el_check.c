@@ -104,7 +104,7 @@ internal void
 build_scope_for_expression(Arena *arena, Scope *scope, Ast_Expression *expr) {
 	
 	switch (expr->kind) {
-		case Ast_Expression_Kind_LITERAL: break;
+		case Ast_Expression_Kind_INT_LITERAL: break;
 		
 		case Ast_Expression_Kind_IDENT: {
 			Symbol *symbol = scope_lookup(scope, expr->ident);
@@ -357,7 +357,7 @@ analyse_expression(Arena *arena, Ast_Expression *expr, Scope *scope, String_List
 	}
 	
 	switch (expr->kind) {
-		case Ast_Expression_Kind_LITERAL: {
+		case Ast_Expression_Kind_INT_LITERAL: {
 			expr->type.kind = Type_Kind_INTEGER;
 		} break;
 		

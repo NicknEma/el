@@ -121,7 +121,7 @@ generate_bytecode_for_expression(Ast_Expression *expr) {
 	Reg_Group dests = {0};
 	
 	switch (expr->kind) {
-		case Ast_Expression_Kind_LITERAL: {
+		case Ast_Expression_Kind_INT_LITERAL: {
 			instr.operation = Instr_Operation_SET;
 			instr.mode      = Addressing_Mode_CONSTANT;
 			instr.source    = expr->value;

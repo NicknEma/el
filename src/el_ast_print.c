@@ -7,7 +7,11 @@
 internal void
 string_from_expression_tree_internal(Arena *arena, Ast_Expression *root, String_List *builder) {
 	switch (root->kind) {
-		case Ast_Expression_Kind_LITERAL: {
+		case Ast_Expression_Kind_INT_LITERAL: {
+			string_list_push(arena, builder, root->lexeme);
+		} break;
+		
+		case Ast_Expression_Kind_STRING_LITERAL: {
 			string_list_push(arena, builder, root->lexeme);
 		} break;
 		

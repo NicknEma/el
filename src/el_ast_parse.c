@@ -605,7 +605,24 @@ parse_expression(Parse_Context *parser, Precedence caller_precedence, bool requi
 	return left;
 }
 
-//- Parser: Ast_Statements
+//- Parser: Statements
+
+internal Ast_Statement *
+make_statement_(Parse_Context *parser, Ast_Statement_Kind kind, Location location, Make_Statement_Params params) {
+	Ast_Statement *result = ast_statement_alloc(parser->arena);
+	
+	if (result != NULL) {
+		result->kind     = kind;
+		result->location = location;
+		result->assigner = params.assigner;
+		result->block    = params.block;
+		result->lhs      = params.lhs;
+		result->rhs      = params.rhs;
+		result->decl     = params.decl;
+	}
+	
+	return result;
+}
 
 internal Ast_Statement *
 parse_statement(Parse_Context *parser) {
@@ -615,9 +632,8 @@ parse_statement(Parse_Context *parser) {
 	if (token.kind == Token_Kind_LBRACE) {
 		consume_token(parser); // {
 		
-		result = ast_statement_alloc(parser->arena);
-		result->kind     = Ast_Statement_Kind_BLOCK;
-		result->location = token.location;
+		Location lbrace_location = token.location;
+		Location rbrace_location = {0};
 		
 		// Parse statement list inside the braces
 		Ast_Statement *first = NULL;
@@ -636,6 +652,8 @@ parse_statement(Parse_Context *parser) {
 				
 				token = peek_token(parser);
 				if (token.kind == Token_Kind_RBRACE) {
+					rbrace_location = token.location;
+					
 					consume_token(parser);
 					break;
 				} else if (token.kind == Token_Kind_EOI) {
@@ -643,18 +661,18 @@ parse_statement(Parse_Context *parser) {
 					break;
 				}
 			}
+		} else {
+			rbrace_location = token.location;
 		}
 		
 		if (first != NULL) {
-			result->block    = first;
-			result->location = locations_merge(result->location, peek_token(parser).location);
+			result = make_statement(parser, Ast_Statement_Kind_BLOCK, locations_merge(lbrace_location, rbrace_location),
+									.block = first);
 		}
 	} else if (token.keyword == Keyword_RETURN) {
 		consume_token(parser); // return
 		
-		result = ast_statement_alloc(parser->arena);
-		result->kind     = Ast_Statement_Kind_RETURN;
-		result->location = token.location;
+		Location location = token.location;
 		
 		// Parse return values: either nothing, or an expression list.
 		//
@@ -674,20 +692,20 @@ parse_statement(Parse_Context *parser) {
 			}
 			
 			queue_push_nz(first, last, expr, next, check_nil_expression, set_nil_expression);
-			result->location = locations_merge(result->location, expr->location);
 			
 			token = peek_token(parser);
 			if (token.kind != ',') break; // That was the last expr in the list
 		}
 		
-		if (first != NULL) result->expr = first;
-		
+		if (first != NULL) {
+			result = make_statement(parser, Ast_Statement_Kind_RETURN, location, .expr = first);
+		}
 	} else {
 		// Do *NOT* consume the first token as it will be part of the first expression/lhs.
 		
-		result = ast_statement_alloc(parser->arena);
-		result->kind     = Ast_Statement_Kind_EXPR;
-		result->location = token.location;
+		Location location = token.location;
+		
+		Ast_Statement_Kind kind = Ast_Statement_Kind_EXPR;
 		
 		// Parse an expression list, stopping at any 'assigner' or 'declarator' token,
 		// or when there are no more expressions.
@@ -710,27 +728,29 @@ parse_statement(Parse_Context *parser) {
 			
 			count += 1;
 			queue_push_nz(first, last, expr, next, check_nil_expression, set_nil_expression);
-			result->location = locations_merge(result->location, expr->location);
+			location = locations_merge(location, expr->location);
 			
 			token = peek_token(parser);
 			if (token.kind != ',') break; // That was the last expr in the list
 			
 			if (token_is_assigner(token)) {
-				result->kind = Ast_Statement_Kind_ASSIGNMENT;
+				kind = Ast_Statement_Kind_ASSIGNMENT;
 				break;
 			}
 			
 			if (token_is_declarator(token)) {
-				result->kind = Ast_Statement_Kind_DECLARATION;
+				kind = Ast_Statement_Kind_DECLARATION;
 				break;
 			}
 		}
 		
-		if (result->kind == Ast_Statement_Kind_EXPR) {
+		if (kind == Ast_Statement_Kind_EXPR) {
 			
-			if (first != NULL) result->expr = first;
+			if (first != NULL) {
+				result = make_statement(parser, kind, location, .expr = first);
+			}
 			
-		} else if (result->kind == Ast_Statement_Kind_ASSIGNMENT) {
+		} else if (kind == Ast_Statement_Kind_ASSIGNMENT) {
 			
 			if (count == 0) {
 				report_parse_error(parser, "Cannot assign to nothing. At least one expression must be on the left of the assignment");
@@ -769,12 +789,11 @@ parse_statement(Parse_Context *parser) {
 			// that matters, but the number of values. One expression could yield multiple values,
 			// e.g. a function call with multiple returns.
 			
-			result->lhs      = lhs_first;
-			result->rhs      = first;
-			result->location = assigner.location;
-			result->assigner = assigner.kind;
+			if (lhs_first != NULL && first != NULL) {
+				result = make_statement(parser, kind, assigner.location, .lhs = lhs_first, .rhs = first);
+			}
 			
-		} else if (result->kind == Ast_Statement_Kind_DECLARATION) {
+		} else if (kind == Ast_Statement_Kind_DECLARATION) {
 			
 			if (count == 0) {
 				report_parse_error(parser, "Cannot declare nothing. At least one identifier must be on the left of the declaration");
@@ -796,12 +815,13 @@ parse_statement(Parse_Context *parser) {
 			}
 			
 			if (count == ident_count) {
-				Token declarator = peek_token(parser);
-				consume_token(parser); // declarator
+				// Do *NOT* consume the declarator as it will be used in parse_declaration_after_lhs().
 				
-				result->kind     = Ast_Statement_Kind_DECLARATION;
-				result->decl     = parse_declaration_after_lhs(parser, idents, ident_count);
-				result->location = declarator.location;
+				Token declarator = peek_token(parser);
+				assert(token_is_declarator(declarator));
+				
+				Ast_Declaration *decl = parse_declaration_after_lhs(parser, idents, ident_count);
+				result = make_statement(parser, kind, declarator.location, .decl = decl);
 			} else {
 				assert(there_were_parse_errors(parser));
 			}
@@ -826,7 +846,7 @@ parse_statement(Parse_Context *parser) {
 	return result;
 }
 
-//- Parser: Ast_Declarations
+//- Parser: Declarations
 
 internal Ast_Declaration *
 parse_declaration(Parse_Context *parser) {

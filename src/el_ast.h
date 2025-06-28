@@ -301,6 +301,27 @@ struct Ast_Statement {
 	Ast_Statement *next;
 };
 
+typedef struct Make_Statement_Params Make_Statement_Params;
+struct Make_Statement_Params {
+	Token_Kind assigner;
+	
+	Ast_Statement   *block;
+	union { Ast_Expression *expr; Ast_Expression *lhs; };
+	Ast_Expression  *rhs;
+	Ast_Declaration *decl;
+};
+
+#define make_statement(parser, kind, location, ...) \
+make_statement_(parser, kind, location, (Make_Statement_Params){ \
+.assigner = 0,\
+.block    = &nil_statement,  \
+.lhs      = &nil_expression, \
+.rhs      = &nil_expression, \
+.decl     = &nil_declaration,\
+__VA_ARGS__\
+})
+internal Ast_Statement *make_statement_(Parse_Context *parser, Ast_Statement_Kind kind, Location location, Make_Statement_Params params);
+
 internal Ast_Statement *parse_statement(Parse_Context *parser);
 
 internal String string_from_statement_tree(Arena *arena, Ast_Statement *root);

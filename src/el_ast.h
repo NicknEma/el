@@ -470,4 +470,6 @@ internal void report_parse_errorf(Parse_Context *parser, char *format, ...);
 
 internal void expect_token_kind(Parse_Context *parser, Token_Kind kind, char *message);
 
+internal bool there_were_parse_errors(Parse_Context *parser);
+
 #endif

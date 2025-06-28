@@ -630,7 +630,7 @@ parse_statement(Parse_Context *parser) {
 				if (stat != &nil_statement) {
 					// Avoid writing to read-only memory (*but continue trying,
 					// since nil-statements can also mean empty statements and not
-					// only that the parse failed).
+					// only failed ones).
 					queue_push_nz(first, last, stat, next, check_nil_statement, set_nil_statement);
 				}
 				
@@ -663,12 +663,11 @@ parse_statement(Parse_Context *parser) {
 		Ast_Expression *first = NULL;
 		Ast_Expression *last  = NULL;
 		
-		// TODO: Good candidate for a do-while loop
 		for (bool is_expr_list = false; ; is_expr_list = true) {
 			Ast_Expression *expr = parse_expression(parser, Precedence_NONE, false);
 			if (expr == &nil_expression) {
 				if (is_expr_list) {
-					assert(parser->error_count > 0);
+					assert(there_were_parse_errors(parser));
 				}
 				
 				break; // Avoid writing to read-only memory
@@ -699,12 +698,11 @@ parse_statement(Parse_Context *parser) {
 		Ast_Expression *last  = NULL;
 		i64 count = 0;
 		
-		// TODO: Good candidate for a do-while loop
 		for (bool is_expr_list = false; ; is_expr_list = true) {
 			Ast_Expression *expr = parse_expression(parser, Precedence_NONE, is_expr_list);
 			if (expr == &nil_expression) {
 				if (is_expr_list) {
-					assert(parser->error_count > 0);
+					assert(there_were_parse_errors(parser));
 				}
 				
 				break; // Avoid writing to read-only memory
@@ -753,11 +751,10 @@ parse_statement(Parse_Context *parser) {
 			last  = NULL;
 			count = 0;
 			
-			// TODO: Good candidate for a do-while loop
 			for (;;) {
 				Ast_Expression *expr = parse_expression(parser, Precedence_NONE, true);
 				if (expr == &nil_expression) {
-					assert(parser->error_count > 0);
+					assert(there_were_parse_errors(parser));
 					break; // Avoid writing to read-only memory
 				}
 				
@@ -806,7 +803,7 @@ parse_statement(Parse_Context *parser) {
 				result->decl     = parse_declaration_after_lhs(parser, idents, ident_count);
 				result->location = declarator.location;
 			} else {
-				assert(parser->error_count > 0);
+				assert(there_were_parse_errors(parser));
 			}
 			
 			scratch_end(scratch);
@@ -819,6 +816,10 @@ parse_statement(Parse_Context *parser) {
 	
 	if (result->kind != Ast_Statement_Kind_BLOCK) {
 		expect_token_kind(parser, Token_Kind_SEMICOLON, "Expected ; after statement");
+	}
+	
+	if (there_were_parse_errors(parser)) {
+		result = &nil_statement; // TODO: @Leak, @Hack
 	}
 	
 	assert(result != NULL && result->next != NULL);
@@ -839,12 +840,13 @@ parse_declaration(Parse_Context *parser) {
 		token = peek_token(parser);
 		if (token.kind == Token_Kind_IDENT) {
 			consume_token(parser); // ident
+			token = peek_token(parser);
+			
 			string_list_push(scratch.arena, &ident_list, lexeme_from_token(parser, token));
 		} else {
 			report_parse_error(parser, "Unexpected token");
 		}
 		
-		token = peek_token(parser);
 		if (token_is_declarator(token)) break;
 		if (token.kind != ',') {
 			report_parse_error(parser, "Unexpected token");
@@ -852,14 +854,20 @@ parse_declaration(Parse_Context *parser) {
 		}
 	}
 	
-	i64 ident_count = 0;
-	String *idents = push_array(scratch.arena, String, ident_list.node_count);
-	for (String_Node *node = ident_list.first; node != NULL; node = node->next) {
-		idents[ident_count] = node->str;
-		ident_count += 1;
+	if (token_is_declarator(token)) {
+		i64 ident_count = 0;
+		String *idents = push_array(scratch.arena, String, ident_list.node_count);
+		for (String_Node *node = ident_list.first; node != NULL; node = node->next) {
+			idents[ident_count] = node->str;
+			ident_count += 1;
+		}
+		
+		result = parse_declaration_after_lhs(parser, idents, ident_count);
 	}
 	
-	result = parse_declaration_after_lhs(parser, idents, ident_count);
+	if (there_were_parse_errors(parser)) {
+		assert(result == &nil_declaration);
+	}
 	
 	scratch_end(scratch);
 	return result;
@@ -936,7 +944,7 @@ parse_declaration_after_lhs(Parse_Context *parser, String *idents, i64 ident_cou
 			for (;;) {
 				Initter initter = parse_declaration_rhs(parser);
 				if (initter.kind == Initter_Kind_NONE) {
-					assert(parser->error_count > 0);
+					assert(there_were_parse_errors(parser));
 					break;
 				}
 				
@@ -967,7 +975,7 @@ parse_declaration_after_lhs(Parse_Context *parser, String *idents, i64 ident_cou
 			
 			scratch_end(scratch);
 		} else {
-			assert((flags & Ast_Declaration_Flag_TYPE_ANNOTATION) || parser->error_count > 0);
+			assert((flags & Ast_Declaration_Flag_TYPE_ANNOTATION) || there_were_parse_errors(parser));
 			
 			// The declaration only has a type annotation, without initializers.
 			// Make new declaration nodes from the given idents.
@@ -994,7 +1002,7 @@ parse_declaration_after_lhs(Parse_Context *parser, String *idents, i64 ident_cou
 		}
 	}
 	
-	if (parser->error_count > 0) {
+	if (there_were_parse_errors(parser)) {
 		result = &nil_declaration; // TODO: @Leak, @Hack
 	}
 	
@@ -1082,7 +1090,6 @@ parse_proc_header(Parse_Context *parser) {
 	Ast_Declaration *first = NULL;
 	Ast_Declaration *last  = NULL;
 	
-	// TODO: Good candidates for do-while loops
 	for (;;) {
 		String_List arg_names = {0};
 		
@@ -1283,6 +1290,11 @@ expect_token_kind(Parse_Context *parser, Token_Kind kind, char *message) {
 	consume_token(parser);
 }
 
+internal bool
+there_were_parse_errors(Parse_Context *parser) {
+	return parser->error_count;
+}
+
 //- Testing
 
 /*
@@ -1434,13 +1446,19 @@ test_statement_parser(void) {
 }
 
 internal void
+test_declaration_parser_single(String source) {
+	Scratch scratch = scratch_begin(0, 0);
+	
+	printf("Parsing sample declaration %.*s:\n", string_expand(source));
+	Ast_Declaration *tree = parse_declaration_string(scratch.arena, source);
+	print_declaration_tree(tree);
+	
+	scratch_end(scratch);
+}
+
+internal void
 test_declaration_parser(void) {
 	printf("### Testing declaration parser ###\n\n");
-	
-	Arena arena = {0};
-	arena_init(&arena);
-	
-	Ast_Declaration *tree = &nil_declaration;
 	
 	String decl_1 = string_from_lit_const("foo :: () { }");
 	String decl_2 = string_from_lit_const("foo :: () { ; }");
@@ -1458,37 +1476,26 @@ test_declaration_parser(void) {
 	String decl_0 = string_from_lit_const("{ return; ");
 #endif
 	
-	arena_reset(&arena);
-	printf("Parsing sample declaration 1:\n");
-	tree = parse_declaration_string(&arena, decl_1);
-	print_declaration_tree(tree);
+	test_declaration_parser_single(decl_1);
+	test_declaration_parser_single(decl_2);
+	test_declaration_parser_single(decl_3);
+	test_declaration_parser_single(decl_4);
+	test_declaration_parser_single(decl_5);
+	test_declaration_parser_single(decl_8);
 	
-	arena_reset(&arena);
-	printf("Parsing sample declaration 2:\n");
-	tree = parse_declaration_string(&arena, decl_2);
-	print_declaration_tree(tree);
+	Scratch scratch = scratch_begin(0, 0);
 	
-	arena_reset(&arena);
-	printf("Parsing sample declaration 3:\n");
-	tree = parse_declaration_string(&arena, decl_3);
-	print_declaration_tree(tree);
+	srand(rand());
+	char filter[] = { 0x7, 0x0 }; // Bell
+	String decl_rand_1 = push_rand_string(scratch.arena, 16, string_from_lit(filter));
+	String decl_rand_2 = push_rand_string(scratch.arena, 32, string_from_lit(filter));
+	String decl_rand_3 = push_rand_string(scratch.arena, 64, string_from_lit(filter));
 	
-	arena_reset(&arena);
-	printf("Parsing sample declaration 4:\n");
-	tree = parse_declaration_string(&arena, decl_4);
-	print_declaration_tree(tree);
+	test_declaration_parser_single(decl_rand_1);
+	test_declaration_parser_single(decl_rand_2);
+	test_declaration_parser_single(decl_rand_3);
 	
-	arena_reset(&arena);
-	printf("Parsing sample declaration 5:\n");
-	tree = parse_declaration_string(&arena, decl_5);
-	print_declaration_tree(tree);
-	
-	arena_reset(&arena);
-	printf("Parsing sample declaration 8:\n");
-	tree = parse_declaration_string(&arena, decl_8);
-	print_declaration_tree(tree);
-	
-	arena_fini(&arena);
+	scratch_end(scratch);
 	
 	printf("\n");
 }

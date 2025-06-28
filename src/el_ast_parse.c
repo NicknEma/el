@@ -85,6 +85,9 @@ make_token(Parse_Context *parser) {
 	
 	token.location.b0 = index;
 	
+	// TODO: A more data-oriented way to store these pairs would be
+	// to use parallel arrays.
+	
 	typedef struct Lexeme_Token_Pair Lexeme_Token_Pair;
 	struct Lexeme_Token_Pair { String lexeme; Token_Kind kind; };
 	

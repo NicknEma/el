@@ -1238,6 +1238,8 @@ internal void
 report_lex_error(Parse_Context *parser, char *message) {
 	String span = lexeme_from_token(parser, parser->token);
 	fprintf(stderr, "Syntax error (%lli..%lli): %s.\n\t%.*s\n\n", parser->token.location.b0, parser->token.location.b1, message, string_expand(span));
+	
+	parser->error_count += 1;
 }
 
 internal void

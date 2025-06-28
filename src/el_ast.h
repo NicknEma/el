@@ -218,6 +218,12 @@ struct Type {
 	// For structs
 	Type *members;
 	i64   member_count;
+	
+	// For procedures
+	Type *params;
+	i64   param_count;
+	Type *retvals;
+	i64   retval_count;
 };
 
 ////////////////////////////////

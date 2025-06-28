@@ -895,7 +895,9 @@ parse_declaration(Parse_Context *parser) {
 		}
 		
 		if (token_is_declarator(token)) break;
-		if (token.kind != ',') {
+		if (token.kind == ',') {
+			consume_token(parser);
+		} else {
 			report_parse_errorf(parser, "Unexpected token '%.*s'", string_expand(lexeme_from_token(parser, token)));
 			break;
 		}
@@ -1249,7 +1251,11 @@ parse_proc_header(Parse_Context *parser) {
 			}
 			
 			token = peek_token(parser);
-			if (token.kind != ',') break;
+			if (token.kind == ',') {
+				consume_token(parser);
+			} else {
+				break;
+			}
 		}
 		
 		// TODO: Add to explicit_type

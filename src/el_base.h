@@ -383,7 +383,7 @@ internal String string_skip_chop_whitespace(String s);
 internal String string_chop_past_last_slash(String s);
 internal String string_slice(String s, i64 start, i64 end);
 
-internal String push_rand_string(Arena *arena, i64 len);
+internal String push_rand_string(Arena *arena, i64 len, String filter);
 
 ////////////////////////////////
 //~ String List

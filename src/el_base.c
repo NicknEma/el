@@ -644,7 +644,7 @@ string_slice(String s, i64 start, i64 end) {
 }
 
 internal String
-push_rand_string(Arena *arena, i64 len) {
+push_rand_string(Arena *arena, i64 len, String filter) {
 	String result = {
 		.data = push_nozero(arena, len),
 		.len  = len,
@@ -652,7 +652,12 @@ push_rand_string(Arena *arena, i64 len) {
 	
 	if (result.data != NULL) {
 		for (i64 i = 0; i < result.len; i += 1) {
-			result.data[i] = rand() & U8_MAX;
+			i64 iters_max = 16;
+			i64 iters = 0;
+			do {
+				result.data[i] = rand() & U8_MAX;
+				iters += 1;
+			} while (iters < iters_max && string_contains(filter, result.data[i]));
 		}
 	} else {
 		result.len = 0;

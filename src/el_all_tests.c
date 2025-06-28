@@ -96,6 +96,7 @@ test_statement_parser(void) {
 		test_statement_parser_single((String)string_from_lit_const("a : int = 0;"));
 		test_statement_parser_single((String)string_from_lit_const("a :: proc();"));
 		test_statement_parser_single((String)string_from_lit_const("a :: proc() ---;"));
+		test_statement_parser_single((String)string_from_lit_const("a :: proc() {}"));
 	}
 #endif
 	

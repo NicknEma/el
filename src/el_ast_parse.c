@@ -840,9 +840,9 @@ parse_declaration(Parse_Context *parser) {
 		token = peek_token(parser);
 		if (token.kind == Token_Kind_IDENT) {
 			consume_token(parser); // ident
-			token = peek_token(parser);
 			
 			string_list_push(scratch.arena, &ident_list, lexeme_from_token(parser, token));
+			token = peek_token(parser);
 		} else {
 			report_parse_error(parser, "Unexpected token");
 		}
@@ -916,7 +916,7 @@ parse_declaration_after_lhs(Parse_Context *parser, String *idents, i64 ident_cou
 		fprintf(stderr, "Internal error: parse_declaration_after_lhs() expects a declarator to be the first token, got %d\n", token.kind);
 	}
 	
-	if (token_is_declarator) {
+	if (token_is_declarator(token)) {
 		// Build the declaration: either by parsing the initializers,
 		// or by looking at the type annotation.
 		
@@ -1217,7 +1217,7 @@ parse_program(Parse_Context *parser) {
 	Ast_Declaration *first_decl = NULL;
 	Ast_Declaration *last_decl  = NULL;
 	
-	for (;;) {
+	for (Token token = peek_token(parser); token.kind != Token_Kind_EOI; token = peek_token(parser)) {
 		Ast_Declaration *decl = parse_declaration(parser);
 		if (decl == NULL || decl == &nil_declaration) break;
 		

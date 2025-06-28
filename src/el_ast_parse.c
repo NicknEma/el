@@ -844,12 +844,12 @@ parse_declaration(Parse_Context *parser) {
 			string_list_push(scratch.arena, &ident_list, lexeme_from_token(parser, token));
 			token = peek_token(parser);
 		} else {
-			report_parse_error(parser, "Unexpected token");
+			report_parse_errorf(parser, "Expected identifier, got '%.*s'", string_expand(lexeme_from_token(parser, token)));
 		}
 		
 		if (token_is_declarator(token)) break;
 		if (token.kind != ',') {
-			report_parse_error(parser, "Unexpected token");
+			report_parse_errorf(parser, "Unexpected token '%.*s'", string_expand(lexeme_from_token(parser, token)));
 			break;
 		}
 	}

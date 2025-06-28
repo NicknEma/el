@@ -1066,7 +1066,9 @@ parse_declaration_rhs(Parse_Context *parser) {
 			result.kind = Initter_Kind_PROCEDURE_PROTO;
 		} else if (token.kind == '{') {
 			// This is a procedure definition.
-			consume_token(parser); // {
+			//
+			// Do *NOT* consume { as it will be used by parse_statement to
+			// know it's a block statement.
 			
 			result.kind = Initter_Kind_PROCEDURE;
 			result.body = parse_statement(parser);

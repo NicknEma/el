@@ -1379,13 +1379,19 @@ test_expression_parser(void) {
 }
 
 internal void
+test_statement_parser_single(String source) {
+	Scratch scratch = scratch_begin(0, 0);
+	
+	printf("Parsing sample statement %.*s:\n", string_expand(source));
+	Ast_Statement *tree = parse_statement_string(scratch.arena, source);
+	print_statement_tree(tree);
+	
+	scratch_end(scratch);
+}
+
+internal void
 test_statement_parser(void) {
 	printf("### Testing statement parser ###\n\n");
-	
-	Arena arena = {0};
-	arena_init(&arena);
-	
-	Ast_Statement *tree = &nil_statement;
 	
 	String stat_1 = string_from_lit_const("1 + 2;");
 	String stat_2 = string_from_lit_const("return;");
@@ -1399,57 +1405,30 @@ test_statement_parser(void) {
 	String stat_9 = string_from_lit_const("{ return } ");
 	String stat_0 = string_from_lit_const("{ return; ");
 	
-	arena_reset(&arena);
-	printf("Parsing sample statement %.*s:\n", string_expand(stat_1));
-	tree = parse_statement_string(&arena, stat_1);
-	print_statement_tree(tree);
+	test_statement_parser_single(stat_1);
+	test_statement_parser_single(stat_2);
+	test_statement_parser_single(stat_3);
+	test_statement_parser_single(stat_4);
+	test_statement_parser_single(stat_5);
+	test_statement_parser_single(stat_6);
+	test_statement_parser_single(stat_7);
+	test_statement_parser_single(stat_8);
+	test_statement_parser_single(stat_9);
+	test_statement_parser_single(stat_0);
 	
-	arena_reset(&arena);
-	printf("Parsing sample statement %.*s:\n", string_expand(stat_2));
-	tree = parse_statement_string(&arena, stat_2);
-	print_statement_tree(tree);
+	Scratch scratch = scratch_begin(0, 0);
 	
-	arena_reset(&arena);
-	printf("Parsing sample statement %.*s:\n", string_expand(stat_3));
-	tree = parse_statement_string(&arena, stat_3);
-	print_statement_tree(tree);
+	srand(rand());
+	char filter[] = { 0x7, 0x0 }; // Bell
+	String stat_rand_1 = push_rand_string(scratch.arena, 16, string_from_lit(filter));
+	String stat_rand_2 = push_rand_string(scratch.arena, 32, string_from_lit(filter));
+	String stat_rand_3 = push_rand_string(scratch.arena, 64, string_from_lit(filter));
 	
-	arena_reset(&arena);
-	printf("Parsing sample statement %.*s:\n", string_expand(stat_4));
-	tree = parse_statement_string(&arena, stat_4);
-	print_statement_tree(tree);
+	test_statement_parser_single(stat_rand_1);
+	test_statement_parser_single(stat_rand_2);
+	test_statement_parser_single(stat_rand_3);
 	
-	arena_reset(&arena);
-	printf("Parsing sample statement %.*s:\n", string_expand(stat_5));
-	tree = parse_statement_string(&arena, stat_5);
-	print_statement_tree(tree);
-	
-	arena_reset(&arena);
-	printf("Parsing sample statement %.*s:\n", string_expand(stat_6));
-	tree = parse_statement_string(&arena, stat_6);
-	print_statement_tree(tree);
-	
-	arena_reset(&arena);
-	printf("Parsing sample statement %.*s:\n", string_expand(stat_7));
-	tree = parse_statement_string(&arena, stat_7);
-	print_statement_tree(tree);
-	
-	arena_reset(&arena);
-	printf("Parsing sample statement %.*s:\n", string_expand(stat_8));
-	tree = parse_statement_string(&arena, stat_8);
-	print_statement_tree(tree);
-	
-	arena_reset(&arena);
-	printf("Parsing sample statement %.*s:\n", string_expand(stat_9));
-	tree = parse_statement_string(&arena, stat_9);
-	print_statement_tree(tree);
-	
-	arena_reset(&arena);
-	printf("Parsing sample statement %.*s:\n", string_expand(stat_0));
-	tree = parse_statement_string(&arena, stat_0);
-	print_statement_tree(tree);
-	
-	arena_fini(&arena);
+	scratch_end(scratch);
 	
 	printf("\n");
 }

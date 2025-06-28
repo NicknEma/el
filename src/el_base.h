@@ -294,6 +294,7 @@ internal void arena_reset(Arena *arena);
 internal u64  arena_cap(Arena arena);
 internal u64  arena_pos(Arena arena);
 internal u64  arena_space(Arena arena);
+internal bool arena_initted(Arena arena);
 
 internal void *push_nozero_aligned(Arena *arena, u64 size, u64 alignment);
 internal void *push_zero_aligned(Arena *arena, u64 size, u64 alignment);

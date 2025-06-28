@@ -169,6 +169,11 @@ arena_space(Arena arena) {
 	return arena.cap - arena.pos;
 }
 
+internal bool
+arena_initted(Arena arena) {
+	return arena.cap > 0 && arena.ptr != NULL;
+}
+
 //- Arena operations: push
 
 internal void *

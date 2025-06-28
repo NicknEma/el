@@ -662,36 +662,46 @@ int main(void) {
 	
 	Arena tree_arena = {0};
 	arena_init(&tree_arena);
+	
+	Parse_Context parser = {0};
+	parser_init(&parser, &tree_arena, source);
+	
 	Ast_Declaration *program = &nil_declaration;
-	program = parse_program_string(&tree_arena, source);
+	program = parse_program(&parser);
 	
-	do_all_checks(program);
-	
-	for (Ast_Declaration *decl = program; decl != NULL && decl != &nil_declaration; decl = decl->next) {
-		generate_bytecode_for_declaration(decl);
+	if (there_were_parse_errors(&parser)) {
+		all_ok = false;
 	}
 	
-	arena_init(&masm_context.arena);
-	String masm_source = masm_generate_source();
-	
-	FILE *sf = fopen("generated/generated.asm", "wb+");
-	FILE *bs = fopen("build_generated.bat", "wb+");
-	if (sf && bs) {
-		fwrite(masm_source.data, sizeof(char), masm_source.len, sf);
-		fclose(sf);
+	if (all_ok) {
+		do_all_checks(program);
 		
-		char buf[1024] = {0};
-		int buf_len = snprintf(buf, array_count(buf), "@echo off\n"
-							   "del *.pdb > NUL 2> NUL\n"
-							   "del *.rdi > NUL 2> NUL\n"
-							   "ml64 generated/generated.asm /nologo /Fegenerated/generated.exe /W4 /WX /Zi /link /incremental:no /opt:ref\n"
-							   "del *.obj > NUL 2> NUL\n"
-							   "del *.ilk > NUL 2> NUL\n"
-							   "del mllink$* > NUL 2> NUL\n");
+		for (Ast_Declaration *decl = program; decl != NULL && decl != &nil_declaration; decl = decl->next) {
+			generate_bytecode_for_declaration(decl);
+		}
 		
-		fwrite(buf, sizeof(char), buf_len, bs);
-		fclose(bs);
-		system("build_generated.bat");
+		arena_init(&masm_context.arena);
+		String masm_source = masm_generate_source();
+		
+		FILE *sf = fopen("generated/generated.asm", "wb+");
+		FILE *bs = fopen("build_generated.bat", "wb+");
+		if (sf && bs) {
+			fwrite(masm_source.data, sizeof(char), masm_source.len, sf);
+			fclose(sf);
+			
+			char buf[1024] = {0};
+			int buf_len = snprintf(buf, array_count(buf), "@echo off\n"
+								   "del *.pdb > NUL 2> NUL\n"
+								   "del *.rdi > NUL 2> NUL\n"
+								   "ml64 generated/generated.asm /nologo /Fegenerated/generated.exe /W4 /WX /Zi /link /incremental:no /opt:ref\n"
+								   "del *.obj > NUL 2> NUL\n"
+								   "del *.ilk > NUL 2> NUL\n"
+								   "del mllink$* > NUL 2> NUL\n");
+			
+			fwrite(buf, sizeof(char), buf_len, bs);
+			fclose(bs);
+			system("build_generated.bat");
+		}
 	}
 	
 	return 0;

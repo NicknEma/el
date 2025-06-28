@@ -707,12 +707,14 @@ print_scope(Scope *scope) {
 		
 		String_List used = {0};
 		for (i64 i = 0; i < symbol->locations_used_count; i += 1) {
-			string_list_pushf(scratch.arena, &used, "%lld..%lld, ", symbol->locations_used[i].b0, symbol->locations_used[i].b1);
+			// string_list_pushf(scratch.arena, &used, "%lld..%lld, ", symbol->locations_used[i].b0, symbol->locations_used[i].b1);
+			string_list_pushf(scratch.arena, &used, "%lld, ", symbol->locations_used[i].l0);
 		}
 		
 		String used_string = string_from_list(scratch.arena, used);
-		printf("%.*s, defined %lld..%lld, used %.*s\n", string_expand(symbol->ident),
-			   symbol->location_declared.b0, symbol->location_declared.b1,
+		// String defined_string = push_stringf(scratch.arena, "defined %lld..%lld", symbol->location_declared.b0, symbol->location_declared.b1);
+		String defined_string = push_stringf(scratch.arena, "defined %lld", symbol->location_declared.l0);
+		printf("%.*s, %.*s, used %.*s\n", string_expand(symbol->ident), string_expand(defined_string),
 			   string_expand(used_string));
 	}
 	

@@ -677,9 +677,13 @@ int main(void) {
 									"\n"
 									"c := C;\n"
 									"C :: 1;\n"
+									"\n"
+									"d := D;"
 									"}\n"
 									"\n"
-									"b := 314\n");
+									"b := 314\n"
+									"D :: 0\n"
+									);
 #endif
 	
 	bool all_ok = true;

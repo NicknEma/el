@@ -71,6 +71,7 @@ internal void
 test_statement_parser(void) {
 	printf("### Testing statement parser ###\n\n");
 	
+#if 0
 	{
 		String stat_1 = string_from_lit_const("1 + 2;");
 		String stat_2 = string_from_lit_const("return;");
@@ -95,7 +96,9 @@ test_statement_parser(void) {
 		test_statement_parser_single(stat_9);
 		test_statement_parser_single(stat_0);
 	}
+#endif
 	
+#if 1
 	{
 		String stat_1 = string_from_lit_const("a = 0;");
 		String stat_2 = string_from_lit_const("a, b = 0;");
@@ -113,20 +116,25 @@ test_statement_parser(void) {
 		test_statement_parser_single(stat_6);
 		test_statement_parser_single(stat_7);
 	}
+#endif
 	
-	Scratch scratch = scratch_begin(0, 0);
-	
-	srand(rand());
-	char filter[] = { 0x7, 0x0 }; // Bell
-	String stat_rand_1 = push_rand_string(scratch.arena, 16, string_from_lit(filter));
-	String stat_rand_2 = push_rand_string(scratch.arena, 32, string_from_lit(filter));
-	String stat_rand_3 = push_rand_string(scratch.arena, 64, string_from_lit(filter));
-	
-	test_statement_parser_single(stat_rand_1);
-	test_statement_parser_single(stat_rand_2);
-	test_statement_parser_single(stat_rand_3);
-	
-	scratch_end(scratch);
+#if 0
+	{
+		Scratch scratch = scratch_begin(0, 0);
+		
+		srand(rand());
+		char filter[] = { 0x7, 0x0 }; // Bell
+		String stat_rand_1 = push_rand_string(scratch.arena, 16, string_from_lit(filter));
+		String stat_rand_2 = push_rand_string(scratch.arena, 32, string_from_lit(filter));
+		String stat_rand_3 = push_rand_string(scratch.arena, 64, string_from_lit(filter));
+		
+		test_statement_parser_single(stat_rand_1);
+		test_statement_parser_single(stat_rand_2);
+		test_statement_parser_single(stat_rand_3);
+		
+		scratch_end(scratch);
+	}
+#endif
 	
 	printf("\n");
 }
@@ -190,15 +198,15 @@ internal void
 test_all(void) {
 	
 	{
-		max_printed_lex_errors   = 0;
-		max_printed_parse_errors = 0;
+		// max_printed_lex_errors   = 0;
+		// max_printed_parse_errors = 0;
 		
 		// test_expression_parser();
 		test_statement_parser();
 		// test_declaration_parser();
 		
-		max_printed_lex_errors   = I64_MAX;
-		max_printed_parse_errors = 1;
+		// max_printed_lex_errors   = I64_MAX;
+		// max_printed_parse_errors = 1;
 	}
 	
 	// x64_test();

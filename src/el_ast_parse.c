@@ -817,6 +817,7 @@ parse_statement(Parse_Context *parser) {
 			i64 ident_count = 0;
 			for (Ast_Expression *expr = first; expr != NULL && expr != &nil_expression; expr = expr->next) {
 				if (expr->kind == Ast_Expression_Kind_IDENT) {
+					idents[ident_count] = expr->ident;
 					ident_count += 1;
 				} else {
 					report_parse_error(parser, "Only identifiers are allowed on the left of a declaration");

@@ -28,7 +28,13 @@ typedef enum Token_Kind {
 	
 	/*  33 ..  47 */
 	
+	Token_Kind_EMARK   = '!',
+	Token_Kind_QUOTE   = '"',
+	Token_Kind_HASH    = '#',
+	Token_Kind_DOLLAR  = '$',
 	Token_Kind_PERCENT = '%',
+	Token_Kind_AMPER   = '&',
+	Token_Kind_APEX    = '\'',
 	Token_Kind_LPAREN  = '(',
 	Token_Kind_RPAREN  = ')',
 	Token_Kind_STAR    = '*',
@@ -42,18 +48,27 @@ typedef enum Token_Kind {
 	
 	Token_Kind_COLON     = ':',
 	Token_Kind_SEMICOLON = ';',
+	Token_Kind_LTHAN     = '<',
+	Token_Kind_EQUALS    = '=',
+	Token_Kind_GTHAN     = '>',
 	Token_Kind_QMARK     = '?',
+	Token_Kind_AT        = '@',
 	
 	/*  91 ..  96 */
 	
 	Token_Kind_LBRACK = '[',
+	Token_Kind_BSLASH = '\\',
 	Token_Kind_RBRACK = ']',
 	Token_Kind_HAT    = '^',
+	Token_Kind_USCORE = '_',
+	Token_Kind_TICK   = '`',
 	
 	/* 123 .. 126 */
 	
 	Token_Kind_LBRACE = '{',
+	Token_Kind_PIPE   = '|',
 	Token_Kind_RBRACE = '}',
+	Token_Kind_TILDE  = '~',
 	
 	/* 127 .. */
 	
@@ -91,11 +106,6 @@ typedef enum Keyword {
 	Keyword_CONTINUE,
 	Keyword_COUNT,
 } Keyword;
-
-global read_only String keywords[] = {
-	string_from_lit_const(""),
-	string_from_lit_const("return"),
-};
 
 typedef struct Token Token;
 struct Token {

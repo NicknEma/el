@@ -85,7 +85,163 @@ make_token(Parse_Context *parser) {
 	
 	token.location.b0 = index;
 	
+	typedef struct Lexeme_Token_Pair Lexeme_Token_Pair;
+	struct Lexeme_Token_Pair { String lexeme; Token_Kind kind; };
+	
+	static read_only Lexeme_Token_Pair misc_pairs[] = {
+		{ string_from_lit_const("!"),  '!',  },
+		{ string_from_lit_const("\""), '"',  },
+		{ string_from_lit_const("#"),  '#',  },
+		{ string_from_lit_const("$"),  '$',  },
+		{ string_from_lit_const("%"),  '%',  },
+		{ string_from_lit_const("&"),  '&',  },
+		{ string_from_lit_const("'"),  '\'', },
+		{ string_from_lit_const("("),  '(',  },
+		{ string_from_lit_const(")"),  ')',  },
+		{ string_from_lit_const("*"),  '*',  },
+		{ string_from_lit_const("+"),  '+',  },
+		{ string_from_lit_const(","),  ',',  },
+		{ string_from_lit_const("-"),  '-',  },
+		{ string_from_lit_const("."),  '.',  },
+		{ string_from_lit_const("/"),  '/',  },
+		
+		{ string_from_lit_const(":"),  ':',  },
+		{ string_from_lit_const(";"),  ';',  },
+		{ string_from_lit_const("<"),  '<',  },
+		{ string_from_lit_const("="),  '=',  },
+		{ string_from_lit_const(">"),  '>',  },
+		{ string_from_lit_const("?"),  '?',  },
+		{ string_from_lit_const("@"),  '@',  },
+		
+		{ string_from_lit_const("["),  '[',  },
+		{ string_from_lit_const("\\"), '\\', },
+		{ string_from_lit_const("]"),  ']',  },
+		{ string_from_lit_const("^"),  '^',  },
+		{ string_from_lit_const("_"),  '_',  },
+		{ string_from_lit_const("`"),  '`',  },
+		
+		{ string_from_lit_const("{"),  '{',  },
+		{ string_from_lit_const("|"),  '|',  },
+		{ string_from_lit_const("}"),  '}',  },
+		{ string_from_lit_const("~"),  '~',  },
+		
+		{ string_from_lit_const("=="),  Token_Kind_DOUBLE_EQUALS  },
+		{ string_from_lit_const("+="),  Token_Kind_PLUS_EQUALS    },
+		{ string_from_lit_const("-="),  Token_Kind_DASH_EQUALS    },
+		{ string_from_lit_const("*="),  Token_Kind_STAR_EQUALS    },
+		{ string_from_lit_const("/="),  Token_Kind_SLASH_EQUALS   },
+		{ string_from_lit_const("%="),  Token_Kind_PERCENT_EQUALS },
+		{ string_from_lit_const("!="),  Token_Kind_EMARK_EQUALS   },
+		{ string_from_lit_const("|="),  Token_Kind_PIPE_EQUALS    },
+		{ string_from_lit_const("&="),  Token_Kind_AMPER_EQUALS   },
+		{ string_from_lit_const("~="),  Token_Kind_TILDE_EQUALS   },
+		{ string_from_lit_const(":="),  Token_Kind_COLON_EQUALS   },
+		
+		{ string_from_lit_const("::"),  Token_Kind_DOUBLE_COLON   },
+		{ string_from_lit_const("---"), Token_Kind_TRIPLE_DASH    },
+		{ string_from_lit_const("->"),  Token_Kind_FORWARD_ARROW  },
+	};
+	
+	typedef struct Lexeme_Keyword_Pair Lexeme_Keyword_Pair;
+	struct Lexeme_Keyword_Pair { String lexeme; Keyword keyword; };
+	
+	static read_only Lexeme_Keyword_Pair keyword_pairs[] = {
+		{ string_from_lit_const("return"),   Keyword_RETURN   },
+		{ string_from_lit_const("proc"),     Keyword_PROC     },
+		{ string_from_lit_const("struct"),   Keyword_STRUCT   },
+		{ string_from_lit_const("break"),    Keyword_BREAK    },
+		{ string_from_lit_const("continue"), Keyword_CONTINUE },
+	};
+	
 	if (index < source.len) {
+#if 1
+		
+		if (token.kind == Token_Kind_INVALID && isdigit(source.data[index])) {
+			i64 value = 0;
+			
+			while (index < source.len && (isdigit(source.data[index]) || source.data[index] == '_')) {
+				if (source.data[index] != '_') {
+					i64 digit = i64_from_char(source.data[index]);
+					
+					value *= 10;
+					value += digit;
+				}
+				
+				index += 1;
+			}
+			
+			token.kind        = Token_Kind_INTEGER;
+			token.int_val     = value;
+			token.location.b1 = index;
+		}
+		
+		if (token.kind == Token_Kind_INVALID) {
+			i64    best_match_len = 0;
+			Token_Kind best_match = Token_Kind_INVALID;
+			
+			for (i64 i = 0; i < array_count(misc_pairs); i += 1) {
+				if (string_starts_with(string_skip(parser->source, index), misc_pairs[i].lexeme) &&
+					misc_pairs[i].lexeme.len > best_match_len) {
+					best_match_len = misc_pairs[i].lexeme.len;
+					best_match     = misc_pairs[i].kind;
+				}
+			}
+			
+			token.kind        = best_match;
+			token.location.b1 = index + best_match_len;
+			
+			index += best_match_len;
+		}
+		
+		if (token.kind == Token_Kind_INVALID) {
+			i64 best_match_len = 0;
+			Keyword best_match = Keyword_NONE;
+			
+			for (i64 i = 0; i < array_count(keyword_pairs); i += 1) {
+				if (string_starts_with(string_skip(parser->source, index), keyword_pairs[i].lexeme) &&
+					keyword_pairs[i].lexeme.len > best_match_len) {
+					best_match_len = keyword_pairs[i].lexeme.len;
+					best_match     = keyword_pairs[i].keyword;
+				}
+			}
+			
+			if (best_match != Keyword_NONE) {
+				token.kind        = Token_Kind_KEYWORD;
+				token.keyword     = best_match;
+				token.location.b1 = index + best_match_len;
+				
+				index += best_match_len;
+			}
+		}
+		
+		if (token.kind == Token_Kind_INVALID && (isalpha(source.data[index]) || source.data[index] == '_')) {
+			token.kind = Token_Kind_IDENT;
+			
+			i64 start = index;
+			while (isalpha(source.data[index]) || isdigit(source.data[index]) || source.data[index] == '_') {
+				index += 1;
+			}
+			
+			token.location.b1 = index;
+			
+#if 0
+			String ident = string_slice(source, start, index);
+			for (int i = 1; i < array_count(keywords); i += 1) {
+				if (string_equals(ident, keywords[i])) {
+					token.kind = Token_Kind_KEYWORD;
+					token.keyword = i;
+					break;
+				}
+			}
+#endif
+		}
+		
+		if (token.kind == Token_Kind_INVALID) {
+			token.location.b1 = index + 1;
+			index += 1;
+		}
+		
+#else
 		switch (source.data[index]) {
 			case '0':
 			case '1':
@@ -313,6 +469,7 @@ make_token(Parse_Context *parser) {
 				}
 			} break;
 		}
+#endif
 	} else {
 		token.kind = Token_Kind_EOI;
 	}

@@ -663,6 +663,7 @@ parse_statement(Parse_Context *parser) {
 			}
 		} else {
 			rbrace_location = token.location;
+			first = &nil_statement;
 		}
 		
 		if (first != NULL) {

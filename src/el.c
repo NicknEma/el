@@ -657,8 +657,27 @@ int main(void) {
 	test_all();
 	printf("### Main program output ###\n\n");
 	
+#if 0
 	String source = string_from_lit("main :: proc() { return other(); }"
 									"other :: proc() { return 2*3 + 10/(4+1); 7-0; }");
+#else
+	String source = string_from_lit("a := 0"
+									
+									"main :: proc() {"
+									"a = 5;"
+									"a := \"Hello\";"
+									"a = \"world\";"
+									
+									"b = 69.420;"
+									
+									"c := C;"
+									"C :: 1;"
+									"}"
+									
+									"b := 314");
+#endif
+	
+	bool all_ok = true;
 	
 	Arena tree_arena = {0};
 	arena_init(&tree_arena);

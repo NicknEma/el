@@ -681,13 +681,69 @@ analyse_declarations(Ast_Declaration *first) {
 ////////////////////////////////
 //~ Checking
 
+global int   indent_level;
+global char *indent_chars = "    ";
+
+internal void
+inc_indent(void) { indent_level += 1; }
+
+internal void
+dec_indent(void) { indent_level = max(indent_level - 1, 0); }
+
+internal void
+fprint_indent(FILE *stream) {
+	for (int i = 0; i < indent_level; i += 1) fputs(indent_chars, stream);
+}
+
+internal void
+print_indent(void) { fprint_indent(stdout); }
+
+internal void
+print_scope(Scope *scope) {
+	Scratch scratch = scratch_begin(0, 0);
+	
+	for (Symbol *symbol = scope->first_symbol; symbol != NULL; symbol = symbol->next) {
+		print_indent();
+		
+		String_List used = {0};
+		for (i64 i = 0; i < symbol->locations_used_count; i += 1) {
+			string_list_pushf(scratch.arena, &used, "%lld..%lld, ", symbol->locations_used[i].b0, symbol->locations_used[i].b1);
+		}
+		
+		String used_string = string_from_list(scratch.arena, used);
+		printf("%.*s, defined %lld..%lld, used %.*s\n", string_expand(symbol->ident),
+			   symbol->location_declared.b0, symbol->location_declared.b1,
+			   string_expand(used_string));
+	}
+	
+	inc_indent();
+	for (Scope *child = scope->first_child; child != NULL; child = child->next_sibling) {
+		print_scope(child);
+	}
+	dec_indent();
+	
+	scratch_end(scratch);
+}
+
 internal void
 do_all_checks(Ast_Declaration *prog) {
 	if (!arena_initted(scope_arena)) {
 		arena_init(&scope_arena);
 	}
 	
-	build_scope_for_declaration(&scope_arena, &scope_global, prog);
+	build_scope_for_all_declarations(&scope_arena, &scope_global, prog);
+	
+	print_scope(&scope_global);
+	
+#if 0
+	bool progress = true;
+	for (;progress;) {
+		progress = false;
+		
+		progress = progress || analyse_statement(0, prog->initters[0].body, 0);
+		progress = progress || analyse_statement(0, prog->next->initters[0].body, 0);
+	}
+#endif
 	
 	return;
 }

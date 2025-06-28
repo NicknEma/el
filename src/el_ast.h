@@ -459,6 +459,9 @@ struct Parse_Context {
 
 internal void parser_init(Parse_Context *parser, Arena *arena, String source);
 
+internal void report_lex_error(Parse_Context *parser, char *message);
+internal void report_lex_errorf(Parse_Context *parser, char *format, ...);
+
 internal void report_parse_error(Parse_Context *parser, char *message);
 internal void report_parse_errorf(Parse_Context *parser, char *format, ...);
 

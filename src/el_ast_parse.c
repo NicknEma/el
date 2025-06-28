@@ -731,8 +731,6 @@ parse_statement(Parse_Context *parser) {
 			location = locations_merge(location, expr->location);
 			
 			token = peek_token(parser);
-			if (token.kind != ',') break; // That was the last expr in the list
-			
 			if (token_is_assigner(token)) {
 				kind = Ast_Statement_Kind_ASSIGNMENT;
 				break;
@@ -742,6 +740,8 @@ parse_statement(Parse_Context *parser) {
 				kind = Ast_Statement_Kind_DECLARATION;
 				break;
 			}
+			
+			if (token.kind != ',') break; // That was the last expr in the list
 		}
 		
 		if (kind == Ast_Statement_Kind_EXPR) {
@@ -790,7 +790,8 @@ parse_statement(Parse_Context *parser) {
 			// e.g. a function call with multiple returns.
 			
 			if (lhs_first != NULL && first != NULL) {
-				result = make_statement(parser, kind, assigner.location, .lhs = lhs_first, .rhs = first);
+				result = make_statement(parser, kind, assigner.location, .assigner = assigner.kind,
+										.lhs = lhs_first, .rhs = first);
 			}
 			
 		} else if (kind == Ast_Statement_Kind_DECLARATION) {

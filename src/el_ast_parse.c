@@ -647,12 +647,19 @@ parse_statement(Parse_Context *parser) {
 					// Avoid writing to read-only memory (*but continue trying,
 					// since nil-statements can also mean empty statements and not
 					// only failed ones).
+					// TODO: Review :NilStatements
 					queue_push_nz(first, last, stat, next, check_nil_statement, set_nil_statement);
 				}
 				
 				token = peek_token(parser);
 				if (token.kind == Token_Kind_RBRACE) {
 					rbrace_location = token.location;
+					
+					// We set it to &nil_statement always for now, so that {;} works.
+					// TODO: Review :NilStatements
+					if (first == NULL) {
+						first = &nil_statement;
+					}
 					
 					consume_token(parser);
 					break;

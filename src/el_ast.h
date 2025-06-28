@@ -190,6 +190,7 @@ internal bool token_is_declarator(Token token);
 internal bool token_is_assigner(Token token);
 
 internal String lexeme_from_token(Parse_Context *parser, Token token);
+internal String lexeme_from_token_or_not_printable(Parse_Context *parser, Token token);
 
 ////////////////////////////////
 //~ Types

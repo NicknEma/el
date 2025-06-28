@@ -238,7 +238,7 @@ make_token(Parse_Context *parser) {
 			token.location.b1 = index + 1;
 			index += 1;
 			
-			report_lex_errorf(parser, "Invalid token '%.*s'", string_expand(lexeme_from_token(parser, token)));
+			report_lex_errorf(parser, "Invalid token '%.*s'", string_expand(lexeme_from_token_or_not_printable(parser, token)));
 		}
 		
 	} else {
@@ -413,6 +413,18 @@ token_is_assigner(Token token) {
 internal String
 lexeme_from_token(Parse_Context *parser, Token token) {
 	return string_slice(parser->source, token.location.b0, token.location.b1);
+}
+
+internal String
+lexeme_from_token_or_not_printable(Parse_Context *parser, Token token) {
+	String lexeme = lexeme_from_token(parser, token);
+	for (i64 i = 0; i < lexeme.len; i += 1) {
+		if (!isprint(lexeme.data[i])) {
+			lexeme = string_from_lit("(not printable)");
+			break;
+		}
+	}
+	return lexeme;
 }
 
 ////////////////////////////////
@@ -1218,13 +1230,6 @@ parse_program(Parse_Context *parser) {
 internal void
 report_lex_error(Parse_Context *parser, char *message) {
 	String span = lexeme_from_token(parser, parser->token);
-	for (i64 i = 0; i < span.len; i += 1) {
-		if (!isprint(span.data[i])) {
-			span = string_from_lit("(not printable)");
-			break;
-		}
-	}
-	
 	fprintf(stderr, "Syntax error (%lli..%lli): %s.\n\t%.*s\n\n", parser->token.location.b0, parser->token.location.b1, message, string_expand(span));
 }
 

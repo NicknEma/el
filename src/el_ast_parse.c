@@ -741,7 +741,11 @@ parse_statement(Parse_Context *parser) {
 				break;
 			}
 			
-			if (token.kind != ',') break; // That was the last expr in the list
+			if (token.kind == ',') {
+				consume_token(parser);
+			} else {
+				break; // That was the last expr in the list
+			}
 		}
 		
 		if (kind == Ast_Statement_Kind_EXPR) {
@@ -782,7 +786,11 @@ parse_statement(Parse_Context *parser) {
 				queue_push_nz(first, last, expr, next, check_nil_expression, set_nil_expression);
 				
 				token = peek_token(parser);
-				if (token.kind != ',') break; // That was the last expr in the list
+				if (token.kind == ',') {
+					consume_token(parser);
+				} else {
+					break; // That was the last expr in the list
+				}
 			}
 			
 			// Do *NOT* report an error if lhs_count != count: it's not the number of expressions

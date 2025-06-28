@@ -139,6 +139,8 @@ build_scope_for_expression(Arena *arena, Scope *scope, Ast_Expression *expr) {
 	return;
 }
 
+internal void build_scope_for_declaration(Arena *arena, Scope *scope, Ast_Declaration *decl);
+
 internal void
 build_scope_for_statement(Arena *arena, Scope *scope, Ast_Statement *stat) {
 	stat->scope = scope;

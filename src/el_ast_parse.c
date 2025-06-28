@@ -86,11 +86,24 @@ make_token(Parse_Context *parser) {
 	i64    index  = parser->index;
 	
 	// Skip whitespace
-	while (index < source.len && isspace(source.data[index])) {
-		index += 1;
+	bool skipped_more = true;
+	while (skipped_more) {
+		skipped_more = false;
+		while (index < source.len && isspace(source.data[index]) && source.data[index] != '\n') {
+			skipped_more = true;
+			index += 1;
+		}
+		
+		while (index < source.len && source.data[index] == '\n') {
+			skipped_more = true;
+			parser->line_index += 1;
+			index += 1;
+		}
 	}
 	
 	token.location.b0 = index;
+	token.location.l0 = parser->line_index;
+	token.location.l1 = parser->line_index;
 	
 	// TODO: A more data-oriented way to store these pairs would be
 	// to use parallel arrays.

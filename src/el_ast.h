@@ -479,6 +479,7 @@ struct Parse_Context {
 	
 	String source;
 	i64    index;
+	i64    line_index;
 	
 	i64    rollback_index;
 	Token  token;

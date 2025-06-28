@@ -661,20 +661,25 @@ int main(void) {
 	String source = string_from_lit("main :: proc() { return other(); }"
 									"other :: proc() { return 2*3 + 10/(4+1); 7-0; }");
 #else
-	String source = string_from_lit("a := 0"
-									
-									"main :: proc() {"
-									"a = 5;"
-									"a := \"Hello\";"
-									"a = \"world\";"
-									
-									"b = 69.420;"
-									
-									"c := C;"
-									"C :: 1;"
-									"}"
-									
-									"b := 314");
+	String source = string_from_lit("a := 0\n"
+									"\n"
+									"main :: proc() {\n"
+									"a = 5;\n"
+									"a := \"Hello\";\n"
+									"a = \"world\";\n"
+									"\n"
+									"{\n"
+									"a = \"goodbye\";\n"
+									"a := \"moon\";\n"
+									"}\n"
+									"\n"
+									"b = 69.420;\n"
+									"\n"
+									"c := C;\n"
+									"C :: 1;\n"
+									"}\n"
+									"\n"
+									"b := 314\n");
 #endif
 	
 	bool all_ok = true;

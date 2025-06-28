@@ -1068,8 +1068,6 @@ parse_declaration_rhs(Parse_Context *parser) {
 			
 			result.kind = Initter_Kind_PROCEDURE;
 			result.body = parse_statement(parser);
-		} else {
-			report_parse_error(parser, "Unexpected token after proc declaration, did you miss --- ?");
 		}
 		
 	} else if (token.keyword == Keyword_STRUCT) {

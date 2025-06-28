@@ -1061,10 +1061,12 @@ parse_declaration_rhs(Parse_Context *parser) {
 		token = peek_token(parser);
 		if (token.kind == Token_Kind_TRIPLE_DASH) {
 			// This is a procedure prototype.
+			consume_token(parser); // ---
 			
 			result.kind = Initter_Kind_PROCEDURE_PROTO;
 		} else if (token.kind == '{') {
 			// This is a procedure definition.
+			consume_token(parser); // {
 			
 			result.kind = Initter_Kind_PROCEDURE;
 			result.body = parse_statement(parser);

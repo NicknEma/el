@@ -445,7 +445,7 @@ global read_only Ast_Declaration nil_declaration = {
 #define check_nil_declaration(p) ((p)==0||(p)==&nil_declaration)
 #define set_nil_declaration(p) ((p)=&nil_declaration)
 
-global read_only Initter nil_initializer = {
+global read_only Initter nil_initter = {
 	.first_param = &nil_declaration,
 	.body = &nil_statement,
 	.expr = &nil_expression,

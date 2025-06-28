@@ -125,6 +125,8 @@ typedef struct Parse_Context Parse_Context;
 internal Token peek_token(Parse_Context *parser);
 internal Token make_token(Parse_Context *parser);
 internal void  consume_token(Parse_Context *parser);
+internal void  consume_all_tokens(Parse_Context *parser);
+
 internal bool  expect_and_consume_token(Parse_Context *parser, Token_Kind kind);
 
 ////////////////////////////////

@@ -56,6 +56,13 @@ consume_token(Parse_Context *parser) {
 	parser->token = make_token(parser);
 }
 
+internal void
+consume_all_tokens(Parse_Context *parser) {
+	for (Token token = peek_token(parser); token.kind != Token_Kind_EOI; token = peek_token(parser)) {
+		consume_token(parser);
+	}
+}
+
 internal bool
 expect_and_consume_token(Parse_Context *parser, Token_Kind kind) {
 	bool kinds_match = peek_token(parser).kind == kind;
@@ -1199,6 +1206,8 @@ parse_program(Parse_Context *parser) {
 	}
 	
 	if (first_decl != NULL) result = first_decl;
+	
+	consume_all_tokens(parser);
 	
 	return result;
 }

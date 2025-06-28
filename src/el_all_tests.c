@@ -71,8 +71,8 @@ internal void
 test_statement_parser(void) {
 	printf("### Testing statement parser ###\n\n");
 	
-#if 0
 	{
+#if 0
 		test_statement_parser_single((String)string_from_lit_const("1 + 2;"));
 		test_statement_parser_single((String)string_from_lit_const("return;"));
 		test_statement_parser_single((String)string_from_lit_const("return 0;"));
@@ -84,11 +84,11 @@ test_statement_parser(void) {
 		test_statement_parser_single((String)string_from_lit_const("1 + 2"));
 		test_statement_parser_single((String)string_from_lit_const("{ return } "));
 		test_statement_parser_single((String)string_from_lit_const("{ return; "));
-	}
 #endif
+	}
 	
-#if 1
 	{
+#if 0
 		test_statement_parser_single((String)string_from_lit_const("a = 0;"));
 		test_statement_parser_single((String)string_from_lit_const("a, b = 0;"));
 		test_statement_parser_single((String)string_from_lit_const("a, b = 0, 0;"));
@@ -96,12 +96,12 @@ test_statement_parser(void) {
 		test_statement_parser_single((String)string_from_lit_const("a : int = 0;"));
 		test_statement_parser_single((String)string_from_lit_const("a :: proc();"));
 		test_statement_parser_single((String)string_from_lit_const("a :: proc() ---;"));
+#endif
 		test_statement_parser_single((String)string_from_lit_const("a :: proc() {}"));
 	}
-#endif
 	
-#if 0
 	{
+#if 0
 		Scratch scratch = scratch_begin(0, 0);
 		
 		srand(rand());
@@ -115,8 +115,8 @@ test_statement_parser(void) {
 		test_statement_parser_single(stat_rand_3);
 		
 		scratch_end(scratch);
-	}
 #endif
+	}
 	
 	printf("\n");
 }

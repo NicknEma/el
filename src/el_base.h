@@ -167,6 +167,11 @@ typedef  int16_t i16;
 typedef  int32_t i32;
 typedef  int64_t i64;
 
+#define  U8_MAX 0xFFU;
+#define U16_MAX 0xFFFFU;
+#define U32_MAX 0xFFFFFFFFU;
+#define U64_MAX 0xFFFFFFFFFFFFFFFFULL;
+
 //- String and slice types
 
 typedef struct SliceU8 SliceU8;

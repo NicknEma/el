@@ -1369,26 +1369,20 @@ masm_generate_source(void) {
 							.suf = string_from_lit("\n"));
 }
 
+#include "el_all_tests.c"
+
+/*
+** TODO(ema):
+** [ ] Printer
+** [ ] Input reading
+*/
+
 int main(void) {
+	test_all();
+	printf("### Main program output ###\n\n");
 	
-	{
-		max_printed_lex_errors   = 0;
-		max_printed_parse_errors = 0;
-		
-		test_expression_parser();
-		test_statement_parser();
-		test_declaration_parser();
-		
-		max_printed_lex_errors   = I64_MAX;
-		max_printed_parse_errors = 1;
-	}
-	
-	// x64_test();
-	
-	printf("\n\n### Main program output ###\n\n");
-	
-	String source = string_from_lit("main :: () { return other(); }"
-									"other :: () { return 2*3 + 10/(4+1); 7-0; }");
+	String source = string_from_lit("main :: proc() { return other(); }"
+									"other :: proc() { return 2*3 + 10/(4+1); 7-0; }");
 	
 	Arena tree_arena = {0};
 	arena_init(&tree_arena);
@@ -1398,14 +1392,6 @@ int main(void) {
 	build_scope(program);
 	
 	// TODO: Type-checking here
-	
-	{
-		Arena idk_arena = {0};
-		arena_init(&idk_arena);
-		
-		Ast_Statement *stat = parse_statement_string(&idk_arena, string_from_lit("{ return 0+2; }"));
-		analyse_statement(&idk_arena, stat, NULL);
-	}
 	
 	for (Ast_Declaration *decl = program; decl != NULL && decl != &nil_declaration; decl = decl->next) {
 		generate_bytecode_for_declaration(decl);

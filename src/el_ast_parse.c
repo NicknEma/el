@@ -919,21 +919,22 @@ parse_declaration_after_lhs(Parse_Context *parser, String *idents, i64 ident_cou
 		// so we parse that.
 		// TODO: For now the only valid type annotations are identifiers.
 		
-		token = peek_token(parser);
-		if (token.kind == Token_Kind_IDENT) {
+		Token next_token = peek_token(parser);
+		if (next_token.kind == Token_Kind_IDENT) {
 			consume_token(parser); // type ident
 			
 			flags |= Ast_Declaration_Flag_TYPE_ANNOTATION;
-			type_annotation.ident = lexeme_from_token(parser, token);
+			type_annotation.ident = lexeme_from_token(parser, next_token);
 		} else {
 			report_parse_error(parser, "Expected type annotation after :");
 		}
 		
-		if (token.kind == '=' || token.kind == ':') {
+		next_token = peek_token(parser);
+		if (next_token.kind == '=' || next_token.kind == ':') {
 			consume_token(parser); // = or :
 			parse_initializers = true;
 			
-			if (token.kind == ':') flags |= Ast_Declaration_Flag_CONSTANT;
+			if (next_token.kind == ':') flags |= Ast_Declaration_Flag_CONSTANT;
 		}
 	} else if (token.kind == Token_Kind_COLON_EQUALS ||
 			   token.kind == Token_Kind_DOUBLE_COLON) {
@@ -984,7 +985,11 @@ parse_declaration_after_lhs(Parse_Context *parser, String *idents, i64 ident_cou
 				queue_push(first, last, node);
 				
 				token = peek_token(parser);
-				if (token.kind != ',') break; // That was the last decl in the list
+				if (token.kind == ',') {
+					consume_token(parser);
+				} else {
+					break; // That was the last decl in the list
+				}
 			}
 			
 			// Do *NOT* report an error if ident_count != count: it's not the number of initializers

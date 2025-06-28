@@ -460,6 +460,9 @@ struct Parse_Context {
 	int error_count;
 };
 
+global   i64  max_printed_lex_errors   = I64_MAX;
+global   i64  max_printed_parse_errors = 1;
+
 internal void parser_init(Parse_Context *parser, Arena *arena, String source);
 
 internal void report_lex_error(Parse_Context *parser, char *message);

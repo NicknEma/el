@@ -1236,9 +1236,10 @@ parse_program(Parse_Context *parser) {
 
 internal void
 report_lex_error(Parse_Context *parser, char *message) {
-	String span = lexeme_from_token(parser, parser->token);
-	fprintf(stderr, "Syntax error (%lli..%lli): %s.\n\t%.*s\n\n", parser->token.location.b0, parser->token.location.b1, message, string_expand(span));
-	
+	if (parser->error_count < max_printed_lex_errors) {
+		String span = lexeme_from_token(parser, parser->token);
+		fprintf(stderr, "Syntax error (%lli..%lli): %s.\n\t%.*s\n\n", parser->token.location.b0, parser->token.location.b1, message, string_expand(span));
+	}
 	parser->error_count += 1;
 }
 
@@ -1257,7 +1258,7 @@ report_lex_errorf(Parse_Context *parser, char *format, ...) {
 
 internal void
 report_parse_error(Parse_Context *parser, char *message) {
-	if (parser->error_count == 0) {
+	if (parser->error_count < max_printed_parse_errors) {
 		String span = lexeme_from_token(parser, parser->token);
 		fprintf(stderr, "Syntax error (%lli..%lli): %s.\n\t%.*s\n\n", parser->token.location.b0, parser->token.location.b1, message, string_expand(span));
 	}

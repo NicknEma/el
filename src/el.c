@@ -1370,9 +1370,18 @@ masm_generate_source(void) {
 }
 
 int main(void) {
-	// test_expression_parser();
-	// test_statement_parser();
-	test_declaration_parser();
+	
+	{
+		max_printed_lex_errors   = 0;
+		max_printed_parse_errors = 0;
+		
+		test_expression_parser();
+		test_statement_parser();
+		test_declaration_parser();
+		
+		max_printed_lex_errors   = I64_MAX;
+		max_printed_parse_errors = 1;
+	}
 	
 	// x64_test();
 	

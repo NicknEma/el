@@ -162,6 +162,15 @@ build_scope_for_statement(Arena *arena, Scope *scope, Ast_Statement *stat) {
 			scope = scope_leave(scope);
 		} break;
 		
+		case Ast_Statement_Kind_ASSIGNMENT: {
+			build_scope_for_expression(arena, scope, stat->lhs);
+			build_scope_for_expression(arena, scope, stat->rhs);
+		} break;
+		
+		case Ast_Statement_Kind_DECLARATION: {
+			build_scope_for_declaration(arena, scope, stat->decl);
+		} break;
+		
 		default: break;
 	}
 	

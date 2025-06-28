@@ -1084,7 +1084,7 @@ parse_declaration_after_lhs(Parse_Context *parser, String *idents, i64 ident_cou
 
 internal Initter
 parse_declaration_rhs(Parse_Context *parser) {
-	Initter result = {0};
+	Initter result = nil_initter;
 	
 	Token token = peek_token(parser);
 	if (token.keyword == Keyword_PROC) {

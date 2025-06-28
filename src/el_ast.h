@@ -251,6 +251,9 @@ global read_only Ast_Expression nil_expression = {
 	.next   = &nil_expression,
 };
 
+#define check_nil_expression(p) ((p)==0||(p)==&nil_expression)
+#define set_nil_expression(p) ((p)=&nil_expression)
+
 internal Ast_Expression *make_atom_expression(Parse_Context *parser, Token token);
 internal Ast_Expression *make_unary_expression(Parse_Context *parser, Token unary, Ast_Expression *subexpr);
 internal Ast_Expression *make_binary_expression(Parse_Context *parser, Token binary, Ast_Expression *left, Ast_Expression *right);
@@ -302,6 +305,9 @@ global read_only Ast_Statement nil_statement = {
 	// .decl = &nil_declaration, // TODO: How to do this?
 	.next  = &nil_statement,
 };
+
+#define check_nil_statement(p) ((p)==0||(p)==&nil_statement)
+#define set_nil_statement(p) ((p)=&nil_statement)
 
 internal Ast_Statement *parse_statement(Parse_Context *parser);
 
@@ -387,6 +393,9 @@ struct Ast_Declaration {
 global read_only Ast_Declaration nil_declaration = {
 	.next = &nil_declaration,
 };
+
+#define check_nil_declaration(p) ((p)==0||(p)==&nil_declaration)
+#define set_nil_declaration(p) ((p)=&nil_declaration)
 
 global read_only Initter nil_initializer = {
 	.first_param = &nil_declaration,

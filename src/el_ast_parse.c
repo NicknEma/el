@@ -691,11 +691,7 @@ parse_statement(Parse_Context *parser) {
 					// Avoid writing to read-only memory (*but continue trying,
 					// since nil-statements can also mean empty statements and not
 					// only that the parse failed).
-					queue_push(first, last, stat);
-					
-					// TODO: This overwrites the next pointer to be 0x0 and not &nil_statement.
-					// Should we re-write it to be &nil_statement here, or remember to
-					// also check for NULL every time later?
+					queue_push_nz(first, last, stat, next, check_nil_statement, set_nil_statement);
 				}
 				
 				token = peek_token(parser);
@@ -738,7 +734,7 @@ parse_statement(Parse_Context *parser) {
 				break; // Avoid writing to read-only memory
 			}
 			
-			queue_push(first, last, expr);
+			queue_push_nz(first, last, expr, next, check_nil_expression, set_nil_expression);
 			result->location = locations_merge(result->location, expr->location);
 			
 			token = peek_token(parser);
@@ -775,7 +771,7 @@ parse_statement(Parse_Context *parser) {
 			}
 			
 			count += 1;
-			queue_push(first, last, expr);
+			queue_push_nz(first, last, expr, next, check_nil_expression, set_nil_expression);
 			result->location = locations_merge(result->location, expr->location);
 			
 			token = peek_token(parser);
@@ -826,7 +822,7 @@ parse_statement(Parse_Context *parser) {
 				}
 				
 				count += 1;
-				queue_push(first, last, expr);
+				queue_push_nz(first, last, expr, next, check_nil_expression, set_nil_expression);
 				
 				token = peek_token(parser);
 				if (token.kind != ',') break; // That was the last expr in the list
@@ -1216,7 +1212,7 @@ parse_proc_header(Parse_Context *parser) {
 				decl->ident  = arg_name->str;
 				decl->type_annotation = type_annotation;
 				
-				queue_push(first, last, decl);
+				queue_push_nz(first, last, decl, next, check_nil_declaration, set_nil_declaration);
 			}
 			
 		}
@@ -1278,7 +1274,7 @@ parse_program(Parse_Context *parser) {
 		Ast_Declaration *decl = parse_declaration(parser);
 		if (decl == NULL || decl == &nil_declaration) break;
 		
-		queue_push(first_decl, last_decl, decl);
+		queue_push_nz(first_decl, last_decl, decl, next, check_nil_declaration, set_nil_declaration);
 	}
 	
 	if (first_decl != NULL) result = first_decl;

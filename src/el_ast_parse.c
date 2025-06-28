@@ -845,8 +845,17 @@ parse_statement(Parse_Context *parser) {
 		allow_break();
 	}
 	
-	if (result->kind != Ast_Statement_Kind_BLOCK) {
-		expect_token_kind(parser, Token_Kind_SEMICOLON, "Expected ; after statement");
+	{
+		bool require_semicolon = true;
+		if (result->kind == Ast_Statement_Kind_BLOCK) require_semicolon = false;
+		if (result->kind == Ast_Statement_Kind_DECLARATION &&
+			result->decl->initters[result->decl->initter_count-1].kind == Initter_Kind_PROCEDURE) {
+			require_semicolon = false;
+		}
+		
+		if (require_semicolon) {
+			expect_token_kind(parser, Token_Kind_SEMICOLON, "Expected ; after statement");
+		}
 	}
 	
 	if (there_were_parse_errors(parser)) {

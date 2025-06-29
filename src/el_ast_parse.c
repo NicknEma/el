@@ -853,10 +853,12 @@ parse_statement(Parse_Context *parser) {
 			// for passing them to parse_declaration_after_lhs().
 			Scratch scratch = scratch_begin(&parser->arena, 1);
 			
-			String *idents  = push_array(scratch.arena, String, count);
 			i64 ident_count = 0;
+			String *idents  = push_array(scratch.arena, String, count);
+			Location *ident_locations = push_array(scratch.arena, Location, count);
 			for (Ast_Expression *expr = first; expr != NULL && expr != &nil_expression; expr = expr->next) {
 				if (expr->kind == Ast_Expression_Kind_IDENT) {
+					ident_locations[ident_count] = expr->location;
 					idents[ident_count] = expr->ident;
 					ident_count += 1;
 				} else {
@@ -870,7 +872,7 @@ parse_statement(Parse_Context *parser) {
 				Token declarator = peek_token(parser);
 				assert(token_is_declarator(declarator));
 				
-				Ast_Declaration *decl = parse_declaration_after_lhs(parser, idents, ident_count);
+				Ast_Declaration *decl = parse_declaration_after_lhs(parser, idents, ident_locations, ident_count);
 				result = make_statement(parser, kind, declarator.location, .decl = decl);
 			} else {
 				assert(there_were_parse_errors(parser));
@@ -912,7 +914,12 @@ parse_declaration(Parse_Context *parser) {
 	Ast_Declaration *result = &nil_declaration;
 	Scratch scratch = scratch_begin(&parser->arena, 1);
 	
-	String_List ident_list = {0};
+	typedef struct Token_Node Token_Node;
+	struct Token_Node { Token token; Token_Node *next; };
+	
+	Token_Node *ident_first = NULL;
+	Token_Node *ident_last  = NULL;
+	i64 ident_count = 0;
 	
 	Token token = {0};
 	for (;;) {
@@ -920,7 +927,11 @@ parse_declaration(Parse_Context *parser) {
 		if (token.kind == Token_Kind_IDENT) {
 			consume_token(parser); // ident
 			
-			string_list_push(scratch.arena, &ident_list, lexeme_from_token(parser, token));
+			Token_Node *node = push_type(scratch.arena, Token_Node);
+			node->token = token;
+			
+			ident_count += 1;
+			queue_push(ident_first, ident_last, node);
 			token = peek_token(parser);
 		} else {
 			report_parse_errorf(parser, "Expected identifier, got '%.*s'", string_expand(lexeme_from_token(parser, token)));
@@ -936,14 +947,16 @@ parse_declaration(Parse_Context *parser) {
 	}
 	
 	if (token_is_declarator(token)) {
-		i64 ident_count = 0;
-		String *idents = push_array(scratch.arena, String, ident_list.node_count);
-		for (String_Node *node = ident_list.first; node != NULL; node = node->next) {
-			idents[ident_count] = node->str;
+		String   *idents = push_array(scratch.arena, String, ident_count);
+		Location *ident_locations = push_array(scratch.arena, Location, ident_count);
+		ident_count = 0;
+		for (Token_Node *node = ident_first; node != NULL; node = node->next) {
+			ident_locations[ident_count] = node->token.location;
+			idents[ident_count] = lexeme_from_token(parser, node->token);
 			ident_count += 1;
 		}
 		
-		result = parse_declaration_after_lhs(parser, idents, ident_count);
+		result = parse_declaration_after_lhs(parser, idents, ident_locations, ident_count);
 	}
 	
 	if (there_were_parse_errors(parser)) {
@@ -955,7 +968,7 @@ parse_declaration(Parse_Context *parser) {
 }
 
 internal Ast_Declaration *
-parse_declaration_after_lhs(Parse_Context *parser, String *idents, i64 ident_count) {
+parse_declaration_after_lhs(Parse_Context *parser, String *idents, Location *ident_locations, i64 ident_count) {
 	Ast_Declaration *result = &nil_declaration;
 	
 	// Determine the kind of declaration
@@ -1011,7 +1024,7 @@ parse_declaration_after_lhs(Parse_Context *parser, String *idents, i64 ident_cou
 		for (i64 i = 0; i < ident_count; i += 1) {
 			result->entities[i].kind  = Entity_Kind_UNKNOWN;
 			result->entities[i].ident = idents[i];
-			// result->entities[i].location = ; // TODO.
+			result->entities[i].location = ident_locations[i];
 		}
 		
 		if (parse_initializers) {

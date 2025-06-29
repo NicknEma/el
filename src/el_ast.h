@@ -410,7 +410,7 @@ struct Ast_Declaration {
 };
 
 internal Ast_Declaration *parse_declaration(Parse_Context *parser);
-internal Ast_Declaration *parse_declaration_after_lhs(Parse_Context *parser, String *idents, i64 ident_count);
+internal Ast_Declaration *parse_declaration_after_lhs(Parse_Context *parser, String *idents, Location *ident_locations, i64 ident_count);
 internal Initter          parse_declaration_rhs(Parse_Context *parser);
 
 internal Ast_Declaration *parse_proc_header(Parse_Context *parser);

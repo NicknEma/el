@@ -339,14 +339,23 @@ rearrange_scope(Arena *arena, Scope *scope) {
 }
 
 internal void
+rearrange_scope_and_subscopes(Arena *arena, Scope *scope) {
+	// TODO: Recursively do this for all scopes
+	rearrange_scope(arena, scope);
+	
+	for (Scope *child = scope->first_child; child != NULL; child = child->next_sibling) {
+		rearrange_scope_and_subscopes(arena, child);
+	}
+}
+
+internal void
 build_scope_for_all_declarations(Arena *arena, Scope *scope, Ast_Declaration *first) {
 	
 	for (Ast_Declaration *decl = first; decl != NULL && decl != &nil_declaration; decl = decl->next) {
 		build_scope_for_declaration(arena, scope, decl);
 	}
 	
-	// TODO: Recursively do this for all scopes
-	rearrange_scope(arena, scope);
+	rearrange_scope_and_subscopes(arena, scope);
 	
 	// TODO: Check for shadowing
 	

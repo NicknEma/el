@@ -247,7 +247,7 @@ build_scope_for_declaration(Arena *arena, Scope *scope, Ast_Declaration *decl) {
 internal void
 rearrange_scope(Arena *arena, Scope *scope) {
 	for (Symbol *entry = scope->first_symbol; entry != NULL; entry = entry->next) {
-		if (entry->locations_used_count > 1) {
+		if (entry->locations_used_count > 0) {
 			bool declared = !location_is_zero(entry->location_declared);
 			i64  uses_before_decl = 0;
 			for (; uses_before_decl < entry->locations_used_count; uses_before_decl += 1) {
@@ -258,13 +258,16 @@ rearrange_scope(Arena *arena, Scope *scope) {
 			}
 			
 			// If it's not declared at all, then technically every use is before the declaration.
-			assert(implies(!declared, uses_before_decl == entry->locations_used_count));
+			//
+			// Actually, no, because the location_declared is all 0s, so every use is
+			// AFTER the declaration.
+			// assert(implies(!declared, uses_before_decl == entry->locations_used_count));
 			
-			if (uses_before_decl < entry->locations_used_count || !declared) {
+			if (uses_before_decl > 0 || !declared) {
 				Symbol *found_symbol = NULL;
 				Scope  *found_scope  = NULL;
 				
-				for (Scope *current = scope; current != NULL; current = current->parent) {
+				for (Scope *current = scope->parent; current != NULL; current = current->parent) {
 					for (Symbol *other_entry = current->first_symbol; other_entry != NULL; other_entry = other_entry->next) {
 						if (string_equals(other_entry->ident, entry->ident)) {
 							found_symbol = other_entry;
@@ -276,10 +279,18 @@ rearrange_scope(Arena *arena, Scope *scope) {
 				found:;
 				
 				if (found_symbol != NULL) {
+					// If it wasn't declared at all, pretend like it was declared at the same place as
+					// the last use
+					if (!declared) {
+						entry->location_declared = entry->locations_used[entry->locations_used_count - 1];
+						uses_before_decl = entry->locations_used_count;
+					}
+					
 					// Split the inner entry between locations_used that are before and after
 					// the location_declared.
 					Symbol *before_part = entry;
 					Symbol *after_part  = symbol_alloc(arena);
+					dll_insert(scope->first_symbol, scope->last_symbol, before_part, after_part);
 					
 					after_part->ident = before_part->ident;
 					after_part->type  = before_part->type;
@@ -305,6 +316,7 @@ rearrange_scope(Arena *arena, Scope *scope) {
 					}
 					
 					found_symbol->locations_used_count += before_part->locations_used_count;
+					dll_remove(scope->first_symbol, scope->last_symbol, before_part);
 					symbol_free(before_part);
 					
 					// The uses after the current location_declared are fine as they are and
@@ -317,8 +329,11 @@ rearrange_scope(Arena *arena, Scope *scope) {
 					//
 					// Since the identifier is used before its declaration (or it was not declared),
 					// react accordingly depending on the type of declaration.
+					//
+					// Note: "declared &&" is included for short-circuiting the check and preventing
+					// a NULL decl ptr to be dereferenced.
 					
-					bool is_local_var = ((entry->decl->flags & Ast_Declaration_Flag_CONSTANT) == 0) && (scope->parent != NULL);
+					bool is_local_var = declared && ((entry->decl->flags & Ast_Declaration_Flag_CONSTANT) == 0) && (scope->parent != NULL);
 					if (is_local_var || !declared) {
 						// If it's a local variable (meaning we don't care about out-of-order
 						// declarations) or the ident wasn't declared at all: report error.

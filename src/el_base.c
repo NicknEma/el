@@ -317,6 +317,7 @@ make_sliceu8(u8 *data, i64 len) {
 		.data = data,
 		.len  = len,
 	};
+	
 	return result;
 }
 
@@ -326,10 +327,6 @@ push_sliceu8(Arena *arena, i64 len) {
 		.data = push(arena, cast(u64) len),
 		.len  = len,
 	};
-	
-	if (!result.data) {
-		result.len = 0;
-	}
 	
 	return result;
 }
@@ -347,12 +344,7 @@ sliceu8_clone(Arena *arena, SliceU8 s) {
 		.len  = s.len,
 	};
 	
-	if (result.data) {
-		memcpy(result.data, s.data, s.len);
-	} else {
-		result.len = 0;
-	}
-	
+	memcpy(result.data, s.data, s.len);
 	return result;
 }
 
@@ -364,6 +356,7 @@ string(u8 *data, i64 len) {
 		.data = data,
 		.len  = len,
 	};
+	
 	return result;
 }
 
@@ -373,10 +366,6 @@ push_string(Arena *arena, i64 len) {
 		.data = push(arena, cast(u64) len),
 		.len  = len,
 	};
-	
-	if (!result.data) {
-		result.len = 0;
-	}
 	
 	return result;
 }
@@ -398,12 +387,7 @@ push_stringf_va_list(Arena *arena, char *fmt, va_list args) {
 		.len  = len,
 	};
 	
-	if (result.data) {
-		vsnprintf(cast(char *) result.data, result.len + 1, fmt, args);
-	} else {
-		result.len = 0;
-	}
-	
+	vsnprintf(cast(char *) result.data, result.len + 1, fmt, args);
 	return result;
 }
 
@@ -420,12 +404,7 @@ string_clone(Arena *arena, String s) {
 		.len  = s.len,
 	};
 	
-	if (result.data) {
-		memcpy(result.data, s.data, s.len);
-	} else {
-		result.len = 0;
-	}
-	
+	memcpy(result.data, s.data, s.len);
 	return result;
 }
 
@@ -445,27 +424,23 @@ strings_concat_(Arena *arena, String *strings, i64 string_count, Strings_Concat_
 		.len  = total_len,
 	};
 	
-	if (result.data) {
-		i64 offset = 0;
+	i64 offset = 0;
+	
+	memcpy(result.data + offset, params.pre.data, params.pre.len);
+	offset += params.pre.len;
+	
+	for (i64 i = 0; i < string_count; i += 1) {
+		memcpy(result.data + offset, strings[i].data, strings[i].len);
+		offset += strings[i].len;
 		
-		memcpy(result.data + offset, params.pre.data, params.pre.len);
-		offset += params.pre.len;
-		
-		for (i64 i = 0; i < string_count; i += 1) {
-			memcpy(result.data + offset, strings[i].data, strings[i].len);
-			offset += strings[i].len;
-			
-			if (i < string_count - 1) {
-				memcpy(result.data + offset, params.sep.data, params.sep.len);
-				offset += params.sep.len;
-			}
+		if (i < string_count - 1) {
+			memcpy(result.data + offset, params.sep.data, params.sep.len);
+			offset += params.sep.len;
 		}
-		
-		memcpy(result.data + offset, params.suf.data, params.suf.len);
-		offset += params.suf.len;
-	} else {
-		result.len = 0;
 	}
+	
+	memcpy(result.data + offset, params.suf.data, params.suf.len);
+	offset += params.suf.len;
 	
 	return result;
 }
@@ -473,10 +448,8 @@ strings_concat_(Arena *arena, String *strings, i64 string_count, Strings_Concat_
 internal char *
 cstring_from_string(Arena *arena, String s) {
 	char *result = push_nozero(arena, (s.len + 1) * sizeof(char));
-	if (result) {
-		memcpy(result, s.data, s.len);
-		result[s.len] = 0;
-	}
+	memcpy(result, s.data, s.len);
+	result[s.len] = 0;
 	
 	return result;
 }
@@ -628,17 +601,13 @@ push_rand_string(Arena *arena, i64 len, String filter) {
 		.len  = len,
 	};
 	
-	if (result.data != NULL) {
-		for (i64 i = 0; i < result.len; i += 1) {
-			i64 iters_max = 16;
-			i64 iters = 0;
-			do {
-				result.data[i] = rand() & U8_MAX;
-				iters += 1;
-			} while (iters < iters_max && string_contains(filter, result.data[i]));
-		}
-	} else {
-		result.len = 0;
+	for (i64 i = 0; i < result.len; i += 1) {
+		i64 iters_max = 16;
+		i64 iters = 0;
+		do {
+			result.data[i] = rand() & U8_MAX;
+			iters += 1;
+		} while (iters < iters_max && string_contains(filter, result.data[i]));
 	}
 	
 	return result;
@@ -653,24 +622,20 @@ internal void
 string_list_push_first(Arena *arena, String_List *list, String s) {
 	String_Node *node = push_type(arena, String_Node);
 	
-	if (node != NULL) {
-		node->str = s;
-		dll_push_front(list->first, list->last, node);
-		list->total_len  += s.len;
-		list->node_count += 1;
-	}
+	node->str = s;
+	dll_push_front(list->first, list->last, node);
+	list->total_len  += s.len;
+	list->node_count += 1;
 }
 
 internal void
 string_list_push_last(Arena *arena, String_List *list, String s) {
 	String_Node *node = push_type(arena, String_Node);
 	
-	if (node != NULL) {
-		node->str = s;
-		dll_push_back(list->first, list->last, node);
-		list->total_len  += s.len;
-		list->node_count += 1;
-	}
+	node->str = s;
+	dll_push_back(list->first, list->last, node);
+	list->total_len  += s.len;
+	list->node_count += 1;
 }
 
 internal void
@@ -714,27 +679,23 @@ string_list_join_(Arena *arena, String_List list, String_List_Join_Params params
 		.len  = total_len,
 	};
 	
-	if (result.data) {
-		i64 offset = 0;
+	i64 offset = 0;
+	
+	memcpy(result.data + offset, params.pre.data, params.pre.len);
+	offset += params.pre.len;
+	
+	for (String_Node *node = list.first; node != NULL; node = node->next) {
+		memcpy(result.data + offset, node->str.data, node->str.len);
+		offset += node->str.len;
 		
-		memcpy(result.data + offset, params.pre.data, params.pre.len);
-		offset += params.pre.len;
-		
-		for (String_Node *node = list.first; node != NULL; node = node->next) {
-			memcpy(result.data + offset, node->str.data, node->str.len);
-			offset += node->str.len;
-			
-			if (node->next != NULL) {
-				memcpy(result.data + offset, params.sep.data, params.sep.len);
-				offset += params.sep.len;
-			}
+		if (node->next != NULL) {
+			memcpy(result.data + offset, params.sep.data, params.sep.len);
+			offset += params.sep.len;
 		}
-		
-		memcpy(result.data + offset, params.suf.data, params.suf.len);
-		offset += params.suf.len;
-	} else {
-		result.len = 0;
 	}
+	
+	memcpy(result.data + offset, params.suf.data, params.suf.len);
+	offset += params.suf.len;
 	
 	return result;
 }

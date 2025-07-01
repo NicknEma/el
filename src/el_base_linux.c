@@ -6,18 +6,29 @@
 
 internal void *
 mem_reserve(u64 size) {
-	void *result = mmap(0, size, 0, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
-	assert(result != NULL);
+	void *result = NULL;
 	
+	if (size > 0) {
+		result = mmap(0, size, 0, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+		if (!result) {
+			allow_break(); // TODO: assert() that the error wasn't because of invalid params
+		}
+	}
+	
+	mem_failure_handler(result, size);
 	return result;
 }
 
 internal void *
 mem_commit(void *ptr, u64 size) {
 	int r = mprotect(ptr, size, PROT_READ|PROT_WRITE);
-	assert(r != -1);
+	void *result = r != -1 ? ptr : NULL;
+	if (!result) {
+		allow_break();
+	}
 	
-	return ptr;
+	mem_failure_handler(result, size);
+	return result;
 }
 
 internal void *

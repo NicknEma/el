@@ -104,18 +104,11 @@ i64_digit_count(i64 n) {
 
 //- Memory procedures
 
-internal String
-last_alloc_error_string(void) {
-	read_only static String strings[] = {
-		string_from_lit_const(""),
-		string_from_lit_const("Out of memory"),
-	};
-	
-	String result = string_from_lit("(unknown)");
-	if (last_alloc_error >= 0 && last_alloc_error < array_count(strings)) {
-		result = strings[last_alloc_error];
+internal void mem_failure_handler(void *ptr, u64 size) {
+	if (ptr == NULL && size > 0) {
+		fprintf(stderr, "The system could not allocate memory for the operation");
+		abort();
 	}
-	return result;
 }
 
 ////////////////////////////////
@@ -123,13 +116,12 @@ last_alloc_error_string(void) {
 
 //- Arena operations: constructors/destructors
 
-internal bool
+internal void
 _arena_init(Arena *arena, Arena_Init_Params params) {
 	// Trying to initialize a NULL arena is impossible, so we don't allow it.
 	// Initializing an arena with a size of 0 is useless but possible.
 	assert(arena != NULL);
 	
-	last_alloc_error = Alloc_Error_NONE;
 	u8 *base = mem_reserve(params.reserve_size);
 	if (base != NULL) {
 		arena->ptr  = base;
@@ -138,26 +130,22 @@ _arena_init(Arena *arena, Arena_Init_Params params) {
 		arena->peak = 0;
 		arena->commit_pos = 0;
 	} else if (params.reserve_size > 0) {
-		assert(last_alloc_error);
+		panic("Invalid codepath");
 	}
-	
-	return last_alloc_error == Alloc_Error_NONE;
 }
 
 internal bool
 arena_fini(Arena *arena) {
 	assert(arena != NULL);
 	
-	last_alloc_error = Alloc_Error_NONE;
 	bool released = mem_release(arena->ptr, arena->cap);
 	memset(arena, 0, sizeof(Arena));
 	
-	return released && last_alloc_error == Alloc_Error_NONE;
+	return released;
 }
 
 internal void
 arena_reset(Arena *arena) {
-	last_alloc_error = Alloc_Error_NONE;
 	pop_to(arena, 0);
 }
 
@@ -187,8 +175,6 @@ arena_initted(Arena arena) {
 
 internal void *
 push_nozero_aligned(Arena *arena, u64 size, u64 alignment) {
-	last_alloc_error = Alloc_Error_NONE;
-	
 	void *result = NULL;
 	
 	if (size > 0) {
@@ -211,21 +197,16 @@ push_nozero_aligned(Arena *arena, u64 size, u64 alignment) {
 			
 			arena->peak = max(arena->pos, arena->peak);
 		} else {
-			last_alloc_error = Alloc_Error_OUT_OF_MEMORY;
-			
-#if AGGRESSIVE_ASSERTS
 			panic("Arena is out of memory.");
-#endif
 		}
 	}
 	
+	mem_failure_handler(result, size);
 	return result;
 }
 
 internal void *
 push_zero_aligned(Arena *arena, u64 size, u64 alignment) {
-	last_alloc_error = Alloc_Error_NONE;
-	
 	void *result = push_nozero_aligned(arena, size, alignment);
 	if (result != NULL) {
 		memset(result, 0, size);
@@ -247,8 +228,6 @@ push_zero_aligned(Arena *arena, u64 size, u64 alignment) {
 
 internal void
 pop_to(Arena *arena, u64 pos) {
-	last_alloc_error = Alloc_Error_NONE;
-	
 	pos = clamp_top(pos, arena->pos); // Prevent user from going forward, only go backward.
 	
 #if AGGRESSIVE_MEM_ZERO
@@ -270,8 +249,6 @@ pop_to(Arena *arena, u64 pos) {
 
 internal void
 pop_amount(Arena *arena, u64 amount) {
-	last_alloc_error = Alloc_Error_NONE;
-	
 	u64 amount_clamped = clamp_top(amount, arena->pos); // Prevent user from going to negative positions
 	pop_to(arena, arena->pos - amount_clamped);
 }
@@ -282,8 +259,6 @@ pop_amount(Arena *arena, u64 amount) {
 
 internal Arena_Restore_Point
 arena_begin_temp_region(Arena *arena) {
-	last_alloc_error = Alloc_Error_NONE;
-	
 	Arena_Restore_Point point = {arena, arena->pos};
 	return point;
 }
@@ -298,16 +273,12 @@ arena_end_temp_region(Arena_Restore_Point point) {
 
 internal Scratch
 scratch_begin(Arena **conflicts, i64 conflict_count) {
-	last_alloc_error = Alloc_Error_NONE;
-	
 	Scratch scratch = {0};
-	i64 index = 0;
 	
 #if SCRATCH_ARENA_COUNT > 0
 	if (scratch_arenas[0].ptr == NULL) { // unlikely()
 		for (int i = 0; i < array_count(scratch_arenas); i += 1) {
 			arena_init(&scratch_arenas[i], .reserve_size = SCRATCH_ARENA_RESERVE_SIZE);
-			scratch_arenas_init_errors[i] = last_alloc_error;
 		}
 	}
 	
@@ -322,16 +293,9 @@ scratch_begin(Arena **conflicts, i64 conflict_count) {
 		
 		if (!is_conflicting && scratch_arenas[scratch_arena_index].ptr != NULL) {
 			scratch = arena_begin_temp_region(&scratch_arenas[scratch_arena_index]);
-			index = scratch_arena_index;
 			break;
 		}
 	}
-	
-	if (scratch.arena->ptr == NULL) {
-		last_alloc_error = scratch_arenas_init_errors[index];
-	}
-#else
-	last_alloc_error = Alloc_Error_OUT_OF_MEMORY;
 #endif
 	
 	return scratch;

@@ -18,19 +18,10 @@ mem_reserve(u64 size) {
 			assert(last_error != ERROR_INVALID_PARAMETER && // If any of these is returned it is our fault,
 				   last_error != ERROR_INVALID_ADDRESS   && // not the caller's
 				   last_error != ERROR_NOT_SUPPORTED);
-			
-			last_alloc_error = Alloc_Error_OUT_OF_MEMORY;
-			
-#if AGGRESSIVE_ASSERTS
-			panic("VirtualAlloc failed!");
-#endif
 		}
-	} else {
-#if AGGRESSIVE_ASSERTS
-		panic("Tried to reserve 0 bytes.");
-#endif
 	}
 	
+	mem_failure_handler(result, size);
 	return result;
 }
 
@@ -39,16 +30,11 @@ mem_commit(void *ptr, u64 size) {
 	// No need to align the size to a page boundary, Windows will do it for us.
 	void *result = VirtualAlloc(ptr, size, MEM_COMMIT, PAGE_READWRITE);
 	if (!result) {
-		last_alloc_error = Alloc_Error_OUT_OF_MEMORY; // TODO: GetLastError()
-		
 		int last_error = GetLastError();
 		assert(last_error != ERROR_INVALID_PARAMETER);
-		
-#if AGGRESSIVE_ASSERTS
-		panic("VirtualAlloc failed!");
-#endif
 	}
 	
+	mem_failure_handler(result, size);
 	return result;
 }
 
@@ -66,19 +52,10 @@ mem_reserve_and_commit(u64 size) {
 			assert(last_error != ERROR_INVALID_PARAMETER && // If any of these is returned it is our fault,
 				   last_error != ERROR_INVALID_ADDRESS   && // not the caller's
 				   last_error != ERROR_NOT_SUPPORTED);
-			
-			last_alloc_error = Alloc_Error_OUT_OF_MEMORY;
-			
-#if AGGRESSIVE_ASSERTS
-			panic("VirtualAlloc failed!");
-#endif
 		}
-	} else {
-#if AGGRESSIVE_ASSERTS
-		panic("Tried to reserve 0 bytes.");
-#endif
 	}
 	
+	mem_failure_handler(result, size);
 	return result;
 }
 

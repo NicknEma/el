@@ -222,34 +222,6 @@ internal int  i64_digit_count(i64 n);
 ////////////////////////////////
 //~ Memory
 
-//- Memory types
-
-// Note: If generic allocators were implemented, a .MODE_NOT_IMPLEMENTED error would be useful
-// for operations not supported on a specific allocator.
-
-// As a rule, all allocation functions that return 0 (could be either NULL or false) *must* set
-// the last error to something. Errors .INVALID_ARGUMENT and .INVALID_POINTER are introduced
-// for this reason.
-typedef enum Alloc_Error {
-	Alloc_Error_NONE = 0,
-	
-	// Set either when a call to an Operating System's allocation function fails,
-	// or when a custom allocator cannot satisfy an allocation request.
-	Alloc_Error_OUT_OF_MEMORY,
-	
-	// Set when an argument to an allocation call is invalid, such as when the size is 0.
-	Alloc_Error_INVALID_ARGUMENT,
-	
-	// Set when a pointer argument to an allocation call is an invalid pointer or a pointer
-	// that is not at the beginning of a block.
-	Alloc_Error_INVALID_POINTER,
-	Alloc_Error_COUNT,
-} Alloc_Error;
-
-//- Memory global variables
-
-per_thread Alloc_Error last_alloc_error;
-
 //- Memory procedures
 
 internal void *mem_reserve(u64 size);
@@ -258,7 +230,7 @@ internal void *mem_reserve_and_commit(u64 size);
 internal bool  mem_decommit(void *ptr, u64 size);
 internal bool  mem_release(void *ptr, u64 size);
 
-internal String last_alloc_error_string(void);
+internal void  mem_failure_handler(void *ptr, u64 size);
 
 ////////////////////////////////
 //~ Arena
@@ -301,7 +273,7 @@ struct Arena_Init_Params {
 
 //- Arena procedures
 
-internal bool _arena_init(Arena *arena, Arena_Init_Params params);
+internal void _arena_init(Arena *arena, Arena_Init_Params params);
 #define arena_init(arena, ...) _arena_init(arena, (Arena_Init_Params){ .reserve_size = DEFAULT_ARENA_RESERVE_SIZE, __VA_ARGS__ })
 internal bool arena_fini(Arena *arena);
 internal void arena_reset(Arena *arena);
@@ -341,7 +313,6 @@ typedef Arena_Restore_Point Scratch;
 
 #if SCRATCH_ARENA_COUNT > 0
 per_thread Arena scratch_arenas[SCRATCH_ARENA_COUNT];
-per_thread Alloc_Error scratch_arenas_init_errors[SCRATCH_ARENA_COUNT];
 #endif
 
 //- Scratch memory functions

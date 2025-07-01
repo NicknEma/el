@@ -26,6 +26,28 @@ internal Type_Array get_inferred_types(Typechecker *checker, Type type) {
 	return result;
 }
 
+internal Type make_type_from_proc_defn(Typechecker *checker, Ast_Declaration *first_param, Ast_Statement *body) {
+	Type type = {0};
+	type.kind = Type_Kind_PROC;
+	
+#if 0 // No params for now
+	int param_count = 0;
+	for (Ast_Declaration *param = first_param; !check_nil_declaration(param); param = param->next) {
+		param_count += param->entity_count;
+	}
+	
+	type->param_count = param_count;
+	type->params = push_array(checker->arena, Type, param_count);
+	
+	int param_index = 0;
+	for (Ast_Declaration *param = first_param; !check_nil_declaration(param); param = param->next) {
+		param_index += 1;
+	}
+#endif
+	
+	return type;
+}
+
 global i64 max_printed_type_errors = I64_MAX;
 
 internal void report_type_error(Typechecker *checker, char *message) {
@@ -74,12 +96,15 @@ internal Symbol *lookup_symbol(Typechecker *checker, String ident) {
 	Scope *inner = checker->symbol_table.current_scope_stack->inner;
 	
 	Symbol *result = NULL;
-	for (Symbol *entry = inner->first_symbol; entry != NULL; entry = entry->next) {
-		if (string_equals(entry->ident, ident)) {
-			result = entry;
-			break;
+	for (Scope *scope = inner; scope != NULL; scope = scope->parent) {
+		for (Symbol *entry = scope->first_symbol; entry != NULL; entry = entry->next) {
+			if (string_equals(entry->ident, ident)) {
+				result = entry;
+				goto found_label;
+			}
 		}
 	}
+	found_label:;
 	
 	return result;
 }
@@ -292,6 +317,112 @@ internal void typecheck_expr(Typechecker *checker, Ast_Expression *expr) {
 	return;
 }
 
+internal void enter_scope(Typechecker *checker) {
+	Scope *new_inner = push_type(checker->arena, Scope);
+	stack_push_n(checker->symbol_table.current_scope_stack->inner, new_inner, parent);
+}
+
+internal void leave_scope(Typechecker *checker) {
+	Scope *old_inner = checker->symbol_table.current_scope_stack->inner; // @Leak
+	stack_pop_nz(checker->symbol_table.current_scope_stack->inner, parent, check_null);
+}
+
+internal void typecheck_decl(Typechecker *checker, Ast_Declaration *decl);
+
+internal void typecheck_stat(Typechecker *checker, Ast_Statement *stat) {
+	assert(!check_nil_statement(stat));
+	
+	if (stat->kind == Ast_Statement_Kind_EXPR) {
+		typecheck_expr(checker, stat->expr);
+	} else if (stat->kind == Ast_Statement_Kind_RETURN) {
+		if (!check_nil_expression(stat->expr))
+			typecheck_expr(checker, stat->expr);
+	} else if (stat->kind == Ast_Statement_Kind_BLOCK) {
+		enter_scope(checker);
+		
+		for (Ast_Statement *substat = stat->block; !check_nil_statement(substat); substat = substat->next) {
+			typecheck_stat(checker, substat);
+		}
+		
+		leave_scope(checker);
+	} else if (stat->kind == Ast_Statement_Kind_ASSIGNMENT) {
+		
+		for (Ast_Expression *lhs = stat->lhs; !check_nil_expression(lhs); lhs = lhs->next) {
+			typecheck_expr(checker, lhs);
+			
+			// TODO: Check that it will evaluate to a memory location
+		}
+		
+		for (Ast_Expression *rhs = stat->rhs; !check_nil_expression(rhs); rhs = rhs->next) {
+			typecheck_expr(checker, rhs);
+			
+			// TODO: Check the type against the lhss types, and their count
+		}
+		
+	} else if (stat->kind == Ast_Statement_Kind_DECLARATION) {
+		typecheck_decl(checker, stat->decl);
+	}
+	
+	return;
+}
+
+internal void typecheck_decl(Typechecker *checker, Ast_Declaration *decl) {
+	assert(!check_nil_declaration(decl));
+	
+	int entities_done = 0;
+	for (int i = 0; i < decl->initter_count; i += 1) {
+		if (decl->initters[i].kind == Initter_Kind_EXPR) {
+			assert(!check_nil_expression(decl->initters[i].expr));
+			typecheck_expr(checker, decl->initters[i].expr);
+			
+			if (decl->initters[i].expr->type.kind != Type_Kind_UNKNOWN) {
+				// Initializer expression has a type.
+				
+				Type_Array types = get_inferred_types(checker, decl->initters[i].expr->type);
+				for (int e = entities_done; e < types.count; e += 1) {
+					if (e >= decl->entity_count) {
+						report_type_error(checker, "Too many initializers on the right side of the declaration");
+						break;
+					}
+					
+					declare_symbol(checker, decl->entities[e], types.data[e]);
+				}
+				
+				entities_done += types.count;
+			} else {
+				assert(checker->error_count > 0, "Could not resolve the type of an expression, but no errors were reported");
+			}
+		} else if (decl->initters[i].kind == Initter_Kind_PROCEDURE) {
+#if 1
+			assert(!check_nil_statement(decl->initters[i].body));
+			assert(decl->initters[i].body->kind == Ast_Statement_Kind_BLOCK);
+			
+			declare_symbol(checker, decl->entities[entities_done], make_type_from_proc_defn(checker, decl->initters[i].first_param, decl->initters[i].body));
+			entities_done += 1;
+			
+			{
+				enter_scope(checker);
+				
+				// TODO: Check params
+				
+				Ast_Statement *body = decl->initters[i].body;
+				for (Ast_Statement *stat = body->block; !check_nil_statement(stat); stat = stat->next) {
+					typecheck_stat(checker, stat);
+				}
+				
+				leave_scope(checker);
+			}
+#else
+			unimplemented();
+#endif
+		} else {
+			unimplemented();
+		}
+	}
+	
+	return;
+}
+
 internal void do_all_checks(Ast_Declaration *prog) {
 	Typechecker checker_ = {0};
 	Typechecker *checker = &checker_;
@@ -308,45 +439,10 @@ internal void do_all_checks(Ast_Declaration *prog) {
 	
 	// Typecheck
 	for (Ast_Declaration *decl = checker->first_decl; !check_nil_declaration(decl); decl = decl->next) {
-		int entities_done = 0;
-		for (int i = 0; i < decl->initter_count; i += 1) {
-			if (decl->initters[i].kind == Initter_Kind_EXPR) {
-				assert(!check_nil_expression(decl->initters[i].expr));
-				typecheck_expr(checker, decl->initters[i].expr);
-				
-				if (decl->initters[i].expr->type.kind != Type_Kind_UNKNOWN) {
-					// Initializer expression has a type.
-					
-					Type_Array types = get_inferred_types(checker, decl->initters[i].expr->type);
-					for (int e = entities_done; e < types.count; e += 1) {
-						if (e >= decl->entity_count) {
-							report_type_error(checker, "Too many initializers on the right side of the declaration");
-							break;
-						}
-						
-						declare_symbol(checker, decl->entities[e], types.data[e]);
-					}
-					
-					entities_done += types.count;
-				} else {
-					assert(checker->error_count > 0, "Could not resolve the type of an expression, but no errors were reported");
-				}
-			} else if (decl->initters[i].kind == Initter_Kind_PROCEDURE) {
-#if 0
-				assert(!check_nil_statement(decl->initters[i].body));
-				
-				declare_symbol(checker, decl->entities[entities_done], make_type_from_proc_defn(checker, decl->initters[i].first_param, decl->initters[i].body));
-				entities_done += 1;
-				
-				typecheck_stat(checker, decl->initters[i].body);
-#else
-				unimplemented();
-#endif
-			} else {
-				unimplemented();
-			}
-		}
+		typecheck_decl(checker, decl);
 	}
+	
+	return;
 }
 
 #endif

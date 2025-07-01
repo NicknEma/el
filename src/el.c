@@ -698,9 +698,13 @@ int main(void) {
 									);
 #elif 1
 	String source = string_from_lit("a := 0\n"
-									"a := \"Hi\"\n"
+									"b := \"Hi\"\n"
 									"c := a\n"
-									"d := e\n"
+									"main :: proc() {\n"
+									"a;\n"
+									"a := 5;\n"
+									"a;\n"
+									"}\n"
 									);
 #endif
 	

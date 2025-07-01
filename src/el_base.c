@@ -37,6 +37,15 @@ fsize(FILE *fp) {
 ////////////////////////////////
 //~ Core
 
+//- Assertions
+
+internal void default_assert_handler(const char *base, const char *file, const char *line, const char *message) {
+	if (strlen(message) > 0) fprintf(stderr, "%s, %s, %s - %s\n", base, file, line, message);
+	else fprintf(stderr, "%s, %s, %s\n", base, file, line);
+	
+	abort();
+}
+
 //- Integer math
 
 internal bool

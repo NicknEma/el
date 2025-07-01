@@ -25,7 +25,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-#include <assert.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <ctype.h>
@@ -99,18 +98,34 @@ static size_t fsize(FILE *fp);
 
 #define clamp(a, x, b) clamp_bot(a, clamp_top(x, b))
 
+//- Macro macros
+
+#define _stringify(x) #x
+#define  stringify(x) _stringify(x)
+
 //- Assertions
 
 #define implies(p, q) (!(p) || (q))
 
-#define allow_break() do { int __x__ = 0; (void)__x__; } while (0)
-#define panic(...) assert(0)
-#define unimplemented(...) assert(0)
+#define allow_break() do{int _x=0;(void)_x;}while(0)
+
+internal void default_assert_handler(const char *base, const char *file, const char *line, const char *message);
+global void (*assert_handler)(const char *base, const char *file, const char *line, const char *message) = default_assert_handler;
+
+#ifdef NDEBUG
+#define assert(e, ...)     do{}while(0)
+#define panic(...)         do{}while(0)
+#define unimplemented(...) do{}while(0)
+#else
+#define assert(e, ...)     do{if(!(e)) assert_handler("Assertion failed: " #e, __FILE__, stringify(__LINE__), #__VA_ARGS__"");}while(0)
+#define panic(...)         do{         assert_handler("Runtime panic",         __FILE__, stringify(__LINE__), #__VA_ARGS__"");}while(0)
+#define unimplemented(...) do{         assert_handler("Unimplemented",         __FILE__, stringify(__LINE__), #__VA_ARGS__"");}while(0)
+#endif
 
 #if OS_WINDOWS
 #define force_break() __debugbreak()
 #else
-#define force_break() (*(volatile int *)0 = 0)
+#define force_break() (*(volatile int *)0=0)
 #endif
 
 //- Linked list helpers

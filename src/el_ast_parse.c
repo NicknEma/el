@@ -568,21 +568,22 @@ parse_expression(Parse_Context *parser, Precedence caller_precedence, bool requi
 	
 	Token token = peek_token(parser);
 	if (token_is_expression_atom(token)) {
-		consume_token(parser);
+		consume_token(parser); // atom
 		
 		left = make_atom_expression(parser, token);
 	} else if (token_is_prefix(token)) {
-		consume_token(parser);
+		consume_token(parser); // prefix
 		Ast_Expression *right = parse_expression(parser, prefix_precedence_from_token(token), true);
 		
 		left = make_unary_expression(parser, token, right);
-	} else if (token.kind == Token_Kind_LPAREN) {
-		consume_token(parser);
+	} else if (token.kind == '(') {
+		consume_token(parser); // (
 		Ast_Expression *grouped = parse_expression(parser, Precedence_NONE, true);
-		expect_token_kind(parser, Token_Kind_RPAREN, "Expected )");
+		expect_token_kind(parser, ')', "Expected )");
 		
 		left = grouped;
 	} else {
+		// This token is not the beginning of any expression.
 		if (required) {
 			report_parse_error(parser, "Expected an expression");
 		}
@@ -595,28 +596,28 @@ parse_expression(Parse_Context *parser, Precedence caller_precedence, bool requi
 			Precedence precedence = postfix_precedence_from_token(token);
 			if (precedence < caller_precedence)  break;
 			
-			consume_token(parser);
+			consume_token(parser); // postfix
 			
 			left = make_unary_expression(parser, token, left);
 		} else if (token_is_infix(token)) {
 			Precedence precedence = infix_precedence_from_token(token);
 			if (precedence < caller_precedence)  break;
 			
-			consume_token(parser);
+			consume_token(parser); // infix
 			
-			if (token.kind == Token_Kind_QMARK) {
+			if (token.kind == '?') {
 				Ast_Expression *middle = parse_expression(parser, Precedence_NONE, true);
 				
-				expect_token_kind(parser, Token_Kind_COLON, "Expected :");
+				expect_token_kind(parser, ':', "Expected :");
 				Ast_Expression *right = parse_expression(parser, precedence, true);
 				
 				left = make_ternary_expression(parser, left, middle, right);
 			} else {
 				bool subexpr_required = true;
-				if (token.kind == Token_Kind_LPAREN || token.kind == Token_Kind_LBRACK) {
+				if (token.kind == '(' || token.kind == '[') {
 					precedence = 0;
 					
-					if (token.kind == Token_Kind_LPAREN) {
+					if (token.kind == '(') {
 						subexpr_required = false;
 					}
 				}
@@ -625,8 +626,8 @@ parse_expression(Parse_Context *parser, Precedence caller_precedence, bool requi
 				
 				left = make_binary_expression(parser, token, left, right);
 				
-				if (token.kind == Token_Kind_LPAREN)  expect_token_kind(parser, Token_Kind_RPAREN, "Expected )");
-				if (token.kind == Token_Kind_LBRACK)  expect_token_kind(parser, Token_Kind_RBRACK, "Expected ]");
+				if (token.kind == '(')  expect_token_kind(parser, ')', "Expected )");
+				if (token.kind == '[')  expect_token_kind(parser, ']', "Expected ]");
 			}
 		} else {
 			break;

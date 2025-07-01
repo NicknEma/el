@@ -4,11 +4,23 @@
 #include "el_base.c"
 
 #include "el_ast.h"
+
+#define EL_CHECK_SINGLE_PASS 1
+
+#if EL_CHECK_SINGLE_PASS
+#include "el_check_single_pass.h"
+#else
 #include "el_check.h"
+#endif
 
 #include "el_ast_parse.c"
 #include "el_ast_print.c"
+
+#if EL_CHECK_SINGLE_PASS
+#include "el_check_single_pass.c"
+#else
 #include "el_check.c"
+#endif
 
 #include "el_x64.c"
 
@@ -660,7 +672,7 @@ int main(void) {
 #if 0
 	String source = string_from_lit("main :: proc() { return other(); }"
 									"other :: proc() { return 2*3 + 10/(4+1); 7-0; }");
-#else
+#elif 0
 	String source = string_from_lit("a := 0\n"
 									"\n"
 									"main :: proc() {\n"
@@ -683,6 +695,11 @@ int main(void) {
 									"\n"
 									"b := 314\n"
 									"D :: 0\n"
+									);
+#elif 1
+	String source = string_from_lit("a := 0\n"
+									"b := \"Hi\"\n"
+									"c := a"
 									);
 #endif
 	

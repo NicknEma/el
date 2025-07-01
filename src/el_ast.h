@@ -354,6 +354,7 @@ typedef enum Entity_Kind {
 	Entity_Kind_NULL = 0,
 	Entity_Kind_UNKNOWN, // For things that don't have an initializer but just a type annotation, or for when the initializer is a generic expression (of which we obviously don't know the type yet)
 	Entity_Kind_STRUCT,
+	Entity_Kind_VALUE,
 	Entity_Kind_PROCEDURE,
 	Entity_Kind_PROCEDURE_TYPE,
 	Entity_Kind_PROCEDURE_PROTO,

@@ -698,8 +698,9 @@ int main(void) {
 									);
 #elif 1
 	String source = string_from_lit("a := 0\n"
-									"b := \"Hi\"\n"
-									"c := a"
+									"a := \"Hi\"\n"
+									"c := a\n"
+									"d := e\n"
 									);
 #endif
 	

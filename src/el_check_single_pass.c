@@ -27,11 +27,24 @@ internal Type_Array get_inferred_types(Typechecker *checker, Type type) {
 }
 
 global i64 max_printed_type_errors = I64_MAX;
+
 internal void report_type_error(Typechecker *checker, char *message) {
 	if (checker->error_count < max_printed_type_errors) {
 		fprintf(stderr, "Error: %s.\n", message);
 	}
 	checker->error_count += 1;
+}
+
+internal void report_type_errorf(Typechecker *checker, char *format, ...) {
+	va_list args;
+	va_start(args, format);
+	Scratch scratch = scratch_begin(0, 0);
+	
+	String formatted_message = push_stringf_va_list(scratch.arena, format, args);
+	report_type_error(checker, cstring_from_string(scratch.arena, formatted_message));
+	
+	scratch_end(scratch);
+	va_end(args);
 }
 
 internal void declare_symbol(Typechecker *checker, Entity entity, Type type) {
@@ -41,7 +54,7 @@ internal void declare_symbol(Typechecker *checker, Entity entity, Type type) {
 	for (Symbol *entry = inner->first_symbol; entry != NULL; entry = entry->next) {
 		if (string_equals(entry->ident, entity.ident)) {
 			// Found! You'd be redefining the same symbol, so report an error instead
-			report_type_error(checker, "Redefinition of identifier");
+			report_type_errorf(checker, "Redefinition of identifier '%.*s'", string_expand(entity.ident));
 			
 			can_declare = false;
 			break;
@@ -83,16 +96,14 @@ internal void typecheck_expr(Typechecker *checker, Ast_Expression *expr) {
 			expr->type.kind = Type_Kind_STRING;
 		} break;
 		
-#if 1
 		case Ast_Expression_Kind_IDENT: {
 			Symbol *entry = lookup_symbol(checker, expr->ident);
 			if (entry != NULL) {
 				expr->type = entry->type;
 			} else {
-				report_type_error(checker, "Undeclared identifier");
+				report_type_errorf(checker, "Undeclared identifier '%.*s'", string_expand(expr->ident));
 			}
 		} break;
-#endif
 		
 		case Ast_Expression_Kind_UNARY: {
 			assert(!check_nil_expression(expr->subexpr));

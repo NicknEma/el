@@ -23,11 +23,6 @@ internal bool expect_and_consume_token(Lexer *lexer, Token_Kind kind) {
 	return kinds_match;
 }
 
-// This procedure assumes that its input represents a number (aka. is in the range '0'..'9').
-internal i64 i64_from_char(u8 c) {
-	return (c - '0');
-}
-
 internal Token make_token(Lexer *lexer) {
 	Token  token  = {0};
 	
@@ -129,7 +124,7 @@ internal Token make_token(Lexer *lexer) {
 			
 			while (index < source.len && (isdigit(source.data[index]) || source.data[index] == '_')) {
 				if (source.data[index] != '_') {
-					i64 digit = i64_from_char(source.data[index]);
+					i64 digit = source.data[index] - '0';
 					
 					value *= 10;
 					value += digit;

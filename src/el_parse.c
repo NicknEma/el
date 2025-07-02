@@ -6,8 +6,7 @@
 
 //- Parsing helpers: Prefix/Infix/Postfix
 
-internal bool
-token_is_prefix(Token token) {
+internal bool token_is_prefix(Token token) {
 	bool result = false;
 	switch (token.kind) {
 		case TOKEN_PLUS:
@@ -17,8 +16,7 @@ token_is_prefix(Token token) {
 	return result;
 }
 
-internal bool
-token_is_postfix(Token token) {
+internal bool token_is_postfix(Token token) {
 	bool result = false;
 	switch (token.kind) {
 		case TOKEN_HAT: result = true; break;
@@ -27,8 +25,7 @@ token_is_postfix(Token token) {
 	return result;
 }
 
-internal bool
-token_is_infix(Token token) {
+internal bool token_is_infix(Token token) {
 	bool result = false;
 	if (token.kind == TOKEN_QMARK || binary_from_token(token) != Binary_Operator_NONE) {
 		result = true;
@@ -38,13 +35,11 @@ token_is_infix(Token token) {
 
 //- Parsing helpers: Unary/Binary
 
-internal Unary_Operator
-unary_from_token(Token token) {
+internal Unary_Operator unary_from_token(Token token) {
 	return unary_from_token_kind(token.kind);
 }
 
-internal Unary_Operator
-unary_from_token_kind(Token_Kind kind) {
+internal Unary_Operator unary_from_token_kind(Token_Kind kind) {
 	Unary_Operator unary = Unary_Operator_NONE;
 	switch (kind) {
 		case TOKEN_PLUS: { unary = Unary_Operator_PLUS; } break;
@@ -55,13 +50,11 @@ unary_from_token_kind(Token_Kind kind) {
 	return unary;
 }
 
-internal Binary_Operator
-binary_from_token(Token token) {
+internal Binary_Operator binary_from_token(Token token) {
 	return binary_from_token_kind(token.kind);
 }
 
-internal Binary_Operator
-binary_from_token_kind(Token_Kind kind) {
+internal Binary_Operator binary_from_token_kind(Token_Kind kind) {
 	Binary_Operator binary = Binary_Operator_NONE;
 	switch (kind) {
 		case TOKEN_PLUS:    { binary = Binary_Operator_PLUS; } break;
@@ -80,8 +73,7 @@ binary_from_token_kind(Token_Kind kind) {
 
 //- Parsing helpers: Precedence
 
-internal Precedence
-infix_precedence_from_token(Token token) {
+internal Precedence infix_precedence_from_token(Token token) {
 	Precedence precedence = PREC_NONE;
 	switch (token.kind) {
 		// case TOKEN_COMMA: precedence = PREC_COMMA; break;
@@ -110,8 +102,7 @@ infix_precedence_from_token(Token token) {
 	return precedence;
 }
 
-internal Precedence
-prefix_precedence_from_token(Token token) {
+internal Precedence prefix_precedence_from_token(Token token) {
 	Precedence precedence = PREC_NONE;
 	if (token_is_prefix(token)) {
 		precedence = PREC_UNARY_PREFIX;
@@ -119,8 +110,7 @@ prefix_precedence_from_token(Token token) {
 	return precedence;
 }
 
-internal Precedence
-postfix_precedence_from_token(Token token) {
+internal Precedence postfix_precedence_from_token(Token token) {
 	Precedence precedence = PREC_NONE;
 	if (token_is_postfix(token)) {
 		precedence = PREC_UNARY_POSTFIX;
@@ -130,26 +120,22 @@ postfix_precedence_from_token(Token token) {
 
 //- Parsing helpers: Misc
 
-internal bool
-token_is_expression_terminator(Token token) {
+internal bool token_is_expression_terminator(Token token) {
 	Token_Kind k = token.kind;
 	return (k == TOKEN_EOI || k == TOKEN_RPAREN || k == TOKEN_RBRACK || k == TOKEN_RBRACE || k == TOKEN_SEMICOLON);
 }
 
-internal bool
-token_is_expression_atom(Token token) {
+internal bool token_is_expression_atom(Token token) {
 	Token_Kind k = token.kind;
 	return k == TOKEN_INTEGER || k == TOKEN_STRING || k == TOKEN_IDENT;
 }
 
-internal bool
-token_is_declarator(Token token) {
+internal bool token_is_declarator(Token token) {
 	Token_Kind k = token.kind;
 	return k == ':' || k == TOKEN_COLON_EQUALS || k == TOKEN_DOUBLE_COLON;
 }
 
-internal bool
-token_is_assigner(Token token) {
+internal bool token_is_assigner(Token token) {
 	Token_Kind k = token.kind;
 	return k == '=' || k == TOKEN_PLUS_EQUALS || k == TOKEN_DASH_EQUALS || k == TOKEN_STAR_EQUALS ||
 		k == TOKEN_SLASH_EQUALS || k == TOKEN_PERCENT_EQUALS || k == TOKEN_AMPER_EQUALS ||
@@ -159,24 +145,21 @@ token_is_assigner(Token token) {
 ////////////////////////////////
 //~ AST
 
-internal Ast_Expression *
-ast_expression_alloc(Arena *arena) {
+internal Ast_Expression *ast_expression_alloc(Arena *arena) {
 	Ast_Expression *expr = push_type(arena, Ast_Expression);
 	memcpy(expr, &nil_expression, sizeof(Ast_Expression));
 	
 	return expr;
 }
 
-internal Ast_Statement *
-ast_statement_alloc(Arena *arena) {
+internal Ast_Statement *ast_statement_alloc(Arena *arena) {
 	Ast_Statement *stat = push_type(arena, Ast_Statement);
 	memcpy(stat, &nil_statement, sizeof(Ast_Statement));
 	
 	return stat;
 }
 
-internal Ast_Declaration *
-ast_declaration_alloc(Arena *arena) {
+internal Ast_Declaration *ast_declaration_alloc(Arena *arena) {
 	Ast_Declaration *decl = push_type(arena, Ast_Declaration);
 	memcpy(decl, &nil_declaration, sizeof(Ast_Declaration));
 	
@@ -185,8 +168,7 @@ ast_declaration_alloc(Arena *arena) {
 
 //- Parser: Expressions
 
-internal Ast_Expression *
-make_atom_expression(Parser *parser, Token token) {
+internal Ast_Expression *make_atom_expression(Parser *parser, Token token) {
 	Ast_Expression *node = ast_expression_alloc(parser->arena);
 	
 	if (node != NULL) {
@@ -211,8 +193,7 @@ make_atom_expression(Parser *parser, Token token) {
 	return node;
 }
 
-internal Ast_Expression *
-make_unary_expression(Parser *parser, Token unary, Ast_Expression *subexpr) {
+internal Ast_Expression *make_unary_expression(Parser *parser, Token unary, Ast_Expression *subexpr) {
 	Ast_Expression *node = ast_expression_alloc(parser->arena);
 	
 	if (node != NULL) {
@@ -227,8 +208,7 @@ make_unary_expression(Parser *parser, Token unary, Ast_Expression *subexpr) {
 	return node;
 }
 
-internal Ast_Expression *
-make_binary_expression(Parser *parser, Token binary, Ast_Expression *left, Ast_Expression *right) {
+internal Ast_Expression *make_binary_expression(Parser *parser, Token binary, Ast_Expression *left, Ast_Expression *right) {
 	Ast_Expression *node = ast_expression_alloc(parser->arena);
 	
 	if (node != NULL) {
@@ -246,8 +226,7 @@ make_binary_expression(Parser *parser, Token binary, Ast_Expression *left, Ast_E
 	return node;
 }
 
-internal Ast_Expression *
-make_ternary_expression(Parser *parser, Ast_Expression *left, Ast_Expression *middle, Ast_Expression *right) {
+internal Ast_Expression *make_ternary_expression(Parser *parser, Ast_Expression *left, Ast_Expression *middle, Ast_Expression *right) {
 	Ast_Expression *node = ast_expression_alloc(parser->arena);
 	
 	if (node != NULL) {
@@ -264,8 +243,7 @@ make_ternary_expression(Parser *parser, Ast_Expression *left, Ast_Expression *mi
 	return node;
 }
 
-internal Ast_Expression *
-parse_expression(Parser *parser, Precedence caller_precedence, bool required) {
+internal Ast_Expression *parse_expression(Parser *parser, Precedence caller_precedence, bool required) {
 	Ast_Expression *left = &nil_expression;
 	
 	Token token = peek_token(parser->lexer);
@@ -342,8 +320,7 @@ parse_expression(Parser *parser, Precedence caller_precedence, bool required) {
 
 //- Parser: Statements
 
-internal Ast_Statement *
-make_statement_(Parser *parser, Ast_Statement_Kind kind, Range1DI32 location, Make_Statement_Params params) {
+internal Ast_Statement *make_statement_(Parser *parser, Ast_Statement_Kind kind, Range1DI32 location, Make_Statement_Params params) {
 	Ast_Statement *result = ast_statement_alloc(parser->arena);
 	
 	if (result != NULL) {
@@ -359,8 +336,7 @@ make_statement_(Parser *parser, Ast_Statement_Kind kind, Range1DI32 location, Ma
 	return result;
 }
 
-internal Ast_Statement *
-parse_statement(Parser *parser) {
+internal Ast_Statement *parse_statement(Parser *parser) {
 	Ast_Statement *result = &nil_statement;
 	
 	Token token = peek_token(parser->lexer);
@@ -612,8 +588,7 @@ parse_statement(Parser *parser) {
 
 //- Parser: Declarations
 
-internal Ast_Declaration *
-parse_declaration(Parser *parser) {
+internal Ast_Declaration *parse_declaration(Parser *parser) {
 	Ast_Declaration *result = &nil_declaration;
 	Scratch scratch = scratch_begin(&parser->arena, 1);
 	
@@ -670,8 +645,7 @@ parse_declaration(Parser *parser) {
 	return result;
 }
 
-internal Ast_Declaration *
-parse_declaration_after_lhs(Parser *parser, String *idents, Range1DI32 *ident_locations, i64 ident_count) {
+internal Ast_Declaration *parse_declaration_after_lhs(Parser *parser, String *idents, Range1DI32 *ident_locations, i64 ident_count) {
 	Ast_Declaration *result = &nil_declaration;
 	
 	// Determine the kind of declaration
@@ -811,8 +785,7 @@ parse_declaration_after_lhs(Parser *parser, String *idents, Range1DI32 *ident_lo
 	return result;
 }
 
-internal Initter
-parse_declaration_rhs(Parser *parser) {
+internal Initter parse_declaration_rhs(Parser *parser) {
 	Initter result = nil_initter;
 	
 	Token token = peek_token(parser->lexer);
@@ -867,8 +840,7 @@ parse_declaration_rhs(Parser *parser) {
 	return result;
 }
 
-internal Type_Ann
-parse_type_annotation(Parser *parser) {
+internal Type_Ann parse_type_annotation(Parser *parser) {
 	Type_Ann result = {0};
 	
 	Token token = peek_token(parser->lexer);
@@ -881,8 +853,7 @@ parse_type_annotation(Parser *parser) {
 	return result;
 }
 
-internal Ast_Declaration *
-parse_proc_header(Parser *parser) {
+internal Ast_Declaration *parse_proc_header(Parser *parser) {
 	Ast_Declaration *result = &nil_declaration;
 	Scratch scratch = scratch_begin(&parser->arena, 1);
 	
@@ -1018,8 +989,7 @@ parse_proc_header(Parser *parser) {
 ////////////////////////////////
 //~ Program
 
-internal Ast_Declaration *
-parse_program(Parser *parser) {
+internal Ast_Declaration *parse_program(Parser *parser) {
 	Ast_Declaration *result = &nil_declaration;
 	
 	Ast_Declaration *first_decl = NULL;
@@ -1042,15 +1012,13 @@ parse_program(Parser *parser) {
 ////////////////////////////////
 //~ Context
 
-internal void
-expect_token_kind(Parser *parser, Token_Kind kind, char *message) {
+internal void expect_token_kind(Parser *parser, Token_Kind kind, char *message) {
 	if (peek_token(parser->lexer).kind != kind)
 		report_parse_error(parser, message);
 	consume_token(parser->lexer);
 }
 
-internal void
-report_parse_error(Parser *parser, char *message) {
+internal void report_parse_error(Parser *parser, char *message) {
 	if (parser->error_count < max_printed_parse_errors) {
 		String span = lexeme_from_token(parser->lexer, parser->lexer->token);
 		fprintf(stderr, "Syntax error (%i..%i): %s.\n", parser->lexer->token.loc.start, parser->lexer->token.loc.end, message, string_expand(span));
@@ -1058,8 +1026,7 @@ report_parse_error(Parser *parser, char *message) {
 	parser->error_count += 1;
 }
 
-internal void
-report_parse_errorf(Parser *parser, char *format, ...) {
+internal void report_parse_errorf(Parser *parser, char *format, ...) {
 	va_list args;
 	va_start(args, format);
 	Scratch scratch = scratch_begin(0, 0);
@@ -1071,47 +1038,41 @@ report_parse_errorf(Parser *parser, char *format, ...) {
 	va_end(args);
 }
 
-internal void
-parser_init(Parser *parser, Arena *arena, String source) {
+internal void parser_init(Parser *parser, Arena *arena, String source) {
 	memset(parser, 0, sizeof(*parser));
 	parser->arena = arena;
 	parser->lexer = push_type(arena, Lexer);
 	parser->lexer->source = source;
 }
 
-internal bool
-there_were_parse_errors(Parser *parser) {
+internal bool there_were_parse_errors(Parser *parser) {
 	return parser->error_count;
 }
 
 //- Wrappers
 
-internal Ast_Expression *
-parse_expression_string(Arena *arena, String source) {
+internal Ast_Expression *parse_expression_string(Arena *arena, String source) {
 	Parser context = {0};
 	parser_init(&context, arena, source);
 	
 	return parse_expression(&context, PREC_NONE, true);
 }
 
-internal Ast_Statement *
-parse_statement_string(Arena *arena, String source) {
+internal Ast_Statement *parse_statement_string(Arena *arena, String source) {
 	Parser context = {0};
 	parser_init(&context, arena, source);
 	
 	return parse_statement(&context);
 }
 
-internal Ast_Declaration *
-parse_declaration_string(Arena *arena, String source) {
+internal Ast_Declaration *parse_declaration_string(Arena *arena, String source) {
 	Parser context = {0};
 	parser_init(&context, arena, source);
 	
 	return parse_declaration(&context);
 }
 
-internal Ast_Declaration *
-parse_program_string(Arena *arena, String source) {
+internal Ast_Declaration *parse_program_string(Arena *arena, String source) {
 	Parser context = {0};
 	parser_init(&context, arena, source);
 	

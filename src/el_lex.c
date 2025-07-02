@@ -222,8 +222,7 @@ internal Token make_token(Lexer *lexer) {
 	return token;
 }
 
-internal void
-report_lex_error(Lexer *lexer, char *message) {
+internal void report_lex_error(Lexer *lexer, char *message) {
 	if (lexer->error_count < max_printed_lex_errors) {
 		String span = lexeme_from_token(lexer, lexer->token);
 		fprintf(stderr, "Syntax error (%i..%i): %s.\n", lexer->token.loc.start, lexer->token.loc.end, message, string_expand(span));
@@ -231,8 +230,7 @@ report_lex_error(Lexer *lexer, char *message) {
 	lexer->error_count += 1;
 }
 
-internal void
-report_lex_errorf(Lexer *lexer, char *format, ...) {
+internal void report_lex_errorf(Lexer *lexer, char *format, ...) {
 	if (lexer->error_count < max_printed_lex_errors) {
 		va_list args;
 		va_start(args, format);
@@ -247,13 +245,11 @@ report_lex_errorf(Lexer *lexer, char *format, ...) {
 	lexer->error_count += 1;
 }
 
-internal String
-lexeme_from_token(Lexer *lexer, Token token) {
+internal String lexeme_from_token(Lexer *lexer, Token token) {
 	return string_slice(lexer->source, token.loc.start, token.loc.end);
 }
 
-internal String
-lexeme_from_token_or_not_printable(Lexer *lexer, Token token) {
+internal String lexeme_from_token_or_not_printable(Lexer *lexer, Token token) {
 	String lexeme = lexeme_from_token(lexer, token);
 	for (i64 i = 0; i < lexeme.len; i += 1) {
 		if (!isprint(lexeme.data[i])) {

@@ -9,8 +9,8 @@
 internal bool token_is_prefix(Token token) {
 	bool result = false;
 	switch (token.kind) {
-		case TOKEN_PLUS:
-		case TOKEN_DASH: result = true; break;
+		case '+':
+		case '-': result = true; break;
 		default: break;
 	}
 	return result;
@@ -19,7 +19,7 @@ internal bool token_is_prefix(Token token) {
 internal bool token_is_postfix(Token token) {
 	bool result = false;
 	switch (token.kind) {
-		case TOKEN_HAT: result = true; break;
+		case '^': result = true; break;
 		default: break;
 	}
 	return result;
@@ -27,7 +27,7 @@ internal bool token_is_postfix(Token token) {
 
 internal bool token_is_infix(Token token) {
 	bool result = false;
-	if (token.kind == TOKEN_QMARK || binary_from_token(token) != Binary_Operator_NONE) {
+	if (token.kind == '?' || binary_from_token(token) != Binary_Operator_NONE) {
 		result = true;
 	}
 	return result;
@@ -42,9 +42,9 @@ internal Unary_Operator unary_from_token(Token token) {
 internal Unary_Operator unary_from_token_kind(Token_Kind kind) {
 	Unary_Operator unary = Unary_Operator_NONE;
 	switch (kind) {
-		case TOKEN_PLUS: { unary = Unary_Operator_PLUS; } break;
-		case TOKEN_DASH: { unary = Unary_Operator_MINUS; } break;
-		case TOKEN_HAT:  { unary = Unary_Operator_DEREFERENCE; } break;
+		case '+': { unary = Unary_Operator_PLUS; } break;
+		case '-': { unary = Unary_Operator_MINUS; } break;
+		case '^': { unary = Unary_Operator_DEREFERENCE; } break;
 		default: break;
 	}
 	return unary;
@@ -57,15 +57,15 @@ internal Binary_Operator binary_from_token(Token token) {
 internal Binary_Operator binary_from_token_kind(Token_Kind kind) {
 	Binary_Operator binary = Binary_Operator_NONE;
 	switch (kind) {
-		case TOKEN_PLUS:    { binary = Binary_Operator_PLUS; } break;
-		case TOKEN_DASH:    { binary = Binary_Operator_MINUS; } break;
-		case TOKEN_STAR:    { binary = Binary_Operator_TIMES; } break;
-		case TOKEN_SLASH:   { binary = Binary_Operator_DIVIDE; } break;
-		case TOKEN_PERCENT: { binary = Binary_Operator_MODULUS; } break;
-		// case TOKEN_COMMA:   { binary = Binary_Operator_COMMA; } break;
-		case TOKEN_DOT:     { binary = Binary_Operator_MEMBER; } break;
-		case TOKEN_LPAREN:  { binary = Binary_Operator_CALL; } break;
-		case TOKEN_LBRACK:  { binary = Binary_Operator_ARRAY_ACCESS; } break;
+		case '+':    { binary = Binary_Operator_PLUS; } break;
+		case '-':    { binary = Binary_Operator_MINUS; } break;
+		case '*':    { binary = Binary_Operator_TIMES; } break;
+		case '/':   { binary = Binary_Operator_DIVIDE; } break;
+		case '%': { binary = Binary_Operator_MODULUS; } break;
+		// case ',':   { binary = Binary_Operator_COMMA; } break;
+		case '.':     { binary = Binary_Operator_MEMBER; } break;
+		case '(':  { binary = Binary_Operator_CALL; } break;
+		case '[':  { binary = Binary_Operator_ARRAY_ACCESS; } break;
 		default: break;
 	}
 	return binary;
@@ -76,26 +76,26 @@ internal Binary_Operator binary_from_token_kind(Token_Kind kind) {
 internal Precedence infix_precedence_from_token(Token token) {
 	Precedence precedence = PREC_NONE;
 	switch (token.kind) {
-		// case TOKEN_COMMA: precedence = PREC_COMMA; break;
+		// case ',': precedence = PREC_COMMA; break;
 		
-		// case TOKEN_EQUALS: precedence = PREC_ASSIGNMENT; break;
+		// case '=': precedence = PREC_ASSIGNMENT; break;
 		
-		case TOKEN_QMARK: precedence = PREC_TERNARY; break;
+		case '?': precedence = PREC_TERNARY; break;
 		
 		// case TOKEN_LOGICAL_AND: precedence = PREC_LOGICAL; break;
 		
 		// case TOKEN_DOUBLE_EQUALS: precedence = PREC_RELATIONAL; break;
 		
-		case TOKEN_PLUS:
-		case TOKEN_DASH: precedence = PREC_ADDITIVE; break;
+		case '+':
+		case '-': precedence = PREC_ADDITIVE; break;
 		
-		case TOKEN_STAR:
-		case TOKEN_SLASH:
-		case TOKEN_PERCENT: precedence = PREC_MULTIPLICATIVE; break;
+		case '*':
+		case '/':
+		case '%': precedence = PREC_MULTIPLICATIVE; break;
 		
-		case TOKEN_LPAREN: precedence = PREC_CALL_OR_ARRAY_ACCESS; break;
+		case '(': precedence = PREC_CALL_OR_ARRAY_ACCESS; break;
 		
-		// case TOKEN_DOT: precedence = PREC_MEMBER; break;
+		// case '.': precedence = PREC_MEMBER; break;
 		
 		default: break;
 	}
@@ -122,7 +122,7 @@ internal Precedence postfix_precedence_from_token(Token token) {
 
 internal bool token_is_expression_terminator(Token token) {
 	Token_Kind k = token.kind;
-	return (k == TOKEN_EOI || k == TOKEN_RPAREN || k == TOKEN_RBRACK || k == TOKEN_RBRACE || k == TOKEN_SEMICOLON);
+	return (k == TOKEN_EOI || k == ')' || k == ']' || k == '}' || k == ';');
 }
 
 internal bool token_is_expression_atom(Token token) {
@@ -340,7 +340,7 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 	Ast_Statement *result = &nil_statement;
 	
 	Token token = peek_token(parser->lexer);
-	if (token.kind == TOKEN_LBRACE) {
+	if (token.kind == '{') {
 		consume_token(parser->lexer); // {
 		
 		Range1DI32 lbrace_location = token.loc;
@@ -363,7 +363,7 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 				}
 				
 				token = peek_token(parser->lexer);
-				if (token.kind == TOKEN_RBRACE) {
+				if (token.kind == '}') {
 					rbrace_location = token.loc;
 					
 					// We set it to &nil_statement always for now, so that {;} works.

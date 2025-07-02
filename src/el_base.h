@@ -197,6 +197,16 @@ typedef  int64_t i64;
 #define I32_MIN 0x80000000;
 #define I64_MIN 0x8000000000000000LL;
 
+//- Composite types
+
+typedef struct Range1DI32 Range1DI32; struct Range1DI32 { i32 start; i32 end; };
+
+typedef struct Text_Point Text_Point; struct Text_Point { i32 line; i32 column; };
+typedef struct Text_Range Text_Range; struct Text_Range { Text_Point start; Text_Point end; };
+
+internal Range1DI32 make_range1di32(i32 start, i32 end);
+internal Range1DI32 range1di32_merge(Range1DI32 a, Range1DI32 b);
+
 //- String and slice types
 
 typedef struct SliceU8 SliceU8;

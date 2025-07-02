@@ -2,153 +2,9 @@
 #define EL_AST_H
 
 ////////////////////////////////
-//~ Location
-
-typedef struct Location Location;
-struct Location {
-	i64 l0, l1;
-	i64 c0, c1;
-	i64 b0, b1;
-};
-
-internal bool location_is_valid(Location location);
-
-internal bool location_is_zero(Location location);
-internal bool location_is_greater_than(Location location1, Location location2);
-
-internal Location locations_merge(Location location1, Location location2);
-
-////////////////////////////////
-//~ Tokens
-
-//- Token types
-
-typedef enum Token_Kind {
-	Token_Kind_INVALID = 0,
-	
-	/*  33 ..  47 */
-	
-	Token_Kind_EMARK   = '!',
-	Token_Kind_QUOTE   = '"',
-	Token_Kind_HASH    = '#',
-	Token_Kind_DOLLAR  = '$',
-	Token_Kind_PERCENT = '%',
-	Token_Kind_AMPER   = '&',
-	Token_Kind_APEX    = '\'',
-	Token_Kind_LPAREN  = '(',
-	Token_Kind_RPAREN  = ')',
-	Token_Kind_STAR    = '*',
-	Token_Kind_PLUS    = '+',
-	Token_Kind_COMMA   = ',',
-	Token_Kind_DASH    = '-',
-	Token_Kind_DOT     = '.',
-	Token_Kind_SLASH   = '/',
-	
-	/*  58 ..  64 */
-	
-	Token_Kind_COLON     = ':',
-	Token_Kind_SEMICOLON = ';',
-	Token_Kind_LTHAN     = '<',
-	Token_Kind_EQUALS    = '=',
-	Token_Kind_GTHAN     = '>',
-	Token_Kind_QMARK     = '?',
-	Token_Kind_AT        = '@',
-	
-	/*  91 ..  96 */
-	
-	Token_Kind_LBRACK = '[',
-	Token_Kind_BSLASH = '\\',
-	Token_Kind_RBRACK = ']',
-	Token_Kind_HAT    = '^',
-	Token_Kind_USCORE = '_',
-	Token_Kind_TICK   = '`',
-	
-	/* 123 .. 126 */
-	
-	Token_Kind_LBRACE = '{',
-	Token_Kind_PIPE   = '|',
-	Token_Kind_RBRACE = '}',
-	Token_Kind_TILDE  = '~',
-	
-	/* 127 .. */
-	
-	Token_Kind_DOUBLE_EQUALS = 127,
-	Token_Kind_PLUS_EQUALS,
-	Token_Kind_DASH_EQUALS,
-	Token_Kind_STAR_EQUALS,
-	Token_Kind_SLASH_EQUALS,
-	Token_Kind_PERCENT_EQUALS,
-	Token_Kind_EMARK_EQUALS,
-	Token_Kind_PIPE_EQUALS,
-	Token_Kind_AMPER_EQUALS,
-	Token_Kind_TILDE_EQUALS,
-	Token_Kind_COLON_EQUALS,
-	
-	Token_Kind_DOUBLE_COLON,
-	Token_Kind_TRIPLE_DASH,
-	Token_Kind_FORWARD_ARROW,
-	
-	Token_Kind_INTEGER,
-	Token_Kind_STRING,
-	Token_Kind_IDENT,
-	Token_Kind_KEYWORD,
-	
-	Token_Kind_EOI,
-	Token_Kind_COUNT,
-} Token_Kind;
-
-typedef enum Keyword {
-	Keyword_NONE = 0,
-	Keyword_RETURN,
-	Keyword_PROC,
-	Keyword_STRUCT,
-	Keyword_BREAK,
-	Keyword_CONTINUE,
-	Keyword_COUNT,
-} Keyword;
-
-typedef struct Token Token;
-struct Token {
-	Token_Kind kind;
-	Keyword keyword;
-	
-	Location location;
-	
-	String string_val;
-	i64    int_val;
-};
-
-//- Token functions
-
-typedef struct Parse_Context Parse_Context;
-
-internal Token peek_token(Parse_Context *parser);
-internal Token make_token(Parse_Context *parser);
-internal void  consume_token(Parse_Context *parser);
-internal void  consume_all_tokens(Parse_Context *parser);
-
-internal bool  expect_and_consume_token(Parse_Context *parser, Token_Kind kind);
-
-////////////////////////////////
 //~ Operators
 
 //- Operators types
-
-typedef enum Precedence {
-	Precedence_NONE = 0,
-	// Precedence_COMMA,
-	// Precedence_ASSIGNMENT,
-	Precedence_TERNARY,
-	Precedence_LOGICAL,
-	Precedence_RELATIONAL,
-	Precedence_ADDITIVE,
-	Precedence_MULTIPLICATIVE,
-	Precedence_UNARY_PREFIX,
-	Precedence_UNARY_POSTFIX,
-	Precedence_CALL_OR_ARRAY_ACCESS,
-	Precedence_MEMBER,
-	Precedence_COUNT,
-} Precedence;
 
 typedef enum Unary_Operator {
 	Unary_Operator_NONE = 0,
@@ -171,26 +27,6 @@ typedef enum Binary_Operator {
 	Binary_Operator_ARRAY_ACCESS,
 	Binary_Operator_COUNT,
 } Binary_Operator;
-
-internal bool token_is_prefix(Token token);
-internal bool token_is_postfix(Token token);
-internal bool token_is_infix(Token token);
-#define token_is_unary(token)  (token_is_prefix(token) || token_is_postfix(token))
-#define token_is_binary(token) (token_is_infix(token))
-
-internal Unary_Operator  unary_from_token(Token token);
-internal Unary_Operator  unary_from_token_kind(Token_Kind kind);
-internal Binary_Operator binary_from_token(Token token);
-internal Binary_Operator binary_from_token_kind(Token_Kind kind);
-
-internal bool token_is_expression_terminator(Token token);
-internal bool token_is_expression_atom(Token token);
-
-internal bool token_is_declarator(Token token);
-internal bool token_is_assigner(Token token);
-
-internal String lexeme_from_token(Parse_Context *parser, Token token);
-internal String lexeme_from_token_or_not_printable(Parse_Context *parser, Token token);
 
 ////////////////////////////////
 //~ Types
@@ -257,7 +93,7 @@ struct Ast_Expression {
 	Ast_Expression *middle; // For ternaries
 	Ast_Expression *right;
 	
-	Location location;
+	Range1DI32 location;
 	
 	String lexeme;
 	String ident;
@@ -268,16 +104,6 @@ struct Ast_Expression {
 	Ast_Expression *next;
 	void  *user;
 };
-
-internal Ast_Expression *make_atom_expression(Parse_Context *parser, Token token);
-internal Ast_Expression *make_unary_expression(Parse_Context *parser, Token unary, Ast_Expression *subexpr);
-internal Ast_Expression *make_binary_expression(Parse_Context *parser, Token binary, Ast_Expression *left, Ast_Expression *right);
-internal Ast_Expression *make_ternary_expression(Parse_Context *parser, Ast_Expression *left, Ast_Expression *middle, Ast_Expression *right);
-
-internal Ast_Expression *parse_expression(Parse_Context *parser, Precedence caller_precedence, bool required);
-
-internal String string_from_expression_tree(Arena *arena, Ast_Expression *root);
-internal void print_expression_tree(Ast_Expression *root);
 
 //- Statements
 
@@ -295,7 +121,7 @@ struct Ast_Statement {
 	Ast_Statement_Kind kind;
 	Token_Kind assigner;
 	
-	Location location;
+	Range1DI32 location;
 	
 	Ast_Statement   *block;
 	union { Ast_Expression *expr; Ast_Expression *lhs; };
@@ -307,32 +133,6 @@ struct Ast_Statement {
 	bool typechecked;
 	Ast_Statement *next;
 };
-
-typedef struct Make_Statement_Params Make_Statement_Params;
-struct Make_Statement_Params {
-	Token_Kind assigner;
-	
-	Ast_Statement   *block;
-	union { Ast_Expression *expr; Ast_Expression *lhs; };
-	Ast_Expression  *rhs;
-	Ast_Declaration *decl;
-};
-
-#define make_statement(parser, kind, location, ...) \
-make_statement_(parser, kind, location, (Make_Statement_Params){ \
-.assigner = 0,\
-.block    = &nil_statement,  \
-.lhs      = &nil_expression, \
-.rhs      = &nil_expression, \
-.decl     = &nil_declaration,\
-__VA_ARGS__\
-})
-internal Ast_Statement *make_statement_(Parse_Context *parser, Ast_Statement_Kind kind, Location location, Make_Statement_Params params);
-
-internal Ast_Statement *parse_statement(Parse_Context *parser);
-
-internal String string_from_statement_tree(Arena *arena, Ast_Statement *root);
-internal void print_statement_tree(Ast_Statement *root);
 
 //- Declarations
 
@@ -366,7 +166,7 @@ struct Entity {
 	Entity_Kind kind;
 	
 	String   ident;
-	Location location;
+	Range1DI32 location;
 };
 
 
@@ -404,21 +204,11 @@ struct Ast_Declaration {
 	i64      initter_count;
 	Initter *initters;
 	
-	Location location;
+	Range1DI32 location;
 	Type_Ann type_annotation;
 	
 	Ast_Declaration *next;
 };
-
-internal Ast_Declaration *parse_declaration(Parse_Context *parser);
-internal Ast_Declaration *parse_declaration_after_lhs(Parse_Context *parser, String *idents, Location *ident_locations, i64 ident_count);
-internal Initter          parse_declaration_rhs(Parse_Context *parser);
-
-internal Ast_Declaration *parse_proc_header(Parse_Context *parser);
-internal Type_Ann         parse_type_annotation(Parse_Context *parser);
-
-internal String string_from_declaration_tree(Arena *arena, Ast_Declaration *root);
-internal void print_declaration_tree(Ast_Declaration *root);
 
 ////////////////////////////////
 //~ Nil objects
@@ -471,36 +261,5 @@ typedef enum Ast_Declaration_List_Context {
 	Ast_Declaration_List_Context_COUNT,
 } Ast_Declaration_List_Context;
 #endif
-
-////////////////////////////////
-//~ Context
-
-struct Parse_Context {
-	Arena *arena;
-	
-	String source;
-	i64    index;
-	i64    line_index;
-	
-	i64    rollback_index;
-	Token  token;
-	
-	int error_count;
-};
-
-global   i64  max_printed_lex_errors   = I64_MAX;
-global   i64  max_printed_parse_errors = 1;
-
-internal void parser_init(Parse_Context *parser, Arena *arena, String source);
-
-internal void report_lex_error(Parse_Context *parser, char *message);
-internal void report_lex_errorf(Parse_Context *parser, char *format, ...);
-
-internal void report_parse_error(Parse_Context *parser, char *message);
-internal void report_parse_errorf(Parse_Context *parser, char *format, ...);
-
-internal void expect_token_kind(Parse_Context *parser, Token_Kind kind, char *message);
-
-internal bool there_were_parse_errors(Parse_Context *parser);
 
 #endif

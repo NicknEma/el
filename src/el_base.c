@@ -46,6 +46,25 @@ internal void default_assert_handler(const char *base, const char *file, const c
 	abort();
 }
 
+//- Composite types
+
+internal Range1DI32 make_range1di32(i32 start, i32 end) {
+	if (start > end) {
+		i32 t = start; start = end; end = t;
+	}
+	
+	Range1DI32 result = { .start = start, .end = end, };
+	return result;
+}
+
+internal Range1DI32 range1di32_merge(Range1DI32 a, Range1DI32 b) {
+	i32 start = min(a.start, b.start);
+	i32 end   = max(a.end, b.end);
+	
+	Range1DI32 result = { .start = start, .end = end, };
+	return result;
+}
+
 //- Integer math
 
 internal bool

@@ -3,7 +3,9 @@
 
 #include "el_base.c"
 
+#include "el_lex.h"
 #include "el_ast.h"
+#include "el_parse.h"
 
 #define EL_CHECK_SINGLE_PASS 1
 
@@ -16,7 +18,8 @@
 #include "el_bcode.h"
 #include "el_masm.h"
 
-#include "el_ast_parse.c"
+#include "el_lex.c"
+#include "el_parse.c"
 #include "el_ast_print.c"
 
 #if EL_CHECK_SINGLE_PASS
@@ -85,7 +88,7 @@ int main(void) {
 	Arena tree_arena = {0};
 	arena_init(&tree_arena);
 	
-	Parse_Context parser = {0};
+	Parser parser = {0};
 	parser_init(&parser, &tree_arena, source);
 	
 	Ast_Declaration *program = &nil_declaration;

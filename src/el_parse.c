@@ -1049,7 +1049,7 @@ internal void parser_init(Parser *parser, Arena *arena, String source) {
 }
 
 internal bool there_were_parse_errors(Parser *parser) {
-	return parser->error_count;
+	return parser->error_count > 0;
 }
 
 //- Wrappers

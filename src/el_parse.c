@@ -1027,15 +1027,18 @@ internal void report_parse_error(Parser *parser, char *message) {
 }
 
 internal void report_parse_errorf(Parser *parser, char *format, ...) {
-	va_list args;
-	va_start(args, format);
-	Scratch scratch = scratch_begin(0, 0);
-	
-	String formatted_message = push_stringf_va_list(scratch.arena, format, args);
-	report_parse_error(parser, cstring_from_string(scratch.arena, formatted_message));
-	
-	scratch_end(scratch);
-	va_end(args);
+	if (parser->error_count < max_printed_parse_errors) {
+		va_list args;
+		va_start(args, format);
+		Scratch scratch = scratch_begin(0, 0);
+		
+		String formatted_message = push_stringf_va_list(scratch.arena, format, args);
+		report_parse_error(parser, cstring_from_string(scratch.arena, formatted_message));
+		
+		scratch_end(scratch);
+		va_end(args);
+	}
+	parser->error_count += 1;
 }
 
 internal void parser_init(Parser *parser, Arena *arena, String source) {

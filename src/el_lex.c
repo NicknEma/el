@@ -23,27 +23,26 @@ internal bool expect_and_consume_token(Lexer *lexer, Token_Kind kind) {
 	return kinds_match;
 }
 
+internal i64 skip_whitespace_and_comments(String source, i64 index) {
+	bool should_continue = true;
+	while (should_continue) {
+		should_continue = false;
+		while (index < source.len && isspace(source.data[index])) {
+			should_continue = true;
+			index += 1;
+		}
+		
+		// TODO: Comments
+	}
+	
+	return index;
+}
+
 internal Token make_token(Lexer *lexer) {
 	Token  token  = {0};
 	
 	String source = lexer->source;
-	i64    index  = lexer->index;
-	
-	// Skip whitespace
-	bool skipped_more = true;
-	while (skipped_more) {
-		skipped_more = false;
-		while (index < source.len && isspace(source.data[index]) && source.data[index] != '\n') {
-			skipped_more = true;
-			index += 1;
-		}
-		
-		while (index < source.len && source.data[index] == '\n') {
-			skipped_more = true;
-			// lexer->line_index += 1;
-			index += 1;
-		}
-	}
+	i64    index  = skip_whitespace_and_comments(source, lexer->index);
 	
 	token.loc.start = index;
 	

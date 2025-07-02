@@ -1,8 +1,6 @@
 #ifndef EL_LEX_H
 #define EL_LEX_H
 
-//- Types
-
 typedef struct Token Token;
 typedef struct Lexer Lexer;
 
@@ -114,11 +112,9 @@ struct Lexer {
 	int error_count;
 };
 
-//- Global variables
-
 global   int   max_printed_lex_errors = I64_MAX;
 
-//- Functions
+internal i64   skip_whitespace_and_comments(String source, i64 index);
 
 internal Token peek_token(Lexer *lexer);
 internal Token make_token(Lexer *lexer);

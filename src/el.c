@@ -3,11 +3,12 @@
 
 #include "el_base.c"
 
+#define EL_CHECK_SINGLE_PASS 1
+
+#include "el_type.h"
 #include "el_lex.h"
 #include "el_ast.h"
 #include "el_parse.h"
-
-#define EL_CHECK_SINGLE_PASS 1
 
 #if EL_CHECK_SINGLE_PASS
 #include "el_check_single_pass.h"
@@ -18,6 +19,7 @@
 #include "el_bcode.h"
 #include "el_masm.h"
 
+#include "el_type.c"
 #include "el_lex.c"
 #include "el_parse.c"
 #include "el_ast_print.c"
@@ -36,6 +38,9 @@
 
 /*
 ** TODO(ema):
+** [ ] Symbol_Kind (local var, global var, function, etc) so we can either store a stack offset or an address
+** [ ] Assigner and Declarator types
+** [ ] Refactor Expr, Stat and Decl from lists into arrays
 ** [ ] Printer
 ** [ ] Input reading
 */

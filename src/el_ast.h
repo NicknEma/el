@@ -29,40 +29,6 @@ typedef enum Binary_Operator {
 } Binary_Operator;
 
 ////////////////////////////////
-//~ Types
-
-typedef enum Type_Kind {
-	Type_Kind_UNKNOWN = 0,
-	Type_Kind_VOID,
-	Type_Kind_TYPE,
-	Type_Kind_BOOLEAN,
-	Type_Kind_INTEGER,
-	Type_Kind_STRING,
-	Type_Kind_STRUCT,
-	Type_Kind_POINTER,
-	Type_Kind_PROC,
-	Type_Kind_COUNT,
-} Type_Kind;
-
-typedef struct Type Type;
-struct Type {
-	Type_Kind kind;
-	
-	// For pointers
-	Type *pointed;
-	
-	// For structs
-	Type *members;
-	i64   member_count;
-	
-	// For procedures
-	Type *params;
-	i64   param_count;
-	Type *retvals;
-	i64   retval_count;
-};
-
-////////////////////////////////
 //~ AST
 
 typedef struct Ast_Expression Ast_Expression;
@@ -99,7 +65,7 @@ struct Ast_Expression {
 	String ident;
 	i64    value;
 	
-	Type   type;
+	Type_Array types;
 	
 	Ast_Expression *next;
 	void  *user;

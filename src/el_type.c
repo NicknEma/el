@@ -59,7 +59,7 @@ internal void print_type(Type *type) {
 	
 	if (type->kind == TYPE_VOID || type->kind == TYPE_BOOLEAN ||
 		type->kind == TYPE_INTEGER || type->kind == TYPE_STRING) {
-		printf("%d", type->kind);
+		printf("%.*s", string_expand(type_kind_names[type->kind]));
 	} else if (type->kind == TYPE_POINTER) {
 		printf("^");
 		print_type(type->pointed);

@@ -1,32 +1,6 @@
 #ifndef EL_TYPE_H
 #define EL_TYPE_H
 
-// Examples of how types are represented:
-//
-// int
-//  (1) [ INT,8 ]
-//
-// ^int
-//  (2) [ POINTER,8 ; INT,8 ]
-//
-// [5]int
-//  (2) [ ARRAY,8*5,5 ; INT,8 ]
-//
-// [2][2]int
-//  (3) [ ARRAY,(8*2)*2,2 ; ARRAY,8*2,2 ; INT,8 ]
-//
-// struct { ^int; string }
-//  (4) [ STRUCT,8+16,2 ; POINTER,8 ; INT,8 ; STRING,16 ]
-//
-// proc()
-//  (1) [ PROC,0 ]
-//
-// proc(string) -> int
-//  (3) [ PROC,8,1,1 ; STRING,16 ; INT,8 ]
-//
-// distinct int
-//  (2) [ DISTINCT,8 ; INT,8 ]
-
 typedef enum Type_Kind {
 	TYPE_UNKNOWN = 0,
 	TYPE_VOID,
@@ -59,6 +33,20 @@ typedef struct Type_Array Type_Array;
 struct Type_Array {
 	Type **data;
 	i64    count;
+};
+
+
+global read_only String type_kind_names[] = {
+	string_from_lit_const("TYPE_UNKNOWN"),
+	string_from_lit_const("TYPE_VOID"),
+	string_from_lit_const("TYPE_TYPE"),
+	string_from_lit_const("TYPE_BOOLEAN"),
+	string_from_lit_const("TYPE_INTEGER"),
+	string_from_lit_const("TYPE_STRING"),
+	string_from_lit_const("TYPE_STRUCT"),
+	string_from_lit_const("TYPE_POINTER"),
+	string_from_lit_const("TYPE_PROC"),
+	string_from_lit_const("TYPE_COUNT"),
 };
 
 #endif

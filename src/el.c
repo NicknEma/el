@@ -80,11 +80,11 @@ int main(void) {
 #elif 1
 	String source = string_from_lit("a, b, d := 0, \"Hi\", true\n"
 									"c := a\n"
-									"main :: proc() {\n"
+									"main, x :: proc() {\n"
 									"a;\n"
 									"a := 5;\n"
 									"a;\n"
-									"}\n"
+									"}, 0\n"
 									);
 #endif
 	

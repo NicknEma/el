@@ -252,29 +252,46 @@ internal void generate_bytecode_for_statement(Ast_Statement *statement) {
 	}
 }
 
-internal void generate_bytecode_for_declaration(Ast_Declaration *declaration) {
-#if 0
-	switch (declaration->entity) {
-		case Ast_Declaration_Entity_PROCEDURE: {
+internal void generate_bytecode_for_declaration(Symbol_Table *table, Ast_Declaration *decl) {
+#if 1
+	assert(!check_nil_declaration(decl));
+	
+	int entities_done = 0;
+	for (int i = 0; i < decl->initter_count; i += 1) {
+		if (decl->initters[i].kind == Initter_Kind_PROCEDURE) {
+			assert(!check_nil_statement(decl->initters[i].body));
+			assert(decl->initters[i].body->kind == Ast_Statement_Kind_BLOCK);
+			
+			Entity e = decl->entities[entities_done];
+			Initter *initter = &decl->initters[i];
+			
+			Symbol *symbol = lookup_symbol(table, e.ident);
+			assert(symbol != NULL, "Symbol lookup failed in bytecode generation");
+			assert(symbol->type->kind == TYPE_PROC);
+			
 			Instr instr = {0};
 			
-			instr.label      = declaration->ident;
+			instr.label      = e.ident;
 			instr.label_kind = Label_Kind_PROCEDURE;
 			instr.operation  = BCODE_NULL;
 			
 			instructions[instruction_count] = instr;
 			instruction_count += 1;
 			
-			generate_bytecode_for_statement(declaration->body);
+			generate_bytecode_for_statement(initter->body);
 			
 			if (instructions[instruction_count-1].operation != BCODE_RETURN) {
 				fprintf(stderr, "Warning: Unreachable code after return statement.\n");
 			}
-		} break;
-		
-		default: break;
+			
+			entities_done += 1;
+		} else {
+			allow_break();
+		}
 	}
 #endif
+	
+	return;
 }
 
 #endif

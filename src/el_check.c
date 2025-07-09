@@ -706,35 +706,6 @@ analyse_declarations(Ast_Declaration *first) {
 //~ Checking
 
 internal void
-print_scope(Scope *scope) {
-	Scratch scratch = scratch_begin(0, 0);
-	
-	for (Symbol *symbol = scope->first_symbol; symbol != NULL; symbol = symbol->next) {
-		print_indent();
-		
-		String_List used = {0};
-		for (i64 i = 0; i < symbol->locations_used_count; i += 1) {
-			// string_list_pushf(scratch.arena, &used, "%lld..%lld, ", symbol->locations_used[i].b0, symbol->locations_used[i].b1);
-			string_list_pushf(scratch.arena, &used, "%lld, ", symbol->locations_used[i].l0);
-		}
-		
-		String used_string = string_from_list(scratch.arena, used);
-		// String defined_string = push_stringf(scratch.arena, "defined %lld..%lld", symbol->location_declared.b0, symbol->location_declared.b1);
-		String defined_string = push_stringf(scratch.arena, "defined %lld", symbol->location_declared.l0);
-		printf("%.*s, %.*s, used %.*s\n", string_expand(symbol->ident), string_expand(defined_string),
-			   string_expand(used_string));
-	}
-	
-	inc_indent();
-	for (Scope *child = scope->first_child; child != NULL; child = child->next_sibling) {
-		print_scope(child);
-	}
-	dec_indent();
-	
-	scratch_end(scratch);
-}
-
-internal void
 do_all_checks(Ast_Declaration *prog) {
 	if (!arena_initted(scope_arena)) {
 		arena_init(&scope_arena);

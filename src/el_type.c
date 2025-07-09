@@ -50,4 +50,40 @@ internal Type_Array push_type_array(Arena *arena, i64 count) {
 	
 	return a;
 }
+
+////////////////////////////////
+//~ Printing
+
+internal void print_type(Type *type) {
+	assert(type != NULL);
+	
+	if (type->kind == TYPE_VOID || type->kind == TYPE_BOOLEAN ||
+		type->kind == TYPE_INTEGER || type->kind == TYPE_STRING) {
+		printf("%d", type->kind);
+	} else if (type->kind == TYPE_POINTER) {
+		printf("^");
+		print_type(type->pointed);
+	} else if (type->kind == TYPE_STRUCT) {
+		printf("struct {");
+		for (int i = 0; i < type->member_count; i += 1) {
+			print_type(type->members[i]);
+			if (i < type->member_count - 1)  printf(", ");
+		}
+		printf("}");
+	} else if (type->kind == TYPE_PROC) {
+		printf("proc (");
+		for (int i = 0; i < type->param_count;  i += 1) {
+			print_type(type->params[i]);
+			if (i < type->param_count  - 1)  printf(", ");
+		}
+		printf(") -> ");
+		for (int i = 0; i < type->retval_count; i += 1) {
+			print_type(type->retvals[i]);
+			if (i < type->retval_count - 1)  printf(", ");
+		}
+	}
+	
+	return;
+}
+
 #endif

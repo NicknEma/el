@@ -8,3 +8,4 @@
 *.txt
 generated/
 tests/
+.vs/

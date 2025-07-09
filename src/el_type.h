@@ -40,33 +40,25 @@ typedef enum Type_Kind {
 	TYPE_COUNT,
 } Type_Kind;
 
-typedef struct Type_Atom Type_Atom;
-struct Type_Atom {
+typedef struct Type Type;
+struct Type {
 	Type_Kind kind;
 	int   min_size;
 	
 	union {
-		int elem_count;
-		int member_count;
-		struct { int param_count, retval_count; };
+		Type *pointed; // For pointers
+		struct { Type *elem; int elem_count; }; // For arrays
+		struct { Type **members; int member_count; }; // For structs
+		struct { Type **params; Type **retvals; int param_count, retval_count; }; // For procedures
 	};
 	
 	String name;
 };
 
-typedef struct Type Type;
-struct Type {
-	Type_Atom *atoms;
-	int   atom_count;
-	int   min_size;
-	
-	Type_Atom  fallback_atom;
-};
-
 typedef struct Type_Array Type_Array;
 struct Type_Array {
-	Type *data;
-	i64   count;
+	Type **data;
+	i64    count;
 };
 
 #endif

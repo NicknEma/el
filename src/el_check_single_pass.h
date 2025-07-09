@@ -48,9 +48,9 @@ struct Scope {
 struct Symbol {
 	Symbol *next;
 	
-	String ident;
-	Type   type;
-	int    size;
+	String  ident;
+	Type   *type;
+	int     size;
 };
 
 #endif

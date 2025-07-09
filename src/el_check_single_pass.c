@@ -79,7 +79,7 @@ internal void leave_procedure_scope(Typechecker *checker) {
 ////////////////////////////////
 //~ Symbol resolving
 
-internal void declare_symbol(Typechecker *checker, Entity entity, Type type) {
+internal void declare_symbol(Typechecker *checker, Entity entity, Type *type) {
 	Scope *inner = checker->symbol_table.current_scope;
 	
 	bool can_declare = true;
@@ -127,20 +127,20 @@ internal void typecheck_expr(Typechecker *checker, Ast_Expression *expr) {
 	
 	switch (expr->kind) {
 		case Ast_Expression_Kind_INT_LITERAL: {
-			expr->types = push_type_array(checker->arena, 1);
-			expr->types.data[0].atoms[0].kind = TYPE_INTEGER;
+			expr->types = push_type_array(checker->arena, 1); // TODO: Avoid duplication
+			expr->types.data[0]->kind = TYPE_INTEGER;
 		} break;
 		
 		case Ast_Expression_Kind_STRING_LITERAL: {
-			expr->types = push_type_array(checker->arena, 1);
-			expr->types.data[0].atoms[0].kind = TYPE_STRING;
+			expr->types = push_type_array(checker->arena, 1); // TODO: Avoid duplication
+			expr->types.data[0]->kind = TYPE_STRING;
 		} break;
 		
 		case Ast_Expression_Kind_IDENT: {
 			Symbol *entry = lookup_symbol(checker, expr->ident);
 			if (entry != NULL) {
 				expr->types = push_type_array(checker->arena, 1);
-				expr->types.data[0] = entry->type;
+				expr->types.data[0] = entry->type; // TODO: @Leak
 			} else {
 				report_type_errorf(checker, "Undeclared identifier '%.*s'", string_expand(expr->ident));
 			}
@@ -170,7 +170,7 @@ internal void typecheck_expr(Typechecker *checker, Ast_Expression *expr) {
 						ok = false;
 					}
 					
-					if (ok && type_is_atom_kind(expr->subexpr->types.data[0], TYPE_INTEGER)) {
+					if (ok && expr->subexpr->types.data[0]->kind == TYPE_INTEGER) {
 						report_type_error(checker, "Cannot apply + or - to this type");
 						ok = false;
 					}
@@ -194,13 +194,13 @@ internal void typecheck_expr(Typechecker *checker, Ast_Expression *expr) {
 						ok = false;
 					}
 					
-					if (ok && type_is_atom_kind(expr->subexpr->types.data[0], TYPE_POINTER)) {
+					if (ok && expr->subexpr->types.data[0]->kind == TYPE_POINTER) {
 						report_type_error(checker, "Cannot apply ^ to this type");
 						ok = false;
 					}
 					
 					if (ok) {
-						expr->types = type_array_slice(expr->subexpr->types, 1, 2);
+						expr->types = expr->subexpr->types;
 					}
 				} break;
 				
@@ -245,14 +245,14 @@ internal void typecheck_expr(Typechecker *checker, Ast_Expression *expr) {
 					// TODO: Types here can never be UNKNOWN if we 'break;' right when we check
 					// the result of previous analyse_expression()...
 					
-					if (ok && !type_is_atom_kind(expr->left->types.data[0], TYPE_INTEGER) && !type_is_atom_kind(expr->left->types.data[0], TYPE_UNKNOWN) &&
-						!type_is_atom_kind(expr->right->types.data[0], TYPE_INTEGER) && !type_is_atom_kind(expr->right->types.data[0], TYPE_UNKNOWN)) {
+					if (ok && expr->left->types.data[0]->kind != TYPE_INTEGER && expr->left->types.data[0]->kind != TYPE_UNKNOWN &&
+						expr->right->types.data[0]->kind != TYPE_INTEGER && expr->right->types.data[0]->kind != TYPE_UNKNOWN) {
 						report_type_error(checker, "Cannot apply operator to this type");
 						ok = false;
 					}
 					
 					if (ok) {
-						expr->types = type_array_slice(expr->left->types, 1, 2);
+						expr->types = expr->left->types;
 					}
 				} break;
 				
@@ -391,7 +391,7 @@ internal void typecheck_decl(Typechecker *checker, Ast_Declaration *decl) {
 			assert(!check_nil_expression(decl->initters[i].expr));
 			typecheck_expr(checker, decl->initters[i].expr);
 			
-			if (!type_is_atom_kind(decl->initters[i].expr->types.data[0], TYPE_UNKNOWN)) {
+			if (decl->initters[i].expr->types.data[0]->kind != TYPE_UNKNOWN) {
 				// Initializer expression has a type.
 				
 				Type_Array types = decl->initters[i].expr->types;
@@ -413,7 +413,7 @@ internal void typecheck_decl(Typechecker *checker, Ast_Declaration *decl) {
 			assert(!check_nil_statement(decl->initters[i].body));
 			assert(decl->initters[i].body->kind == Ast_Statement_Kind_BLOCK);
 			
-			declare_symbol(checker, decl->entities[entities_done], make_type_from_proc_defn(checker, decl->initters[i].first_param, decl->initters[i].body));
+			declare_symbol(checker, decl->entities[entities_done], make_proc_defn_type(checker, decl->initters[i].first_param, decl->initters[i].body));
 			entities_done += 1;
 			
 			{
@@ -439,6 +439,32 @@ internal void typecheck_decl(Typechecker *checker, Ast_Declaration *decl) {
 	return;
 }
 
+////////////////////////////////
+//~ Printing
+
+internal void print_scope(Scope *scope) {
+	Scratch scratch = scratch_begin(0, 0);
+	
+	for (Symbol *symbol = scope->first_symbol; symbol != NULL; symbol = symbol->next) {
+		print_indent();
+		
+		printf("%.*s: ", string_expand(symbol->ident));
+		print_type(symbol->type);
+		printf("\n");
+	}
+	
+	inc_indent();
+	for (Scope *child = scope->first_child; child != NULL; child = child->next_sibling) {
+		print_scope(child);
+	}
+	dec_indent();
+	
+	scratch_end(scratch);
+}
+
+////////////////////////////////
+//~ All
+
 internal void do_all_checks(Ast_Declaration *prog) {
 	Typechecker checker_ = {0};
 	Typechecker *checker = &checker_;
@@ -461,6 +487,8 @@ internal void do_all_checks(Ast_Declaration *prog) {
 	for (Ast_Declaration *decl = checker->first_decl; !check_nil_declaration(decl); decl = decl->next) {
 		typecheck_decl(checker, decl);
 	}
+	
+	print_scope(checker->symbol_table.global_scope);
 	
 	return;
 }

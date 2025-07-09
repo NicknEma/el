@@ -50,7 +50,6 @@ struct Symbol {
 	
 	String  ident;
 	Type   *type;
-	int     size;
 };
 
 #endif

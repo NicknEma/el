@@ -37,6 +37,7 @@ struct Type {
 		struct { Type **params; Type **retvals; int param_count, retval_count; }; // For procedures
 	};
 	
+	int    size; // In bytes
 	String name;
 };
 

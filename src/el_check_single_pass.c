@@ -129,11 +129,13 @@ internal void typecheck_expr(Typechecker *checker, Ast_Expression *expr) {
 		case Ast_Expression_Kind_INT_LITERAL: {
 			expr->types = push_type_array(checker->arena, 1); // TODO: Avoid duplication
 			expr->types.data[0]->kind = TYPE_INTEGER;
+			expr->types.data[0]->size = 8;
 		} break;
 		
 		case Ast_Expression_Kind_STRING_LITERAL: {
 			expr->types = push_type_array(checker->arena, 1); // TODO: Avoid duplication
 			expr->types.data[0]->kind = TYPE_STRING;
+			expr->types.data[0]->size = 16;
 		} break;
 		
 		case Ast_Expression_Kind_IDENT: {

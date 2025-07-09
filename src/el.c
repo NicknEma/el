@@ -78,7 +78,7 @@ int main(void) {
 									"D :: 0\n"
 									);
 #elif 1
-	String source = string_from_lit("a, b := 0, 0\n"
+	String source = string_from_lit("a, b := 0, \"Hi\"\n"
 									"c := a\n"
 									"main :: proc() {\n"
 									"a;\n"

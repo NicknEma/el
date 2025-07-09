@@ -355,11 +355,11 @@ internal SliceU8 sliceu8_clone(Arena *arena, SliceU8 s);
 #define string_lit_expand(s)     s, (sizeof(s)-1)
 #define string_expand(s)         cast(int)(s).len, (s).data
 
-#define string_from_lit(s)       string(cast(u8 *)s, sizeof(s)-1)
-#define string_from_cstring(s)   string(cast(u8 *)s, strlen(s))
+#define string_from_lit(s)       make_string(cast(u8 *)s, sizeof(s)-1)
+#define string_from_cstring(s)   make_string(cast(u8 *)s, strlen(s))
 #define string_from_lit_const(s)       {sizeof(s)-1, cast(u8 *)s}
 
-internal String string(u8 *data, i64 len);
+internal String make_string(u8 *data, i64 len);
 internal String push_string(Arena *arena, i64 len);
 internal String push_stringf(Arena *arena, char *fmt, ...);
 internal String push_stringf_va_list(Arena *arena, char *fmt, va_list args);

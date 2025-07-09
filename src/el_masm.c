@@ -16,7 +16,7 @@ internal void masm_append_line(String line) {
 		
 		assert(indent_len == indent_cap);
 		
-		String temp[] = {string(indent_buf, indent_len), line};
+		String temp[] = {make_string(indent_buf, indent_len), line};
 		string_list_push(&masm_context.arena, &masm_context.lines, strings_concat(&masm_context.arena, temp, array_count(temp)));
 	} else {
 		string_list_push(&masm_context.arena, &masm_context.lines, string_clone(&masm_context.arena, line));

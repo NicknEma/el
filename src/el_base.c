@@ -355,7 +355,7 @@ internal SliceU8 sliceu8_clone(Arena *arena, SliceU8 s) {
 
 //- String functions
 
-internal String string(u8 *data, i64 len) {
+internal String make_string(u8 *data, i64 len) {
 	String result = {
 		.data = data,
 		.len  = len,
@@ -393,7 +393,7 @@ internal String push_stringf_va_list(Arena *arena, char *fmt, va_list args) {
 }
 
 internal String string_from_sliceu8(SliceU8 s) {
-	return string(s.data, s.len);
+	return make_string(s.data, s.len);
 }
 
 internal String string_clone(Arena *arena, String s) {
@@ -697,7 +697,7 @@ internal i64 string_builder_append(String_Builder *builder, String s) {
 }
 
 internal String string_from_builder(String_Builder builder) {
-	return string(builder.data, builder.len);
+	return make_string(builder.data, builder.len);
 }
 
 #endif

@@ -118,6 +118,17 @@ i64_digit_count(i64 n) {
 	return count;
 }
 
+internal int bit_len_u64(u64 x) {
+	int n = 0;
+	
+	do {
+		n += 1;
+		x  = x>>1;
+	} while (x > 0);
+	
+	return n;
+}
+
 ////////////////////////////////
 //~ Memory
 

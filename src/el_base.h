@@ -228,6 +228,7 @@ internal u64  align_forward(u64 ptr, u64 alignment);
 internal u64  round_up_to_multiple_of_u64(u64 n, u64 r);
 internal i64  round_up_to_multiple_of_i64(i64 n, i64 r);
 internal int  i64_digit_count(i64 n);
+internal int  bit_len_u64(u64 x);
 
 ////////////////////////////////
 //~ Memory

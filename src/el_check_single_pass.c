@@ -476,7 +476,7 @@ internal void print_scope(Scope *scope) {
 ////////////////////////////////
 //~ All
 
-internal void do_all_checks(Ast_Declaration *prog) {
+internal Symbol_Table do_all_checks(Ast_Declaration *prog) {
 	Typechecker checker_ = {0};
 	Typechecker *checker = &checker_;
 	
@@ -501,7 +501,7 @@ internal void do_all_checks(Ast_Declaration *prog) {
 	
 	print_scope(checker->symbol_table.global_scope);
 	
-	return;
+	return checker->symbol_table;
 }
 
 #endif

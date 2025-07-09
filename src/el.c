@@ -104,10 +104,10 @@ int main(void) {
 	}
 	
 	if (all_ok) {
-		do_all_checks(program);
+		Symbol_Table symtab = do_all_checks(program);
 		
 		for (Ast_Declaration *decl = program; decl != NULL && decl != &nil_declaration; decl = decl->next) {
-			generate_bytecode_for_declaration(decl);
+			generate_bytecode_for_declaration(&symtab, decl);
 		}
 		
 		arena_init(&masm_context.arena);

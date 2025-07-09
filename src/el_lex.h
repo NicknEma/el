@@ -69,6 +69,7 @@ typedef enum Token_Kind {
 	TOKEN_TRIPLE_DASH,
 	TOKEN_FORWARD_ARROW,
 	
+	TOKEN_BOOLEAN,
 	TOKEN_INTEGER,
 	TOKEN_STRING,
 	TOKEN_IDENT,
@@ -100,6 +101,7 @@ struct Token {
 	union {
 		String string_val;
 		i64    int_val;
+		bool   bool_val;
 	};
 };
 

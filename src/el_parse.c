@@ -127,7 +127,7 @@ internal bool token_is_expression_terminator(Token token) {
 
 internal bool token_is_expression_atom(Token token) {
 	Token_Kind k = token.kind;
-	return k == TOKEN_INTEGER || k == TOKEN_STRING || k == TOKEN_IDENT;
+	return k == TOKEN_BOOLEAN || k == TOKEN_INTEGER || k == TOKEN_STRING || k == TOKEN_IDENT;
 }
 
 internal bool token_is_declarator(Token token) {
@@ -172,7 +172,12 @@ internal Ast_Expression *make_atom_expression(Parser *parser, Token token) {
 	Ast_Expression *node = ast_expression_alloc(parser->arena);
 	
 	if (node != NULL) {
-		if (token.kind == TOKEN_INTEGER) {
+		if (token.kind == TOKEN_BOOLEAN) {
+			node->kind     = Ast_Expression_Kind_BOOL_LITERAL;
+			node->lexeme   = lexeme_from_token(parser->lexer, token);
+			// node->value    = token.int_val;
+			node->location = token.loc;
+		} else if (token.kind == TOKEN_INTEGER) {
 			node->kind     = Ast_Expression_Kind_INT_LITERAL;
 			node->lexeme   = lexeme_from_token(parser->lexer, token);
 			node->value    = token.int_val;

@@ -138,6 +138,12 @@ internal void typecheck_expr(Typechecker *checker, Ast_Expression *expr) {
 			expr->types.data[0]->size = 16;
 		} break;
 		
+		case Ast_Expression_Kind_BOOL_LITERAL: {
+			expr->types = push_type_array(checker->arena, 1); // TODO: Avoid duplication
+			expr->types.data[0]->kind = TYPE_BOOLEAN;
+			expr->types.data[0]->size = 1;
+		} break;
+		
 		case Ast_Expression_Kind_IDENT: {
 			Symbol *entry = lookup_symbol(checker, expr->ident);
 			if (entry != NULL) {
@@ -252,6 +258,8 @@ internal void typecheck_expr(Typechecker *checker, Ast_Expression *expr) {
 						report_type_error(checker, "Cannot apply operator to this type");
 						ok = false;
 					}
+					
+					// TODO: Check type sizes or convert
 					
 					if (ok) {
 						expr->types = expr->left->types;

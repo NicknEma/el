@@ -190,6 +190,24 @@ internal Token make_token(Lexer *lexer) {
 			}
 		}
 		
+		if (token.kind == TOKEN_INVALID) {
+			if (string_starts_with(string_skip(source, index), string_from_lit("true"))) {
+				token.kind     = TOKEN_BOOLEAN;
+				token.loc.end  = index + 4;
+				token.bool_val = true;
+				
+				index += 4;
+			}
+			
+			if (string_starts_with(string_skip(source, index), string_from_lit("false"))) {
+				token.kind     = TOKEN_BOOLEAN;
+				token.loc.end  = index + 5;
+				token.bool_val = false;
+				
+				index += 5;
+			}
+		}
+		
 		if (token.kind == TOKEN_INVALID && (isalpha(source.data[index]) || source.data[index] == '_')) {
 			token.kind = TOKEN_IDENT;
 			

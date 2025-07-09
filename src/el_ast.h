@@ -41,6 +41,7 @@ typedef struct Scope Scope;
 
 typedef enum Ast_Expression_Kind {
 	Ast_Expression_Kind_NULL = 0,
+	Ast_Expression_Kind_BOOL_LITERAL,
 	Ast_Expression_Kind_INT_LITERAL,
 	Ast_Expression_Kind_STRING_LITERAL,
 	Ast_Expression_Kind_IDENT,

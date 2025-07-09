@@ -127,18 +127,24 @@ internal void typecheck_expr(Typechecker *checker, Ast_Expression *expr) {
 	
 	switch (expr->kind) {
 		case Ast_Expression_Kind_INT_LITERAL: {
+			expr->flags |= Ast_Expression_Flag_CONSTANT;
+			
 			expr->types = push_type_array(checker->arena, 1); // TODO: Avoid duplication
 			expr->types.data[0]->kind = TYPE_INTEGER;
 			expr->types.data[0]->size = 8;
 		} break;
 		
 		case Ast_Expression_Kind_STRING_LITERAL: {
+			expr->flags |= Ast_Expression_Flag_CONSTANT;
+			
 			expr->types = push_type_array(checker->arena, 1); // TODO: Avoid duplication
 			expr->types.data[0]->kind = TYPE_STRING;
 			expr->types.data[0]->size = 16;
 		} break;
 		
 		case Ast_Expression_Kind_BOOL_LITERAL: {
+			expr->flags |= Ast_Expression_Flag_CONSTANT;
+			
 			expr->types = push_type_array(checker->arena, 1); // TODO: Avoid duplication
 			expr->types.data[0]->kind = TYPE_BOOLEAN;
 			expr->types.data[0]->size = 1;
@@ -185,6 +191,9 @@ internal void typecheck_expr(Typechecker *checker, Ast_Expression *expr) {
 					
 					if (ok) {
 						expr->types = expr->subexpr->types;
+						
+						if (expr->subexpr->flags & Ast_Expression_Flag_CONSTANT)
+							expr->flags |= Ast_Expression_Flag_CONSTANT;
 					}
 				} break;
 				
@@ -263,6 +272,9 @@ internal void typecheck_expr(Typechecker *checker, Ast_Expression *expr) {
 					
 					if (ok) {
 						expr->types = expr->left->types;
+						
+						if (expr->left->flags & expr->right->flags & Ast_Expression_Flag_CONSTANT)
+							expr->flags |= Ast_Expression_Flag_CONSTANT;
 					}
 				} break;
 				

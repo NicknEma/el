@@ -51,10 +51,15 @@ typedef enum Ast_Expression_Kind {
 	Ast_Expression_Kind_COUNT,
 } Ast_Expression_Kind;
 
+typedef enum Ast_Expression_Flags {
+	Ast_Expression_Flag_CONSTANT = (1<<0),
+} Ast_Expression_Flags;
+
 struct Ast_Expression {
-	Ast_Expression_Kind kind;
-	Unary_Operator      unary;
-	Binary_Operator     binary;
+	Ast_Expression_Kind  kind;
+	Ast_Expression_Flags flags;
+	Unary_Operator       unary;
+	Binary_Operator      binary;
 	
 	union { Ast_Expression *left; Ast_Expression *subexpr; };
 	Ast_Expression *middle; // For ternaries

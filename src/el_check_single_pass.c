@@ -391,23 +391,23 @@ internal void typecheck_decl(Typechecker *checker, Ast_Declaration *decl) {
 			assert(!check_nil_expression(decl->initters[i].expr));
 			typecheck_expr(checker, decl->initters[i].expr);
 			
-			if (decl->initters[i].expr->types.data[0]->kind != TYPE_UNKNOWN) {
-				// Initializer expression has a type.
-				
-				Type_Array types = decl->initters[i].expr->types;
-				for (int e = entities_done; e < types.count; e += 1) {
-					if (e >= decl->entity_count) {
-						report_type_error(checker, "Too many initializers on the right side of the declaration");
-						break;
-					}
-					
-					declare_symbol(checker, decl->entities[e], types.data[e]);
+			Type_Array types = decl->initters[i].expr->types;
+			
+			for (int i = 0, e = entities_done; i < types.count; i += 1, e += 1) {
+				if (e >= decl->entity_count) {
+					report_type_error(checker, "Too many initializers on the right side of the declaration");
+					break;
 				}
 				
-				entities_done += types.count;
-			} else {
-				assert(checker->error_count > 0, "Could not resolve the type of an expression, but no errors were reported");
+				if (types.data[i]->kind != TYPE_UNKNOWN) {  // Initializer expression has a type.
+					declare_symbol(checker, decl->entities[e], types.data[i]);
+				} else {
+					assert(checker->error_count > 0, "Could not resolve the type of an expression, but no errors were reported");
+					break;  // Even if the assertion didn't fire, all the errors were already reported in typecheck_expr() so we can stop
+				}
 			}
+			
+			entities_done += types.count;
 		} else if (decl->initters[i].kind == Initter_Kind_PROCEDURE) {
 #if 1
 			assert(!check_nil_statement(decl->initters[i].body));

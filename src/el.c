@@ -19,6 +19,7 @@
 #include "el_bcode.h"
 #include "el_masm.h"
 
+#include "el_print.c"
 #include "el_type.c"
 #include "el_lex.c"
 #include "el_parse.c"

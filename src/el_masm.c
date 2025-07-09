@@ -1,8 +1,7 @@
 #ifndef EL_MASM_C
 #define EL_MASM_C
 
-internal void
-masm_append_line(String line) {
+internal void masm_append_line(String line) {
 	Scratch scratch = scratch_begin(0, 0);
 	
 	int indent_cap = masm_context.indent_level * masm_context.indent_string.len;
@@ -26,8 +25,7 @@ masm_append_line(String line) {
 	scratch_end(scratch);
 }
 
-internal String
-masm_register_from_bytecode_register(int bytecode_reg) {
+internal String masm_register_from_bytecode_register(int bytecode_reg) {
 	String register_names[] = {
 		string_from_lit_const("rax"),
 		string_from_lit_const("rbx"),
@@ -56,8 +54,7 @@ masm_register_from_bytecode_register(int bytecode_reg) {
 	return register_names[bytecode_reg];
 }
 
-internal String
-masm_generate_source(void) {
+internal String masm_generate_source(void) {
 	
 	masm_append_line(string_from_lit("; Generated"));
 	masm_append_line(string_from_lit("includelib msvcrt.lib"));

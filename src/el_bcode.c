@@ -1,8 +1,7 @@
 #ifndef EL_BCODE_C
 #define EL_BCODE_C
 
-internal Instr_Operation
-instr_operation_from_expr_unary(Unary_Operator expr_op) {
+internal Instr_Operation instr_operation_from_expr_unary(Unary_Operator expr_op) {
 	Instr_Operation instr_op = 0;
 	
 	switch (expr_op) {
@@ -15,8 +14,7 @@ instr_operation_from_expr_unary(Unary_Operator expr_op) {
 	return instr_op;
 }
 
-internal Instr_Operation
-instr_operation_from_expr_binary(Binary_Operator expr_op) {
+internal Instr_Operation instr_operation_from_expr_binary(Binary_Operator expr_op) {
 	Instr_Operation instr_op = 0;
 	
 	switch (expr_op) {
@@ -33,8 +31,7 @@ instr_operation_from_expr_binary(Binary_Operator expr_op) {
 	return instr_op;
 }
 
-internal Reg_Group
-generate_bytecode_for_expression(Ast_Expression *expr) {
+internal Reg_Group generate_bytecode_for_expression(Ast_Expression *expr) {
 	Instr instr = {0};
 	Reg_Group dests = {0};
 	
@@ -156,8 +153,7 @@ generate_bytecode_for_expression(Ast_Expression *expr) {
 	return dests;
 }
 
-internal void
-generate_bytecode_for_statement(Ast_Statement *statement) {
+internal void generate_bytecode_for_statement(Ast_Statement *statement) {
 	switch (statement->kind) {
 		case Ast_Statement_Kind_EXPR: {
 			generate_bytecode_for_expression(statement->expr);
@@ -256,8 +252,7 @@ generate_bytecode_for_statement(Ast_Statement *statement) {
 	}
 }
 
-internal void
-generate_bytecode_for_declaration(Ast_Declaration *declaration) {
+internal void generate_bytecode_for_declaration(Ast_Declaration *declaration) {
 #if 0
 	switch (declaration->entity) {
 		case Ast_Declaration_Entity_PROCEDURE: {

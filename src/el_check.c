@@ -4,16 +4,14 @@
 ////////////////////////////////
 //~ Errors
 
-internal void
-report_error(String message) {
+internal void report_error(String message) {
 	fprintf(stderr, "Error: %.*s\n", string_expand(message));
 }
 
 ////////////////////////////////
 //~ Scope and Symbols
 
-internal Symbol *
-symbol_alloc(Arena *arena) {
+internal Symbol *symbol_alloc(Arena *arena) {
 	Symbol *result = first_free_symbol;
 	
 	if (result != NULL) {
@@ -26,13 +24,11 @@ symbol_alloc(Arena *arena) {
 	return result;
 }
 
-internal void
-symbol_free(Symbol *symbol) {
+internal void symbol_free(Symbol *symbol) {
 	stack_push_n(first_free_symbol, symbol, next_free);
 }
 
-internal void
-symbol_add_location_used(Arena *arena, Symbol *symbol, Location location) {
+internal void symbol_add_location_used(Arena *arena, Symbol *symbol, Location location) {
 	(void) arena;
 	
 	assert(symbol->locations_used_count < array_count(symbol->locations_used));
@@ -41,8 +37,7 @@ symbol_add_location_used(Arena *arena, Symbol *symbol, Location location) {
 }
 
 
-internal Scope *
-scope_enter(Arena *arena, Scope *scope) {
+internal Scope *scope_enter(Arena *arena, Scope *scope) {
 	Scope *new_scope = push_type(arena, Scope);
 	
 	dll_push_back_npz(scope->first_child, scope->last_child, new_scope, next_sibling, prev_sibling, check_null, set_null);
@@ -51,13 +46,11 @@ scope_enter(Arena *arena, Scope *scope) {
 	return new_scope;
 }
 
-internal Scope *
-scope_leave(Scope *scope) {
+internal Scope *scope_leave(Scope *scope) {
 	return scope->parent;
 }
 
-internal Symbol *
-scope_lookup(Scope *inner, String ident) {
+internal Symbol *scope_lookup(Scope *inner, String ident) {
 	Symbol *result = NULL;
 	
 	for (Scope *current = inner; current != NULL; current = current->parent) {
@@ -73,8 +66,7 @@ scope_lookup(Scope *inner, String ident) {
 	return result;
 }
 
-internal Symbol *
-scope_lookup_inner(Scope *scope, String ident) {
+internal Symbol *scope_lookup_inner(Scope *scope, String ident) {
 	Symbol *result = NULL;
 	
 	for (Symbol *entry = scope->first_symbol; entry != NULL; entry = entry->next) {
@@ -87,8 +79,7 @@ scope_lookup_inner(Scope *scope, String ident) {
 	return result;
 }
 
-internal Symbol *
-scope_insert_ident(Arena *arena, Scope *scope, String ident) {
+internal Symbol *scope_insert_ident(Arena *arena, Scope *scope, String ident) {
 	Symbol *entry = symbol_alloc(arena);
 	
 	dll_push_back(scope->first_symbol, scope->last_symbol, entry);
@@ -100,8 +91,7 @@ scope_insert_ident(Arena *arena, Scope *scope, String ident) {
 ////////////////////////////////
 //~ Symbol table building
 
-internal void
-build_scope_for_expression(Arena *arena, Scope *scope, Ast_Expression *expr) {
+internal void build_scope_for_expression(Arena *arena, Scope *scope, Ast_Expression *expr) {
 	
 	switch (expr->kind) {
 		case Ast_Expression_Kind_INT_LITERAL: break;
@@ -141,8 +131,7 @@ build_scope_for_expression(Arena *arena, Scope *scope, Ast_Expression *expr) {
 
 internal void build_scope_for_declaration(Arena *arena, Scope *scope, Ast_Declaration *decl);
 
-internal void
-build_scope_for_statement(Arena *arena, Scope *scope, Ast_Statement *stat) {
+internal void build_scope_for_statement(Arena *arena, Scope *scope, Ast_Statement *stat) {
 	stat->scope = scope;
 	
 	switch (stat->kind) {
@@ -179,8 +168,7 @@ build_scope_for_statement(Arena *arena, Scope *scope, Ast_Statement *stat) {
 	return;
 }
 
-internal void
-build_scope_for_declaration(Arena *arena, Scope *scope, Ast_Declaration *decl) {
+internal void build_scope_for_declaration(Arena *arena, Scope *scope, Ast_Declaration *decl) {
 	
 	for (i64 i = 0; i < decl->entity_count; i += 1) {
 		Entity e = decl->entities[i];
@@ -244,8 +232,7 @@ build_scope_for_declaration(Arena *arena, Scope *scope, Ast_Declaration *decl) {
 	return;
 }
 
-internal void
-rearrange_scope(Arena *arena, Scope *scope) {
+internal void rearrange_scope(Arena *arena, Scope *scope) {
 	for (Symbol *entry = scope->first_symbol; entry != NULL; entry = entry->next) {
 		if (entry->locations_used_count > 0) {
 			bool declared = !location_is_zero(entry->location_declared);
@@ -353,8 +340,7 @@ rearrange_scope(Arena *arena, Scope *scope) {
 	}
 }
 
-internal void
-rearrange_scope_and_subscopes(Arena *arena, Scope *scope) {
+internal void rearrange_scope_and_subscopes(Arena *arena, Scope *scope) {
 	// TODO: Recursively do this for all scopes
 	rearrange_scope(arena, scope);
 	
@@ -363,8 +349,7 @@ rearrange_scope_and_subscopes(Arena *arena, Scope *scope) {
 	}
 }
 
-internal void
-build_scope_for_all_declarations(Arena *arena, Scope *scope, Ast_Declaration *first) {
+internal void build_scope_for_all_declarations(Arena *arena, Scope *scope, Ast_Declaration *first) {
 	
 	for (Ast_Declaration *decl = first; decl != NULL && decl != &nil_declaration; decl = decl->next) {
 		build_scope_for_declaration(arena, scope, decl);
@@ -383,8 +368,7 @@ build_scope_for_all_declarations(Arena *arena, Scope *scope, Ast_Declaration *fi
 ////////////////////////////////
 //~ Type-checking
 
-internal bool
-analyse_expression(Arena *arena, Ast_Expression *expr, Scope *scope, String_List *unresolved) {
+internal bool analyse_expression(Arena *arena, Ast_Expression *expr, Scope *scope, String_List *unresolved) {
 	bool progress = false;
 	
 	if (expr->type.kind != Type_Kind_UNKNOWN) {
@@ -612,8 +596,7 @@ analyse_expression(Arena *arena, Ast_Expression *expr, Scope *scope, String_List
 	return progress;
 }
 
-internal bool
-analyse_statement(Arena *arena, Ast_Statement *stat, String_List *unresolved) {
+internal bool analyse_statement(Arena *arena, Ast_Statement *stat, String_List *unresolved) {
 	bool progress = false;
 	
 	if (!stat->typechecked) {
@@ -651,8 +634,7 @@ analyse_statement(Arena *arena, Ast_Statement *stat, String_List *unresolved) {
 }
 
 #if 0
-internal void
-analyse_declarations(Ast_Declaration *first) {
+internal void analyse_declarations(Ast_Declaration *first) {
 	Scratch scratch = scratch_begin(0, 0);
 	
 	Typed_Declaration *first = NULL;
@@ -705,8 +687,7 @@ analyse_declarations(Ast_Declaration *first) {
 ////////////////////////////////
 //~ Checking
 
-internal void
-do_all_checks(Ast_Declaration *prog) {
+internal void do_all_checks(Ast_Declaration *prog) {
 	if (!arena_initted(scope_arena)) {
 		arena_init(&scope_arena);
 	}
@@ -732,8 +713,7 @@ do_all_checks(Ast_Declaration *prog) {
 //~ Utils
 
 #if 0
-internal int
-count_expressions_in_list(Ast_Expression *expr, int acc) {
+internal int count_expressions_in_list(Ast_Expression *expr, int acc) {
 	if (expr->kind == Ast_Expression_Kind_COMMA) {
 		acc += count_expressions_in_list(expr->left);
 		acc += count_expressions_in_list(expr->right);

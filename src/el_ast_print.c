@@ -4,8 +4,7 @@
 ////////////////////////////////
 //~ Expressions
 
-internal void
-string_from_expression_tree_internal(Arena *arena, Ast_Expression *root, String_List *builder) {
+internal void string_from_expression_tree_internal(Arena *arena, Ast_Expression *root, String_List *builder) {
 	switch (root->kind) {
 		case Ast_Expression_Kind_INT_LITERAL: {
 			string_list_push(arena, builder, root->lexeme);
@@ -60,8 +59,7 @@ string_from_expression_tree_internal(Arena *arena, Ast_Expression *root, String_
 	}
 }
 
-internal String
-string_from_expression_tree(Arena *arena, Ast_Expression *root) {
+internal String string_from_expression_tree(Arena *arena, Ast_Expression *root) {
 	Scratch scratch = scratch_begin(&arena, 1);
 	String_List builder = {0};
 	
@@ -72,8 +70,7 @@ string_from_expression_tree(Arena *arena, Ast_Expression *root) {
 	return result;
 }
 
-internal void
-print_expression_tree(Ast_Expression *root) {
+internal void print_expression_tree(Ast_Expression *root) {
 	Scratch scratch = scratch_begin(0, 0);
 	printf("%.*s\n", string_expand(string_from_expression_tree(scratch.arena, root)));
 	
@@ -83,8 +80,7 @@ print_expression_tree(Ast_Expression *root) {
 ////////////////////////////////
 //~ Statements
 
-internal void
-string_from_statement_tree_internal(Arena *arena, Ast_Statement *root, String_List *builder) {
+internal void string_from_statement_tree_internal(Arena *arena, Ast_Statement *root, String_List *builder) {
 	switch (root->kind) {
 		case Ast_Statement_Kind_EXPR: {
 			string_from_expression_tree_internal(arena, root->expr, builder);
@@ -113,8 +109,7 @@ string_from_statement_tree_internal(Arena *arena, Ast_Statement *root, String_Li
 	}
 }
 
-internal String
-string_from_statement_tree(Arena *arena, Ast_Statement *root) {
+internal String string_from_statement_tree(Arena *arena, Ast_Statement *root) {
 	Scratch scratch = scratch_begin(&arena, 1);
 	String_List builder = {0};
 	
@@ -125,8 +120,7 @@ string_from_statement_tree(Arena *arena, Ast_Statement *root) {
 	return result;
 }
 
-internal void
-print_statement_tree(Ast_Statement *root) {
+internal void print_statement_tree(Ast_Statement *root) {
 	Scratch scratch = scratch_begin(0, 0);
 	printf("%.*s\n", string_expand(string_from_statement_tree(scratch.arena, root)));
 	
@@ -136,8 +130,7 @@ print_statement_tree(Ast_Statement *root) {
 ////////////////////////////////
 //~ Declarations
 
-internal void
-string_from_declaration_tree_internal(Arena *arena, Ast_Declaration *root, String_List *builder) {
+internal void string_from_declaration_tree_internal(Arena *arena, Ast_Declaration *root, String_List *builder) {
 #if 0
 	switch (root->entity) {
 		case Ast_Declaration_Entity_PROCEDURE: {
@@ -157,8 +150,7 @@ string_from_declaration_tree_internal(Arena *arena, Ast_Declaration *root, Strin
 	string_list_push(arena, builder, string_from_lit("\n"));
 }
 
-internal String
-string_from_declaration_tree(Arena *arena, Ast_Declaration *root) {
+internal String string_from_declaration_tree(Arena *arena, Ast_Declaration *root) {
 	Scratch scratch = scratch_begin(&arena, 1);
 	String_List builder = {0};
 	
@@ -169,8 +161,7 @@ string_from_declaration_tree(Arena *arena, Ast_Declaration *root) {
 	return result;
 }
 
-internal void
-print_declaration_tree(Ast_Declaration *root) {
+internal void print_declaration_tree(Ast_Declaration *root) {
 	Scratch scratch = scratch_begin(0, 0);
 	printf("%.*s\n", string_expand(string_from_declaration_tree(scratch.arena, root)));
 	
@@ -178,8 +169,7 @@ print_declaration_tree(Ast_Declaration *root) {
 }
 
 #if 0
-internal int
-compute_expression_tree_width(Expression *root) {
+internal int compute_expression_tree_width(Expression *root) {
 	assert(root != NULL);
 	
 	int root_width = 0;
@@ -205,13 +195,11 @@ compute_expression_tree_width(Expression *root) {
 }
 
 
-internal void
-print_spaces(int count) {
+internal void print_spaces(int count) {
 	for (int i = 0; i < count; i += 1) putchar(' ');
 }
 
-internal void
-print_expression_tree(Expression *root) {
+internal void print_expression_tree(Expression *root) {
 	Scratch scratch = scratch_begin(0, 0);
 	
 	typedef struct Expr_Node Expr_Node;

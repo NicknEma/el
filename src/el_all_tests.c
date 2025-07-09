@@ -1,8 +1,7 @@
 #ifndef EL_ALL_TESTS_C
 #define EL_ALL_TESTS_C
 
-internal void
-test_expression_parser_single(String source) {
+internal void test_expression_parser_single(String source) {
 	Scratch scratch = scratch_begin(0, 0);
 	
 	printf("Parsing sample expression %.*s:\n", string_expand(source));
@@ -12,8 +11,7 @@ test_expression_parser_single(String source) {
 	scratch_end(scratch);
 }
 
-internal void
-test_expression_parser(void) {
+internal void test_expression_parser(void) {
 	printf("### Testing expression parser ###\n\n");
 	
 #if 0
@@ -51,8 +49,7 @@ test_expression_parser(void) {
 	printf("\n");
 }
 
-internal void
-test_statement_parser_single(String source) {
+internal void test_statement_parser_single(String source) {
 	Scratch scratch = scratch_begin(0, 0);
 	
 	printf("Parsing sample statement %.*s:\n", string_expand(source));
@@ -113,8 +110,7 @@ test_statement_parser(void) {
 	printf("\n");
 }
 
-internal void
-test_declaration_parser_single(String source) {
+internal void test_declaration_parser_single(String source) {
 	Scratch scratch = scratch_begin(0, 0);
 	
 	printf("Parsing sample declaration %.*s:\n", string_expand(source));
@@ -124,8 +120,7 @@ test_declaration_parser_single(String source) {
 	scratch_end(scratch);
 }
 
-internal void
-test_declaration_parser(void) {
+internal void test_declaration_parser(void) {
 	printf("### Testing declaration parser ###\n\n");
 	
 #if 0
@@ -180,8 +175,7 @@ test_declaration_parser(void) {
 	printf("\n");
 }
 
-internal void
-test_all(void) {
+internal void test_all(void) {
 	
 	{
 		// max_printed_lex_errors   = 0;

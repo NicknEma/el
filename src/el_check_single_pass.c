@@ -424,7 +424,6 @@ internal void typecheck_decl(Typechecker *checker, Ast_Declaration *decl) {
 			assert(decl->initters[i].body->kind == Ast_Statement_Kind_BLOCK);
 			
 			declare_symbol(checker, decl->entities[entities_done], make_proc_defn_type(checker, decl->initters[i].first_param, decl->initters[i].body));
-			entities_done += 1;
 			
 			{
 				enter_procedure_scope(checker, decl->entities[entities_done].ident);
@@ -438,6 +437,8 @@ internal void typecheck_decl(Typechecker *checker, Ast_Declaration *decl) {
 				
 				leave_procedure_scope(checker);
 			}
+			
+			entities_done += 1;
 #else
 			unimplemented();
 #endif

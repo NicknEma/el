@@ -102,8 +102,8 @@ internal void declare_symbol(Typechecker *checker, Entity entity, Type *type) {
 	}
 }
 
-internal Symbol *lookup_symbol(Typechecker *checker, String ident) {
-	Scope *inner = checker->symbol_table.current_scope;
+internal Symbol *lookup_symbol(Symbol_Table *table, String ident) {
+	Scope *inner = table->current_scope;
 	
 	Symbol *result = NULL;
 	for (Scope *scope = inner; scope != NULL; scope = scope->parent) {
@@ -145,7 +145,7 @@ internal void typecheck_expr(Typechecker *checker, Ast_Expression *expr) {
 		} break;
 		
 		case Ast_Expression_Kind_IDENT: {
-			Symbol *entry = lookup_symbol(checker, expr->ident);
+			Symbol *entry = lookup_symbol(&checker->symbol_table, expr->ident);
 			if (entry != NULL) {
 				expr->types = push_type_array(checker->arena, 1);
 				expr->types.data[0] = entry->type; // TODO: @Leak

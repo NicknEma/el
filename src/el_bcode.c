@@ -5,9 +5,9 @@ internal Instr_Operation instr_operation_from_expr_unary(Unary_Operator expr_op)
 	Instr_Operation instr_op = 0;
 	
 	switch (expr_op) {
-		case Unary_Operator_PLUS: { instr_op = Instr_Operation_NOP; } break;
-		case Unary_Operator_MINUS: { instr_op = Instr_Operation_NEG; } break;
-		// case Unary_Operator_DEREFERENCE: { instr_op = Instr_Operation_DEREFERENCE; } break;
+		case Unary_Operator_PLUS: { instr_op = BCODE_NOP; } break;
+		case Unary_Operator_MINUS: { instr_op = BCODE_NEG; } break;
+		// case Unary_Operator_DEREFERENCE: { instr_op = BCODE_DEREFERENCE; } break;
 		default: break;
 	}
 	
@@ -18,13 +18,13 @@ internal Instr_Operation instr_operation_from_expr_binary(Binary_Operator expr_o
 	Instr_Operation instr_op = 0;
 	
 	switch (expr_op) {
-		case Binary_Operator_PLUS: { instr_op = Instr_Operation_ADD; } break;
-		case Binary_Operator_MINUS: { instr_op = Instr_Operation_SUB; } break;
-		case Binary_Operator_TIMES: { instr_op = Instr_Operation_MUL; } break;
-		case Binary_Operator_DIVIDE: { instr_op = Instr_Operation_DIV; } break;
-		// case Binary_Operator_MEMBER: { instr_op = Instr_Operation_COMMA; } break;
-		case Binary_Operator_CALL: { instr_op = Instr_Operation_CALL; } break;
-		// case Binary_Operator_ARRAY_ACCESS: { instr_op = Instr_Operation_ARRAY_ACCESS; } break;
+		case Binary_Operator_PLUS: { instr_op = BCODE_ADD; } break;
+		case Binary_Operator_MINUS: { instr_op = BCODE_SUB; } break;
+		case Binary_Operator_TIMES: { instr_op = BCODE_MUL; } break;
+		case Binary_Operator_DIVIDE: { instr_op = BCODE_DIV; } break;
+		// case Binary_Operator_MEMBER: { instr_op = BCODE_COMMA; } break;
+		case Binary_Operator_CALL: { instr_op = BCODE_CALL; } break;
+		// case Binary_Operator_ARRAY_ACCESS: { instr_op = BCODE_ARRAY_ACCESS; } break;
 		default: break;
 	}
 	
@@ -37,7 +37,7 @@ internal Reg_Group generate_bytecode_for_expression(Ast_Expression *expr) {
 	
 	switch (expr->kind) {
 		case Ast_Expression_Kind_INT_LITERAL: {
-			instr.operation = Instr_Operation_SET;
+			instr.operation = BCODE_SET;
 			instr.mode      = Addressing_Mode_CONSTANT;
 			instr.source    = expr->value;
 			instr.dest      = registers_used;
@@ -227,7 +227,7 @@ internal void generate_bytecode_for_statement(Ast_Statement *statement) {
 					if (unmapped_ret_regs[i] != i) {
 						Instr swap = {0};
 						
-						swap.operation = Instr_Operation_SWAP;
+						swap.operation = BCODE_SWAP;
 						swap.dest      = unmapped_ret_regs[i];
 						swap.source    = i;
 						swap.mode      = Addressing_Mode_REGISTER;
@@ -241,7 +241,7 @@ internal void generate_bytecode_for_statement(Ast_Statement *statement) {
 			}
 #endif
 			
-			ret.operation = Instr_Operation_RETURN;
+			ret.operation = BCODE_RETURN;
 			ret.ret_reg_count = retval_count; // TODO: Remove; it should be stored in the procedure defition, not here
 			
 			instructions[instruction_count] = ret;
@@ -260,14 +260,14 @@ internal void generate_bytecode_for_declaration(Ast_Declaration *declaration) {
 			
 			instr.label      = declaration->ident;
 			instr.label_kind = Label_Kind_PROCEDURE;
-			instr.operation  = Instr_Operation_NULL;
+			instr.operation  = BCODE_NULL;
 			
 			instructions[instruction_count] = instr;
 			instruction_count += 1;
 			
 			generate_bytecode_for_statement(declaration->body);
 			
-			if (instructions[instruction_count-1].operation != Instr_Operation_RETURN) {
+			if (instructions[instruction_count-1].operation != BCODE_RETURN) {
 				fprintf(stderr, "Warning: Unreachable code after return statement.\n");
 			}
 		} break;

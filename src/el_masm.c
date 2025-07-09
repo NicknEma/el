@@ -99,15 +99,15 @@ internal String masm_generate_source(void) {
 		}
 		
 		switch (instr->operation) {
-			case Instr_Operation_NULL: {
+			case BCODE_NULL: {
 				String line = push_stringf(scratch.arena, "; Null instruction", instr->operation);
 				masm_append_line(line);
 			} break;
 			
-			case Instr_Operation_SET:
-			case Instr_Operation_ADD:
-			case Instr_Operation_SUB:
-			case Instr_Operation_MUL: {
+			case BCODE_SET:
+			case BCODE_ADD:
+			case BCODE_SUB:
+			case BCODE_MUL: {
 				
 				String source = {0};
 				String dest   = {0};
@@ -128,10 +128,10 @@ internal String masm_generate_source(void) {
 				
 				String mnemonic = {0};
 				switch (instr->operation) {
-					case Instr_Operation_SET: { mnemonic = string_from_lit("mov"); } break;
-					case Instr_Operation_ADD: { mnemonic = string_from_lit("add"); } break;
-					case Instr_Operation_SUB: { mnemonic = string_from_lit("sub"); } break;
-					case Instr_Operation_MUL: { mnemonic = string_from_lit("imul"); } break;
+					case BCODE_SET: { mnemonic = string_from_lit("mov"); } break;
+					case BCODE_ADD: { mnemonic = string_from_lit("add"); } break;
+					case BCODE_SUB: { mnemonic = string_from_lit("sub"); } break;
+					case BCODE_MUL: { mnemonic = string_from_lit("imul"); } break;
 					default: break;
 				}
 				
@@ -140,7 +140,7 @@ internal String masm_generate_source(void) {
 				masm_append_line(line);
 			} break;
 			
-			case Instr_Operation_CALL: {
+			case BCODE_CALL: {
 				
 				{
 					// Push caller-saved registers
@@ -191,7 +191,7 @@ internal String masm_generate_source(void) {
 				
 			} break;
 			
-			case Instr_Operation_SWAP: {
+			case BCODE_SWAP: {
 				assert(registers_used < 14); // For now. TODO: Use memory if no more registers
 				
 				String source = masm_register_from_bytecode_register(instr->source);
@@ -206,7 +206,7 @@ internal String masm_generate_source(void) {
 											  string_expand(temp)));
 			} break;
 			
-			case Instr_Operation_RETURN: {
+			case BCODE_RETURN: {
 				
 				{
 					// Convert the bytecode calling convention to the platform calling convention:

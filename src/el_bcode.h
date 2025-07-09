@@ -1,27 +1,33 @@
 #ifndef EL_BCODE_H
 #define EL_BCODE_H
 
-////////////////////////////////
-//~ Bytecode
+#define BCODE_OPERATION_NAMES \
+X(BCODE_NULL) \
+X(BCODE_NOP) \
+X(BCODE_SET) \
+X(BCODE_NEG) \
+X(BCODE_ADD) \
+X(BCODE_SUB) \
+X(BCODE_MUL) \
+X(BCODE_DIV) \
+X(BCODE_CALL) \
+X(BCODE_RETURN) \
+X(BCODE_SWAP) \
+X(BCODE_COUNT) \
 
-typedef enum Instr_Operation {
-	Instr_Operation_NULL,
-	
-	Instr_Operation_NOP,
-	Instr_Operation_SET,
-	Instr_Operation_NEG,
-	Instr_Operation_ADD,
-	Instr_Operation_SUB,
-	Instr_Operation_MUL,
-	Instr_Operation_DIV,
-	
-	Instr_Operation_CALL,
-	Instr_Operation_RETURN,
-	
-	Instr_Operation_SWAP,
-	
-	Instr_Operation_COUNT,
-} Instr_Operation;
+typedef enum Bcode_Operation {
+#define X(name) name,
+	BCODE_OPERATION_NAMES
+#undef  X
+} Bcode_Operation;
+
+typedef Bcode_Operation Instr_Operation; // TODO: Temporary
+
+global read_only String bcode_operation_names[] = {
+#define X(name) string_from_lit_const(#name),
+	BCODE_OPERATION_NAMES
+#undef  X
+};
 
 typedef enum Addressing_Mode {
 	Addressing_Mode_CONSTANT,
@@ -55,7 +61,7 @@ struct Instr {
 	String label;
 	Label_Kind label_kind;
 	String jump_dest_label; // For jumps and procedure calls.
-	Instr_Operation operation;
+	Bcode_Operation operation;
 	Addressing_Mode mode;
 	int source; // Register
 	int dest;   // Register

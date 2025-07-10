@@ -174,25 +174,20 @@ internal Ast_Expression *make_atom_expression(Parser *parser, Token token) {
 	if (node != NULL) {
 		if (token.kind == TOKEN_BOOLEAN) {
 			node->kind         = Ast_Expression_Kind_BOOL_LITERAL;
-			node->lexeme       = lexeme_from_token(parser->lexer, token);
 			node->bool_value   = token.int_val;
-			node->location     = token.loc;
 		} else if (token.kind == TOKEN_INTEGER) {
 			node->kind         = Ast_Expression_Kind_INT_LITERAL;
-			node->lexeme       = lexeme_from_token(parser->lexer, token);
 			node->i64_value    = token.int_val;
-			node->location     = token.loc;
 		} else if (token.kind == TOKEN_STRING) {
 			node->kind         = Ast_Expression_Kind_STRING_LITERAL;
-			node->lexeme       = lexeme_from_token(parser->lexer, token);
 			node->string_value = token.string_val;
-			node->location     = token.loc;
 		} else if (token.kind == TOKEN_IDENT) {
 			node->kind         = Ast_Expression_Kind_IDENT;
-			node->lexeme       = lexeme_from_token(parser->lexer, token);
 			node->ident        = node->lexeme;
-			node->location     = token.loc;
 		} else { panic(); }
+		
+		node->lexeme   = lexeme_from_token(parser->lexer, token);
+		node->location = token.loc;
 	}
 	
 	return node;

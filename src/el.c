@@ -40,6 +40,8 @@
 
 /*
 ** TODO(ema):
+** [ ] Store pseudo-registers in the Symbol struct
+**     https://godbolt.org/z/G1e4d8M3M
 ** [ ] Symbol_Kind (local var, global var, function, etc) so we can either store a stack offset or an address
 ** [ ] Assigner and Declarator types
 ** [ ] Refactor Expr, Stat and Decl from lists into arrays

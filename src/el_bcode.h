@@ -73,9 +73,54 @@ struct Instr {
 	int arg_reg_count;
 };
 
-global Instr instructions[256];
-global int instruction_count;
+typedef struct Bcode_Block Bcode_Block;
+struct Bcode_Block {
+	Instr *instructions;
+	i64    instruction_count;
+	i64    instruction_capacity;
+	
+	Bcode_Block *next;
+};
 
-global int registers_used;
+typedef struct Bcode_Builder Bcode_Builder;
+struct Bcode_Builder {
+	Arena *arena;
+	Symbol_Table *table;
+	Bcode_Block  *first_block;
+	Bcode_Block  *last_block;
+	
+	int registers_used;
+};
+
+internal Bcode_Block *push_bcode_block(Bcode_Builder *builder) {
+	Bcode_Block *new_block = push_type(builder->arena, Bcode_Block);
+	queue_push(builder->first_block, builder->last_block, new_block);
+	
+	new_block->instruction_capacity = 256;
+	new_block->instructions = push_array(builder->arena, Instr, new_block->instruction_capacity);
+	
+	return new_block;
+}
+
+internal void append_bcode_instr(Bcode_Builder *builder, Instr instr) {
+	Bcode_Block *block = builder->last_block;
+	assert(block != NULL, "Bytecode builder not initialized");
+	
+	if (block->instruction_count >= block->instruction_capacity) {
+		block = push_bcode_block(builder);
+	}
+	
+	block->instructions[block->instruction_count] = instr;
+	block->instruction_count += 1;
+}
+
+internal void bcode_builder_init(Bcode_Builder *builder, Arena *arena, Symbol_Table *table) {
+	memset(builder, 0, sizeof(*builder));
+	
+	builder->arena = arena;
+	builder->table = table;
+	
+	push_bcode_block(builder);
+}
 
 #endif

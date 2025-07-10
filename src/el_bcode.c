@@ -31,7 +31,7 @@ internal Instr_Operation instr_operation_from_expr_binary(Binary_Operator expr_o
 	return instr_op;
 }
 
-internal Reg_Group generate_bytecode_for_expression(Ast_Expression *expr) {
+internal Reg_Group generate_bytecode_for_expression(Bcode_Builder *builder, Ast_Expression *expr) {
 	Instr instr = {0};
 	Reg_Group dests = {0};
 	
@@ -39,12 +39,11 @@ internal Reg_Group generate_bytecode_for_expression(Ast_Expression *expr) {
 		case Ast_Expression_Kind_INT_LITERAL: {
 			instr.operation = BCODE_SET;
 			instr.mode      = Addressing_Mode_CONSTANT;
-			instr.source    = expr->value;
-			instr.dest      = registers_used;
-			registers_used += 1;
+			instr.source    = expr->i64_value;
+			instr.dest      = builder->registers_used;
+			builder->registers_used += 1;
 			
-			instructions[instruction_count] = instr;
-			instruction_count += 1;
+			append_bcode_instr(builder, instr);
 			
 			dests.regs[0] = instr.dest;
 			dests.reg_count = 1;
@@ -56,7 +55,7 @@ internal Reg_Group generate_bytecode_for_expression(Ast_Expression *expr) {
 		// foo(x, y) => mov rdi, x; mov rsi, y; call foo
 		
 		case Ast_Expression_Kind_UNARY: {
-			Reg_Group sub_dests = generate_bytecode_for_expression(expr->left);
+			Reg_Group sub_dests = generate_bytecode_for_expression(builder, expr->left);
 			assert(sub_dests.reg_count >= 1); // Should be ==, but first decide how to treat comma expressions
 			
 			instr.operation = instr_operation_from_expr_unary(expr->unary);
@@ -64,8 +63,7 @@ internal Reg_Group generate_bytecode_for_expression(Ast_Expression *expr) {
 			instr.source    = sub_dests.regs[0];
 			instr.dest      = sub_dests.regs[0];
 			
-			instructions[instruction_count] = instr;
-			instruction_count += 1;
+			append_bcode_instr(builder, instr);
 			
 			dests.regs[0] = instr.dest;
 			dests.reg_count = 1;
@@ -79,7 +77,7 @@ internal Reg_Group generate_bytecode_for_expression(Ast_Expression *expr) {
 				assert(expr->left->kind == Ast_Expression_Kind_IDENT);
 				instr.jump_dest_label = expr->left->ident;
 				
-				Reg_Group right_dests = generate_bytecode_for_expression(expr->right);
+				Reg_Group right_dests = generate_bytecode_for_expression(builder, expr->right);
 				// assert(right_dests.reg_count >= 1); // Could have no arguments
 				
 				instr.operation = instr_operation_from_expr_binary(expr->binary);
@@ -89,7 +87,7 @@ internal Reg_Group generate_bytecode_for_expression(Ast_Expression *expr) {
 				// inside the function call and are going to be using the saved registers.
 				// When a more robust approach to calling conventions is defined (registers vs stack),
 				// maybe some registers could be freed here.
-				// registers_used -= 1;
+				// builder->registers_used -= 1;
 				
 				// Remember which registers are used to store the evaluated arguments
 				for (int si = 0; si < right_dests.reg_count; si += 1) {
@@ -100,8 +98,7 @@ internal Reg_Group generate_bytecode_for_expression(Ast_Expression *expr) {
 				// Ast_Declaration *callee = decl_list_find_ident(&proc_list, instr.jump_dest_label);
 				// assert(callee != NULL); // Typechecking should've failed
 				
-				instructions[instruction_count] = instr;
-				instruction_count += 1;
+				append_bcode_instr(builder, instr);
 				
 				// Pretend that every function has 1 return value and that it is put in register 0.
 				// TODO: This is very bad.
@@ -111,8 +108,8 @@ internal Reg_Group generate_bytecode_for_expression(Ast_Expression *expr) {
 				dests.regs[0] = 0;
 				dests.reg_count = 1;
 			} else if (0 /*&& binary == Binary_Operator_COMMA*/) {
-				Reg_Group left_dests  = generate_bytecode_for_expression(expr->left);
-				Reg_Group right_dests = generate_bytecode_for_expression(expr->right);
+				Reg_Group left_dests  = generate_bytecode_for_expression(builder, expr->left);
+				Reg_Group right_dests = generate_bytecode_for_expression(builder, expr->right);
 				assert(left_dests.reg_count >= 1); // Same as above
 				assert(right_dests.reg_count >= 1);
 				
@@ -128,8 +125,8 @@ internal Reg_Group generate_bytecode_for_expression(Ast_Expression *expr) {
 					dests.reg_count += 1;
 				}
 			} else {
-				Reg_Group left_dests  = generate_bytecode_for_expression(expr->left);
-				Reg_Group right_dests = generate_bytecode_for_expression(expr->right);
+				Reg_Group left_dests  = generate_bytecode_for_expression(builder, expr->left);
+				Reg_Group right_dests = generate_bytecode_for_expression(builder, expr->right);
 				assert(left_dests.reg_count >= 1); // Same as above
 				assert(right_dests.reg_count >= 1);
 				
@@ -137,10 +134,9 @@ internal Reg_Group generate_bytecode_for_expression(Ast_Expression *expr) {
 				instr.mode      = Addressing_Mode_REGISTER;
 				instr.source    = right_dests.regs[0];
 				instr.dest      = left_dests.regs[0];
-				registers_used -= 1;         // This instruction puts the result in left.dest;  right.dest can be used by the next instruction
+				builder->registers_used -= 1;         // This instruction puts the result in left.dest;  right.dest can be used by the next instruction
 				
-				instructions[instruction_count] = instr;
-				instruction_count += 1;
+				append_bcode_instr(builder, instr);
 				
 				dests.regs[0] = instr.dest;
 				dests.reg_count = 1;
@@ -153,15 +149,15 @@ internal Reg_Group generate_bytecode_for_expression(Ast_Expression *expr) {
 	return dests;
 }
 
-internal void generate_bytecode_for_statement(Ast_Statement *statement) {
+internal void generate_bytecode_for_statement(Bcode_Builder *builder, Ast_Statement *statement) {
 	switch (statement->kind) {
 		case Ast_Statement_Kind_EXPR: {
-			generate_bytecode_for_expression(statement->expr);
+			generate_bytecode_for_expression(builder, statement->expr);
 		} break;
 		
 		case Ast_Statement_Kind_BLOCK: {
 			for (Ast_Statement *s = statement->block; s != NULL && s != &nil_statement; s = s->next) {
-				generate_bytecode_for_statement(s);
+				generate_bytecode_for_statement(builder, s);
 			}
 		} break;
 		
@@ -175,7 +171,7 @@ internal void generate_bytecode_for_statement(Ast_Statement *statement) {
 				// as well as how many there are.
 				// int i = 0;
 				for (Ast_Expression *expr = statement->expr; expr != NULL; expr = expr->next) {
-					Reg_Group dests = generate_bytecode_for_expression(expr);
+					Reg_Group dests = generate_bytecode_for_expression(builder, expr);
 					
 					for (int di = 0; di < dests.reg_count; di += 1) {
 						assert(ret.ret_reg_count < array_count(ret.ret_regs));
@@ -206,7 +202,7 @@ internal void generate_bytecode_for_statement(Ast_Statement *statement) {
 						stack_push(expr->right);
 						stack_push(expr->left);
 					} else {
-						Reg_Group dests = generate_bytecode_for_expression(expr);
+						Reg_Group dests = generate_bytecode_for_expression(builder, expr);
 						stack_pop(expr);
 						
 						for (int di = 0; di < dests.reg_count; di += 1) {
@@ -216,7 +212,7 @@ internal void generate_bytecode_for_statement(Ast_Statement *statement) {
 					}
 				}
 #else
-				Reg_Group dests = generate_bytecode_for_expression(statement->expr);
+				Reg_Group dests = generate_bytecode_for_expression(builder, statement->expr);
 				for (int di = 0; di < dests.reg_count; di += 1) {
 					unmapped_ret_regs[unmapped_ret_reg_count] = dests.regs[di];
 					unmapped_ret_reg_count += 1;
@@ -232,8 +228,7 @@ internal void generate_bytecode_for_statement(Ast_Statement *statement) {
 						swap.source    = i;
 						swap.mode      = Addressing_Mode_REGISTER;
 						
-						instructions[instruction_count] = swap;
-						instruction_count += 1;
+						append_bcode_instr(builder, swap);
 					}
 				}
 				
@@ -244,15 +239,14 @@ internal void generate_bytecode_for_statement(Ast_Statement *statement) {
 			ret.operation = BCODE_RETURN;
 			ret.ret_reg_count = retval_count; // TODO: Remove; it should be stored in the procedure defition, not here
 			
-			instructions[instruction_count] = ret;
-			instruction_count += 1;
+			append_bcode_instr(builder, ret);
 		} break;
 		
 		default: break;
 	}
 }
 
-internal void generate_bytecode_for_declaration(Symbol_Table *table, Ast_Declaration *decl) {
+internal void generate_bytecode_for_declaration(Bcode_Builder *builder, Ast_Declaration *decl) {
 #if 1
 	assert(!check_nil_declaration(decl));
 	
@@ -265,7 +259,7 @@ internal void generate_bytecode_for_declaration(Symbol_Table *table, Ast_Declara
 			Entity e = decl->entities[entities_done];
 			Initter *initter = &decl->initters[i];
 			
-			Symbol *symbol = lookup_symbol(table, e.ident);
+			Symbol *symbol = lookup_symbol(builder->table, e.ident);
 			assert(symbol != NULL, "Symbol lookup failed in bytecode generation");
 			assert(symbol->type->kind == TYPE_PROC);
 			
@@ -275,14 +269,15 @@ internal void generate_bytecode_for_declaration(Symbol_Table *table, Ast_Declara
 			instr.label_kind = Label_Kind_PROCEDURE;
 			instr.operation  = BCODE_NULL;
 			
-			instructions[instruction_count] = instr;
-			instruction_count += 1;
+			append_bcode_instr(builder, instr);
 			
-			generate_bytecode_for_statement(initter->body);
+			generate_bytecode_for_statement(builder, initter->body);
 			
+#if 0
 			if (instructions[instruction_count-1].operation != BCODE_RETURN) {
 				fprintf(stderr, "Warning: Unreachable code after return statement.\n");
 			}
+#endif
 			
 			entities_done += 1;
 		} else {

@@ -54,7 +54,7 @@ internal String masm_register_from_bytecode_register(int bytecode_reg) {
 	return register_names[bytecode_reg];
 }
 
-internal String masm_generate_source(void) {
+internal String masm_generate_source(Bcode_Builder *builder) {
 	
 	masm_append_line(string_from_lit("; Generated"));
 	masm_append_line(string_from_lit("includelib msvcrt.lib"));
@@ -63,10 +63,11 @@ internal String masm_generate_source(void) {
 	
 	Scratch scratch = scratch_begin(0, 0);
 	
-	for (int i = 0; i < instruction_count; i += 1) {
+	for (Bcode_Block *bcode_block = builder->first_block; bcode_block != NULL; bcode_block = bcode_block->next)
+		for (int i = 0; i < bcode_block->instruction_count; i += 1) {
 		arena_reset(scratch.arena);
 		
-		Instr *instr = &instructions[i];
+		Instr *instr = &bcode_block->instructions[i];
 		
 		switch (instr->label_kind) {
 			case Label_Kind_PROCEDURE: {
@@ -192,11 +193,11 @@ internal String masm_generate_source(void) {
 			} break;
 			
 			case BCODE_SWAP: {
-				assert(registers_used < 14); // For now. TODO: Use memory if no more registers
+				assert(builder->registers_used < 14); // For now. TODO: Use memory if no more registers
 				
 				String source = masm_register_from_bytecode_register(instr->source);
 				String dest   = masm_register_from_bytecode_register(instr->dest);
-				String temp   = masm_register_from_bytecode_register(registers_used);
+				String temp   = masm_register_from_bytecode_register(builder->registers_used);
 				
 				masm_append_line(push_stringf(&masm_context.arena, "mov %.*s, %.*s", string_expand(temp),
 											  string_expand(source)));

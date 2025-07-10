@@ -107,12 +107,17 @@ int main(void) {
 	if (all_ok) {
 		Symbol_Table symtab = do_all_checks(program);
 		
+		Bcode_Builder builder;
+		Arena bcode_arena;
+		arena_init(&bcode_arena);
+		bcode_builder_init(&builder, &bcode_arena, &symtab);
+		
 		for (Ast_Declaration *decl = program; decl != NULL && decl != &nil_declaration; decl = decl->next) {
-			generate_bytecode_for_declaration(&symtab, decl);
+			generate_bytecode_for_declaration(&builder, decl);
 		}
 		
 		arena_init(&masm_context.arena);
-		String masm_source = masm_generate_source();
+		String masm_source = masm_generate_source(&builder);
 		
 		FILE *sf = fopen("generated/generated.asm", "wb+");
 		FILE *bs = fopen("build_generated.bat", "wb+");

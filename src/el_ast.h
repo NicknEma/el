@@ -74,7 +74,6 @@ struct Ast_Expression {
 	Type_Array types;
 	
 	Ast_Expression *next;
-	void  *user;
 };
 
 //- Statements

@@ -2,10 +2,7 @@
 #define EL_PRINT_C
 
 ////////////////////////////////
-//~ Generic
-
-global int   indent_level;
-global char *indent_chars = "  ";
+//~ Compiler-specific printing utilities
 
 internal void inc_indent(void) { indent_level += 1; }
 

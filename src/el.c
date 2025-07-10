@@ -5,6 +5,7 @@
 
 #define EL_CHECK_SINGLE_PASS 1
 
+#include "el_print.h"
 #include "el_type.h"
 #include "el_lex.h"
 #include "el_ast.h"

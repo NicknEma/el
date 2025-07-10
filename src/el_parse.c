@@ -262,8 +262,7 @@ internal Ast_Expression *parse_expression(Parser *parser, Precedence caller_prec
 		expect_token_kind(parser, ')', "Expected )");
 		
 		left = grouped;
-	} else {
-		// This token is not the beginning of any expression.
+	} else { // This token is not the beginning of any expression.
 		if (required) {
 			report_parse_error(parser, "Expected an expression");
 		}

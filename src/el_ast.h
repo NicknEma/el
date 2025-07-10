@@ -58,8 +58,8 @@ typedef enum Ast_Expression_Flags {
 struct Ast_Expression {
 	Ast_Expression_Kind  kind;
 	Ast_Expression_Flags flags;
-	Unary_Operator       unary;
-	Binary_Operator      binary;
+	
+	union { Unary_Operator unary; Binary_Operator binary; };
 	
 	union { Ast_Expression *left; Ast_Expression *subexpr; };
 	Ast_Expression *middle; // For ternaries

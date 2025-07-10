@@ -67,9 +67,14 @@ struct Ast_Expression {
 	
 	Range1DI32 location;
 	
-	String lexeme;
-	String ident;
-	i64    value;
+	String lexeme; // If we have the location, do we need this? @Cleanup
+	
+	union {
+		String ident;
+		String string_value;
+		i64    i64_value;
+		bool   bool_value;
+	};
 	
 	Type_Array types;
 	

@@ -416,6 +416,7 @@ internal void typecheck_decl(Typechecker *checker, Ast_Declaration *decl) {
 			
 			Type_Array types = decl->initters[i].expr->types;
 			
+			// TODO: WHY TF IS THE COMPILER NOT TELLING ME THAT I'M SHADOWING i HERE? THIS IS PROBABILY A BUG, FIX!
 			for (int i = 0, e = entities_done; i < types.count; i += 1, e += 1) {
 				if (e >= decl->entity_count) {
 					report_type_error(checker, "Too many initializers on the right side of the declaration");
@@ -473,6 +474,29 @@ internal void typecheck_decl(Typechecker *checker, Ast_Declaration *decl) {
 	}
 	
 	return;
+}
+
+internal Entity_Group *group_entities(Arena *arena, Initter *initters, i64 initter_count) {
+	Entity_Group *groups = push_array(arena, Entity_Group, initter_count);
+	
+	int entities_done = 0;
+	for (int i = 0; i < initter_count; i += 1) {
+		if (initters[i].kind == Initter_Kind_EXPR) {
+			assert(!check_nil_expression(initters[i].expr));
+			
+			Type_Array types = initters[i].expr->types;
+			
+			groups[i].first = entities_done;
+			groups[i].opl   = entities_done + types.count;
+		} else {
+			groups[i].first = entities_done;
+			groups[i].opl   = entities_done + 1;
+		}
+		
+		entities_done = groups[i].opl;
+	}
+	
+	return groups;
 }
 
 ////////////////////////////////

@@ -250,13 +250,18 @@ internal void generate_bytecode_for_declaration(Bcode_Builder *builder, Ast_Decl
 #if 1
 	assert(!check_nil_declaration(decl));
 	
-	int entities_done = 0;
+	Scratch scratch = scratch_begin(&builder->arena, 1);
+	
+	Entity_Group *entity_groups = group_entities(scratch.arena, decl->initters, decl->initter_count);
+	
 	for (int i = 0; i < decl->initter_count; i += 1) {
 		if (decl->initters[i].kind == Initter_Kind_PROCEDURE) {
 			assert(!check_nil_statement(decl->initters[i].body));
 			assert(decl->initters[i].body->kind == Ast_Statement_Kind_BLOCK);
 			
-			Entity e = decl->entities[entities_done];
+			assert(entity_groups[i].first + 1 == entity_groups[i].opl);
+			
+			Entity e = decl->entities[entity_groups[i].first];
 			Initter *initter = &decl->initters[i];
 			
 			Symbol *symbol = lookup_symbol(builder->table, e.ident);
@@ -279,12 +284,13 @@ internal void generate_bytecode_for_declaration(Bcode_Builder *builder, Ast_Decl
 			}
 #endif
 			
-			entities_done += 1;
 		} else {
 			allow_break();
 		}
 	}
 #endif
+	
+	scratch_end(scratch);
 	
 	return;
 }

@@ -145,6 +145,12 @@ struct Entity {
 	Range1DI32 location;
 };
 
+typedef struct Entity_Group Entity_Group;
+struct Entity_Group {
+	i64 first;
+	i64 opl;
+};
+
 
 typedef enum Initter_Kind {
 	Initter_Kind_NONE = 0,

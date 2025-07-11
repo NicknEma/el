@@ -79,7 +79,7 @@ internal void leave_procedure_scope(Typechecker *checker) {
 ////////////////////////////////
 //~ Symbol resolving
 
-internal void declare_symbol(Typechecker *checker, Entity entity, Type *type) {
+internal void declare_symbol(Typechecker *checker, Entity entity, Type *type, Symbol_Kind kind) {
 	Scope *inner = checker->symbol_table.current_scope;
 	
 	bool can_declare = true;
@@ -99,6 +99,7 @@ internal void declare_symbol(Typechecker *checker, Entity entity, Type *type) {
 		
 		entry->ident = entity.ident;
 		entry->type  = type;
+		entry->kind  = kind;
 	}
 }
 
@@ -422,7 +423,19 @@ internal void typecheck_decl(Typechecker *checker, Ast_Declaration *decl) {
 				}
 				
 				if (types.data[i]->kind != TYPE_UNKNOWN) {  // Initializer expression has a type.
-					declare_symbol(checker, decl->entities[e], types.data[i]);
+					
+					Symbol_Kind symbol_kind = SYMBOL_NONE;
+					if (types.data[i]->kind == TYPE_TYPE) {
+						symbol_kind = SYMBOL_TYPE;
+					} else if (types.data[i]->kind == TYPE_PROC) {
+						symbol_kind = SYMBOL_PROC;
+					} else {
+						symbol_kind = SYMBOL_LOCAL_VAR;
+						if (checker->symbol_table.current_scope == checker->symbol_table.global_scope)
+							symbol_kind = SYMBOL_GLOBAL_VAR;
+					}
+					
+					declare_symbol(checker, decl->entities[e], types.data[i], symbol_kind);
 				} else {
 					assert(checker->error_count > 0, "Could not resolve the type of an expression, but no errors were reported");
 					break;  // Even if the assertion didn't fire, all the errors were already reported in typecheck_expr() so we can stop
@@ -435,7 +448,7 @@ internal void typecheck_decl(Typechecker *checker, Ast_Declaration *decl) {
 			assert(!check_nil_statement(decl->initters[i].body));
 			assert(decl->initters[i].body->kind == Ast_Statement_Kind_BLOCK);
 			
-			declare_symbol(checker, decl->entities[entities_done], make_proc_defn_type(checker, decl->initters[i].first_param, decl->initters[i].body));
+			declare_symbol(checker, decl->entities[entities_done], make_proc_defn_type(checker, decl->initters[i].first_param, decl->initters[i].body), SYMBOL_PROC);
 			
 			{
 				enter_procedure_scope(checker, decl->entities[entities_done].ident);
@@ -465,14 +478,18 @@ internal void typecheck_decl(Typechecker *checker, Ast_Declaration *decl) {
 ////////////////////////////////
 //~ Printing
 
+internal void print_symbol(Symbol *symbol) {
+	printf("%.*s: ", string_expand(symbol->ident));
+	print_type(symbol->type);
+	printf(" (%.*s)", string_expand(symbol_kind_names[symbol->kind]));
+}
+
 internal void print_scope(Scope *scope) {
 	Scratch scratch = scratch_begin(0, 0);
 	
 	for (Symbol *symbol = scope->first_symbol; symbol != NULL; symbol = symbol->next) {
 		print_indent();
-		
-		printf("%.*s: ", string_expand(symbol->ident));
-		print_type(symbol->type);
+		print_symbol(symbol);
 		printf("\n");
 	}
 	

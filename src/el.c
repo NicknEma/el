@@ -106,13 +106,28 @@ int main(void) {
 		all_ok = false;
 	}
 	
+	Arena symbol_arena = {0};
+	Arena scope_name_arena = {0};
+	Typechecker checker = {0};
 	if (all_ok) {
-		Symbol_Table symtab = do_all_checks(program);
+		arena_init(&symbol_arena);
+		arena_init(&scope_name_arena);
 		
-		Bcode_Builder builder;
+		typechecker_init(&checker, &symbol_arena, &scope_name_arena);
+		
+		do_all_checks(&checker, program);
+		
+		if (checker.error_count > 0) {
+			all_ok = false;
+		}
+	}
+	
+	if (all_ok) {
 		Arena bcode_arena;
 		arena_init(&bcode_arena);
-		bcode_builder_init(&builder, &bcode_arena, &symtab);
+		
+		Bcode_Builder builder = {0};
+		bcode_builder_init(&builder, &bcode_arena, &checker.symbol_table);
 		
 		generate_bcode(&builder, program);
 		

@@ -539,23 +539,17 @@ internal void print_scope(Scope *scope) {
 ////////////////////////////////
 //~ All
 
-internal Symbol_Table do_all_checks(Ast_Declaration *prog) {
-	Typechecker checker_ = {0};
-	Typechecker *checker = &checker_;
-	
-	Arena arena = {0};
-	arena_init(&arena);
-	
-	Arena name_arena = {0};
-	arena_init(&name_arena);
-	
-	checker->first_decl = prog;
-	checker->arena = &arena;
-	checker->name_arena = &name_arena;
+internal void typechecker_init(Typechecker *checker, Arena *arena, Arena *name_arena) {
+	checker->arena = arena;
+	checker->name_arena = name_arena;
 	
 	// Init global scope
 	checker->symbol_table.global_scope = push_type(checker->arena, Scope);
 	checker->symbol_table.current_scope = checker->symbol_table.global_scope;
+}
+
+internal void do_all_checks(Typechecker *checker, Ast_Declaration *prog) {
+	checker->first_decl = prog;
 	
 	// Typecheck
 	for (Ast_Declaration *decl = checker->first_decl; !check_nil_declaration(decl); decl = decl->next) {
@@ -564,8 +558,6 @@ internal Symbol_Table do_all_checks(Ast_Declaration *prog) {
 	
 	printf("Global var count: %d\nProc count: %d\n", checker->symbol_table.global_var_count, checker->symbol_table.proc_count);
 	print_scope(checker->symbol_table.global_scope);
-	
-	return checker->symbol_table;
 }
 
 #endif

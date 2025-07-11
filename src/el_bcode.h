@@ -65,8 +65,9 @@ struct Instr {
 	Label_Kind label_kind;
 	String jump_dest_label; // For jumps and procedure calls.
 	Bcode_Operation operation;
+	
 	int source; // Register
-	int dest;   // Register
+	union { int dest; int dest_register; }; // Union is temporary
 	
 	// int ret_regs[8]; // Arbitrary number for now
 	int ret_reg_count;
@@ -74,13 +75,27 @@ struct Instr {
 	int arg_regs[8]; // Arbitrary number for now
 	int arg_reg_count;
 	
-	int reg_size;
+	int alloca_size;
 	
 	union {
 		Addressing_Mode mode;
 		Addressing_Mode store_mode;
 	};
 };
+
+typedef Instr Bcode_Instr; // Temporary
+
+// Moves the stack pointer by 'size' bytes and stores a pointer to the original address into 'dest_register'.
+internal Bcode_Instr make_bcode_alloca(int dest_register, int size) {
+	Bcode_Instr result = {0};
+	
+	result.operation     = BCODE_ALLOCA;
+	result.dest_register = dest_register;
+	result.alloca_size   = size;
+	
+	return result;
+}
+
 
 typedef struct Bcode_Block Bcode_Block;
 struct Bcode_Block {

@@ -261,10 +261,7 @@ internal void generate_bytecode_for_declaration(Bcode_Builder *builder, Ast_Decl
 			
 			int original_reg = push_bcode_register(builder);
 			
-			instr.operation = BCODE_ALLOCA;
-			instr.dest = original_reg;
-			instr.reg_size = symbol->type->size;
-			
+			instr = make_bcode_alloca(original_reg, symbol->type->size);
 			append_bcode_instr(builder, instr);
 			
 			symbol->bcode_reg = instr.dest;

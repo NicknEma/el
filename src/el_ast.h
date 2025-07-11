@@ -137,18 +137,20 @@ typedef enum Entity_Kind {
 	Entity_Kind_COUNT,
 } Entity_Kind;
 
+typedef struct Symbol Symbol;
 typedef struct Entity Entity;
+typedef struct Initter Initter;
+
 struct Entity {
 	Entity_Kind kind;
 	
 	String   ident;
 	Range1DI32 location;
-};
-
-typedef struct Entity_Group Entity_Group;
-struct Entity_Group {
-	i64 first;
-	i64 opl;
+	
+	Symbol *symbol;
+	
+	Initter *initter;
+	int initter_value_index;
 };
 
 
@@ -162,7 +164,7 @@ typedef enum Initter_Kind {
 	Initter_Kind_COUNT,
 } Initter_Kind;
 
-typedef struct Initter Initter;
+
 struct Initter {
 	Initter_Kind kind;
 	

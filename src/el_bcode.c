@@ -250,60 +250,81 @@ internal void generate_bytecode_for_declaration(Bcode_Builder *builder, Ast_Decl
 #if 1
 	assert(!check_nil_declaration(decl));
 	
-	Scratch scratch = scratch_begin(&builder->arena, 1);
-	
-	Entity_Group *entity_groups = group_entities(scratch.arena, decl->initters, decl->initter_count);
-	
-	for (int i = 0; i < decl->initter_count; i += 1) {
-		if (decl->initters[i].kind == Initter_Kind_PROCEDURE) {
-			assert(!check_nil_statement(decl->initters[i].body));
-			assert(decl->initters[i].body->kind == Ast_Statement_Kind_BLOCK);
-			
-			assert(entity_groups[i].first + 1 == entity_groups[i].opl);
-			
-			Entity e = decl->entities[entity_groups[i].first];
-			Initter *initter = &decl->initters[i];
-			
-			Symbol *symbol = lookup_symbol(builder->table, e.ident);
-			assert(symbol != NULL, "Symbol lookup failed in bytecode generation");
-			assert(symbol->type->kind == TYPE_PROC);
+	for (int i = 0; i < decl->entity_count; i += 1) {
+		Entity *entity = &decl->entities[i];
+		Symbol *symbol = entity->symbol;
+		assert(symbol != NULL, "Symbol lookup failed in bytecode generation");
+		
+		if (symbol->kind == SYMBOL_LOCAL_VAR) {
 			
 			Instr instr = {0};
 			
-			instr.label      = e.ident;
-			instr.label_kind = Label_Kind_PROCEDURE;
-			instr.operation  = BCODE_NULL;
+			int original_reg = push_bcode_register(builder);
+			
+			instr.operation = BCODE_ALLOCA;
+			instr.dest = original_reg;
+			instr.reg_size = symbol->type->size;
 			
 			append_bcode_instr(builder, instr);
 			
-			generate_bytecode_for_statement(builder, initter->body);
+			symbol->bcode_reg = instr.dest;
 			
-#if 0
-			if (instructions[instruction_count-1].operation != BCODE_RETURN) {
-				fprintf(stderr, "Warning: Unreachable code after return statement.\n");
-			}
-#endif
+			// Initialize the variable to 0 by default
+			// TODO: Use STORE for atomic types, call MEMSET for others
 			
-		} else if (decl->initters[i].kind == Initter_Kind_EXPR) {
-			assert(!check_nil_expression(decl->initters[i].expr));
+			memset(&instr, 0, sizeof(instr));
 			
-			Entity_Group g = entity_groups[i];
-			for (int j = g.first; j < g.opl; j += 1) {
-				Entity e = decl->entities[j];
+			instr.operation = BCODE_STORE;
+			instr.dest = original_reg;
+			instr.source = 0;
+			instr.store_mode = Addressing_Mode_CONSTANT;
+			
+			append_bcode_instr(builder, instr);
+			
+			// Evaluate initializer
+			
+			if (entity->initter != NULL) {
+				// TODO: Different initter_value_index handling
 				
-				Symbol *symbol = lookup_symbol(builder->table, e.ident);
-				
-				if (symbol->kind == SYMBOL_LOCAL_VAR) {
+				if (entity->initter->kind == Initter_Kind_EXPR) {
+					assert(!check_nil_expression(entity->initter->expr));
 					
+					Reg_Group g = generate_bytecode_for_expression(builder, entity->initter->expr);
+					
+					memset(&instr, 0, sizeof(instr));
+					
+					instr.operation = BCODE_STORE;
+					instr.dest = original_reg;
+					instr.source = g.regs[0];
+					instr.store_mode = Addressing_Mode_REGISTER;
+					
+					append_bcode_instr(builder, instr);
+					
+					allow_break();
+				} else {
+					// TODO: Local var is not a "value" (but either a proc or a type). What to do?
 				}
 			}
+		} else if (symbol->kind == SYMBOL_GLOBAL_VAR) {
+			allow_break();
+		} else if (symbol->kind == SYMBOL_PROC) {
+			assert(entity->initter_value_index == 0);
+			
+			assert(!check_nil_statement(decl->initters[i].body));
+			assert(decl->initters[i].body->kind == Ast_Statement_Kind_BLOCK);
+			
+			Bcode_Block *new_block = push_bcode_block(builder);
+			new_block->name = entity->ident;
+			
+			Initter *initter = entity->initter;
+			generate_bytecode_for_statement(builder, initter->body);
+			
+			allow_break();
 		} else {
 			allow_break();
 		}
 	}
 #endif
-	
-	scratch_end(scratch);
 	
 	return;
 }

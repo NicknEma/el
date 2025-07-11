@@ -79,14 +79,14 @@ internal void leave_procedure_scope(Typechecker *checker) {
 ////////////////////////////////
 //~ Symbol resolving
 
-internal void declare_symbol(Typechecker *checker, Entity entity, Type *type, Symbol_Kind kind) {
+internal void declare_symbol(Typechecker *checker, Entity *entity, Type *type, Symbol_Kind kind) {
 	Scope *inner = checker->symbol_table.current_scope;
 	
 	bool can_declare = true;
 	for (Symbol *entry = inner->first_symbol; entry != NULL; entry = entry->next) {
-		if (string_equals(entry->ident, entity.ident)) {
+		if (string_equals(entry->ident, entity->ident)) {
 			// Found! You'd be redefining the same symbol, so report an error instead
-			report_type_errorf(checker, "Redefinition of identifier '%.*s'", string_expand(entity.ident));
+			report_type_errorf(checker, "Redefinition of identifier '%.*s'", string_expand(entity->ident));
 			
 			can_declare = false;
 			break;
@@ -97,9 +97,11 @@ internal void declare_symbol(Typechecker *checker, Entity entity, Type *type, Sy
 		Symbol *entry = push_type(checker->arena, Symbol);
 		queue_push(inner->first_symbol, inner->last_symbol, entry);
 		
-		entry->ident = entity.ident;
+		entry->ident = entity->ident;
 		entry->type  = type;
 		entry->kind  = kind;
+		
+		entity->symbol = entry;
 	}
 }
 
@@ -435,7 +437,11 @@ internal void typecheck_decl(Typechecker *checker, Ast_Declaration *decl) {
 							symbol_kind = SYMBOL_GLOBAL_VAR;
 					}
 					
-					declare_symbol(checker, decl->entities[e], types.data[j], symbol_kind);
+					
+					decl->entities[entities_done].initter = &decl->initters[j];
+					decl->entities[entities_done].initter_value_index = 0;
+					
+					declare_symbol(checker, &decl->entities[e], types.data[j], symbol_kind);
 				} else {
 					assert(checker->error_count > 0, "Could not resolve the type of an expression, but no errors were reported");
 					break;  // Even if the assertion didn't fire, all the errors were already reported in typecheck_expr() so we can stop
@@ -447,7 +453,11 @@ internal void typecheck_decl(Typechecker *checker, Ast_Declaration *decl) {
 			assert(!check_nil_statement(decl->initters[i].body));
 			assert(decl->initters[i].body->kind == Ast_Statement_Kind_BLOCK);
 			
-			declare_symbol(checker, decl->entities[entities_done], make_proc_defn_type(checker, decl->initters[i].first_param, decl->initters[i].body), SYMBOL_PROC);
+			
+			decl->entities[entities_done].initter = &decl->initters[i];
+			decl->entities[entities_done].initter_value_index = 0;
+			
+			declare_symbol(checker, &decl->entities[entities_done], make_proc_defn_type(checker, decl->initters[i].first_param, decl->initters[i].body), SYMBOL_PROC);
 			
 			{
 				enter_procedure_scope(checker, decl->entities[entities_done].ident);
@@ -471,6 +481,7 @@ internal void typecheck_decl(Typechecker *checker, Ast_Declaration *decl) {
 	return;
 }
 
+#if 0
 internal Entity_Group *group_entities(Arena *arena, Initter *initters, i64 initter_count) {
 	Entity_Group *groups = push_array(arena, Entity_Group, initter_count);
 	
@@ -493,6 +504,7 @@ internal Entity_Group *group_entities(Arena *arena, Initter *initters, i64 initt
 	
 	return groups;
 }
+#endif
 
 ////////////////////////////////
 //~ Printing

@@ -4,6 +4,9 @@
 #define BCODE_OPERATION_NAMES \
 X(BCODE_NULL) \
 X(BCODE_NOP) \
+X(BCODE_ALLOCA) \
+X(BCODE_STORE) \
+X(BCODE_LOAD) \
 X(BCODE_SET) \
 X(BCODE_NEG) \
 X(BCODE_ADD) \
@@ -62,7 +65,6 @@ struct Instr {
 	Label_Kind label_kind;
 	String jump_dest_label; // For jumps and procedure calls.
 	Bcode_Operation operation;
-	Addressing_Mode mode;
 	int source; // Register
 	int dest;   // Register
 	
@@ -71,6 +73,13 @@ struct Instr {
 	
 	int arg_regs[8]; // Arbitrary number for now
 	int arg_reg_count;
+	
+	int reg_size;
+	
+	union {
+		Addressing_Mode mode;
+		Addressing_Mode store_mode;
+	};
 };
 
 typedef struct Bcode_Block Bcode_Block;
@@ -78,6 +87,8 @@ struct Bcode_Block {
 	Instr *instructions;
 	i64    instruction_count;
 	i64    instruction_capacity;
+	
+	String name;
 	
 	Bcode_Block *next;
 };
@@ -121,6 +132,17 @@ internal void bcode_builder_init(Bcode_Builder *builder, Arena *arena, Symbol_Ta
 	builder->table = table;
 	
 	push_bcode_block(builder);
+}
+
+internal i64 push_bcode_register(Bcode_Builder *builder) {
+	i64 result = builder->registers_used;
+	builder->registers_used += 1;
+	
+	return result;
+}
+
+internal void pop_bcode_register(Bcode_Builder *builder) {
+	builder->registers_used -= 1;
 }
 
 #endif

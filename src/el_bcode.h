@@ -93,12 +93,22 @@ struct Bcode_Block {
 	Bcode_Block *next;
 };
 
+typedef struct Bcode_Var Bcode_Var;
+struct Bcode_Var {
+	i64 address;
+	i64 size;
+};
+
 typedef struct Bcode_Builder Bcode_Builder;
 struct Bcode_Builder {
 	Arena *arena;
 	Symbol_Table *table;
 	Bcode_Block  *first_block;
 	Bcode_Block  *last_block;
+	
+	Bcode_Var *global_vars;
+	i64        global_var_count;
+	i64        global_var_capacity;
 	
 	int registers_used;
 };

@@ -306,7 +306,18 @@ internal void generate_bytecode_for_declaration(Bcode_Builder *builder, Ast_Decl
 				}
 			}
 		} else if (symbol->kind == SYMBOL_GLOBAL_VAR) {
-			allow_break();
+			assert(builder->global_var_count < builder->global_var_capacity, "Not enough space for bcode global var");
+			
+			Bcode_Var *prev = &builder->global_vars[builder->global_var_count - 1];
+			
+			Bcode_Var var = {0};
+			var.address = prev->address + prev->size;
+			var.size = symbol->type->size;
+			
+			symbol->bcode_address = var.address;
+			
+			builder->global_vars[builder->global_var_count] = var;
+			builder->global_var_count += 1;
 		} else if (symbol->kind == SYMBOL_PROC) {
 			assert(entity->initter_value_index == 0);
 			
@@ -327,6 +338,16 @@ internal void generate_bytecode_for_declaration(Bcode_Builder *builder, Ast_Decl
 #endif
 	
 	return;
+}
+
+internal void generate_bcode(Bcode_Builder *builder, Ast_Declaration *prog) {
+	builder->global_var_capacity = builder->table->global_var_count + 1;
+	builder->global_vars = push_array(builder->arena, Bcode_Var, builder->global_var_capacity);
+	builder->global_var_count = 1; // Null variable, to reduce codepaths later
+	
+	for (Ast_Declaration *decl = prog; !check_nil_declaration(decl); decl = decl->next) {
+		generate_bytecode_for_declaration(builder, decl);
+	}
 }
 
 #endif

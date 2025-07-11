@@ -72,6 +72,12 @@ struct Symbol {
 	Symbol *next;
 	
 	Symbol_Kind kind;
+	union {
+		int bcode_address;
+		int bcode_reg;
+		int address;
+		int offset;
+	};
 	
 	String  ident;
 	Type   *type;

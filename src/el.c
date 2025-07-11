@@ -114,9 +114,7 @@ int main(void) {
 		arena_init(&bcode_arena);
 		bcode_builder_init(&builder, &bcode_arena, &symtab);
 		
-		for (Ast_Declaration *decl = program; decl != NULL && decl != &nil_declaration; decl = decl->next) {
-			generate_bytecode_for_declaration(&builder, decl);
-		}
+		generate_bcode(&builder, program);
 		
 		arena_init(&masm_context.arena);
 		String masm_source = masm_generate_source(&builder);

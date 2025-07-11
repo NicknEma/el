@@ -1039,8 +1039,9 @@ internal void report_parse_errorf(Parser *parser, char *format, ...) {
 		
 		scratch_end(scratch);
 		va_end(args);
+	} else {
+		parser->error_count += 1;
 	}
-	parser->error_count += 1;
 }
 
 internal void parser_init(Parser *parser, Arena *arena, String source) {

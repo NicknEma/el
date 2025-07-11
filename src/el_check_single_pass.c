@@ -24,6 +24,8 @@ internal void report_type_errorf(Typechecker *checker, char *format, ...) {
 		
 		scratch_end(scratch);
 		va_end(args);
+	} else {
+		checker->error_count += 1;
 	}
 }
 

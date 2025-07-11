@@ -257,8 +257,9 @@ internal void report_lex_errorf(Lexer *lexer, char *format, ...) {
 		
 		scratch_end(scratch);
 		va_end(args);
+	} else {
+		lexer->error_count += 1;
 	}
-	lexer->error_count += 1;
 }
 
 internal String lexeme_from_token(Lexer *lexer, Token token) {

@@ -172,6 +172,9 @@ internal Ast_Expression *make_atom_expression(Parser *parser, Token token) {
 	Ast_Expression *node = ast_expression_alloc(parser->arena);
 	
 	if (node != NULL) {
+		node->lexeme   = lexeme_from_token(parser->lexer, token);
+		node->location = token.loc;
+		
 		if (token.kind == TOKEN_BOOLEAN) {
 			node->kind         = Ast_Expression_Kind_BOOL_LITERAL;
 			node->bool_value   = token.int_val;
@@ -185,9 +188,6 @@ internal Ast_Expression *make_atom_expression(Parser *parser, Token token) {
 			node->kind         = Ast_Expression_Kind_IDENT;
 			node->ident        = node->lexeme;
 		} else { panic(); }
-		
-		node->lexeme   = lexeme_from_token(parser->lexer, token);
-		node->location = token.loc;
 	}
 	
 	return node;

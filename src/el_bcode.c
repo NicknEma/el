@@ -284,6 +284,19 @@ internal void generate_bytecode_for_declaration(Bcode_Builder *builder, Ast_Decl
 			}
 #endif
 			
+		} else if (decl->initters[i].kind == Initter_Kind_EXPR) {
+			assert(!check_nil_expression(decl->initters[i].expr));
+			
+			Entity_Group g = entity_groups[i];
+			for (int j = g.first; j < g.opl; j += 1) {
+				Entity e = decl->entities[j];
+				
+				Symbol *symbol = lookup_symbol(builder->table, e.ident);
+				
+				if (symbol->kind == SYMBOL_LOCAL_VAR) {
+					
+				}
+			}
 		} else {
 			allow_break();
 		}

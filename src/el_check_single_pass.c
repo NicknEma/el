@@ -14,15 +14,17 @@ internal void report_type_error(Typechecker *checker, char *message) {
 }
 
 internal void report_type_errorf(Typechecker *checker, char *format, ...) {
-	va_list args;
-	va_start(args, format);
-	Scratch scratch = scratch_begin(0, 0);
-	
-	String formatted_message = push_stringf_va_list(scratch.arena, format, args);
-	report_type_error(checker, cstring_from_string(scratch.arena, formatted_message));
-	
-	scratch_end(scratch);
-	va_end(args);
+	if (checker->error_count < max_printed_type_errors) {
+		va_list args;
+		va_start(args, format);
+		Scratch scratch = scratch_begin(0, 0);
+		
+		String formatted_message = push_stringf_va_list(scratch.arena, format, args);
+		report_type_error(checker, cstring_from_string(scratch.arena, formatted_message));
+		
+		scratch_end(scratch);
+		va_end(args);
+	}
 }
 
 ////////////////////////////////

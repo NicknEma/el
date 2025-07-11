@@ -242,8 +242,8 @@ internal Token make_token(Lexer *lexer) {
 
 internal void report_lex_error(Lexer *lexer, char *message) {
 	if (lexer->error_count < max_printed_lex_errors) {
-		String span = lexeme_from_token(lexer, lexer->token);
-		fprintf(stderr, "Syntax error (%i..%i): %s.\n", lexer->token.loc.start, lexer->token.loc.end, message, string_expand(span));
+		// String span = lexeme_from_token(lexer, lexer->token);
+		fprintf(stderr, "Syntax error (%i..%i): %s.\n", lexer->token.loc.start, lexer->token.loc.end, message);
 	}
 	lexer->error_count += 1;
 }

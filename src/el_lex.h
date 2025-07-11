@@ -114,7 +114,7 @@ struct Lexer {
 	int error_count;
 };
 
-global   int   max_printed_lex_errors = I64_MAX;
+global   i64   max_printed_lex_errors = I64_MAX;
 
 internal i64   skip_whitespace_and_comments(String source, i64 index);
 

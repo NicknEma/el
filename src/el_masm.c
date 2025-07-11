@@ -162,7 +162,7 @@ internal String masm_generate_source(Bcode_Builder *builder) {
 				{
 					// Put arguments in the correct place
 					
-					for (int i = 0; i < instr->arg_reg_count; i += 1) {
+					for (int j = 0; j < instr->arg_reg_count; j += 1) { // TODO: j is unused. Why?
 						String source = masm_register_from_bytecode_register(instr->arg_regs[instr->arg_reg_count]);
 						
 						String line = push_stringf(scratch.arena, "mov rdi, %.*s", string_expand(source));

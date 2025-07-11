@@ -1019,8 +1019,8 @@ internal void expect_token_kind(Parser *parser, Token_Kind kind, char *message) 
 
 internal void report_parse_error(Parser *parser, char *message) {
 	if (parser->error_count < max_printed_parse_errors) {
-		String span = lexeme_from_token(parser->lexer, parser->lexer->token);
-		fprintf(stderr, "Syntax error (%i..%i): %s.\n", parser->lexer->token.loc.start, parser->lexer->token.loc.end, message, string_expand(span));
+		// String span = lexeme_from_token(parser->lexer, parser->lexer->token);
+		fprintf(stderr, "Syntax error (%i..%i): %s.\n", parser->lexer->token.loc.start, parser->lexer->token.loc.end, message);
 	}
 	parser->error_count += 1;
 }

@@ -416,19 +416,18 @@ internal void typecheck_decl(Typechecker *checker, Ast_Declaration *decl) {
 			
 			Type_Array types = decl->initters[i].expr->types;
 			
-			// TODO: WHY TF IS THE COMPILER NOT TELLING ME THAT I'M SHADOWING i HERE? THIS IS PROBABILY A BUG, FIX!
-			for (int i = 0, e = entities_done; i < types.count; i += 1, e += 1) {
+			for (int j = 0, e = entities_done; j < types.count; j += 1, e += 1) {
 				if (e >= decl->entity_count) {
 					report_type_error(checker, "Too many initializers on the right side of the declaration");
 					break;
 				}
 				
-				if (types.data[i]->kind != TYPE_UNKNOWN) {  // Initializer expression has a type.
+				if (types.data[j]->kind != TYPE_UNKNOWN) {  // Initializer expression has a type.
 					
 					Symbol_Kind symbol_kind = SYMBOL_NONE;
-					if (types.data[i]->kind == TYPE_TYPE) {
+					if (types.data[j]->kind == TYPE_TYPE) {
 						symbol_kind = SYMBOL_TYPE;
-					} else if (types.data[i]->kind == TYPE_PROC) {
+					} else if (types.data[j]->kind == TYPE_PROC) {
 						symbol_kind = SYMBOL_PROC;
 					} else {
 						symbol_kind = SYMBOL_LOCAL_VAR;
@@ -436,7 +435,7 @@ internal void typecheck_decl(Typechecker *checker, Ast_Declaration *decl) {
 							symbol_kind = SYMBOL_GLOBAL_VAR;
 					}
 					
-					declare_symbol(checker, decl->entities[e], types.data[i], symbol_kind);
+					declare_symbol(checker, decl->entities[e], types.data[j], symbol_kind);
 				} else {
 					assert(checker->error_count > 0, "Could not resolve the type of an expression, but no errors were reported");
 					break;  // Even if the assertion didn't fire, all the errors were already reported in typecheck_expr() so we can stop
@@ -445,7 +444,6 @@ internal void typecheck_decl(Typechecker *checker, Ast_Declaration *decl) {
 			
 			entities_done += types.count;
 		} else if (decl->initters[i].kind == Initter_Kind_PROCEDURE) {
-#if 1
 			assert(!check_nil_statement(decl->initters[i].body));
 			assert(decl->initters[i].body->kind == Ast_Statement_Kind_BLOCK);
 			
@@ -465,9 +463,6 @@ internal void typecheck_decl(Typechecker *checker, Ast_Declaration *decl) {
 			}
 			
 			entities_done += 1;
-#else
-			unimplemented();
-#endif
 		} else {
 			unimplemented();
 		}

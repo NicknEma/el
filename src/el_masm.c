@@ -56,12 +56,25 @@ internal String masm_register_from_bytecode_register(int bytecode_reg) {
 
 internal String masm_generate_source(Bcode_Builder *builder) {
 	
+	Scratch scratch = scratch_begin(0, 0);
+	
 	masm_append_line(string_from_lit("; Generated"));
 	masm_append_line(string_from_lit("includelib msvcrt.lib"));
 	masm_append_line(string_from_lit(".data"));
-	masm_append_line(string_from_lit(".code\n")); // Not .text, aparently
 	
-	Scratch scratch = scratch_begin(0, 0);
+	masm_context.indent_level += 1;
+	
+	for (i64 i = 1; i < builder->global_var_count; i += 1) {
+		Bcode_Var var = builder->global_vars[i];
+		
+		String line = push_stringf(scratch.arena, "%.*s qword 0h", string_expand(var.ident));
+		masm_append_line(line);
+	}
+	
+	masm_context.indent_level -= 1;
+	
+	masm_append_line(string_from_lit("\n"));
+	masm_append_line(string_from_lit(".code\n")); // Not .text, aparently
 	
 	for (Bcode_Block *bcode_block = builder->first_block; bcode_block != NULL; bcode_block = bcode_block->next)
 		for (int i = 0; i < bcode_block->instruction_count; i += 1) {

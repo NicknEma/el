@@ -110,6 +110,7 @@ struct Bcode_Block {
 
 typedef struct Bcode_Var Bcode_Var;
 struct Bcode_Var {
+	String ident;
 	i64 address;
 	i64 size;
 };

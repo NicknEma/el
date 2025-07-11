@@ -310,6 +310,7 @@ internal void generate_bytecode_for_declaration(Bcode_Builder *builder, Ast_Decl
 			Bcode_Var var = {0};
 			var.address = prev->address + prev->size;
 			var.size = symbol->type->size;
+			var.ident = symbol->ident;
 			
 			symbol->bcode_address = var.address;
 			

@@ -76,7 +76,7 @@ internal void print_type(Type *type) {
 			print_type(type->params[i]);
 			if (i < type->param_count  - 1)  printf(", ");
 		}
-		printf(") -> ");
+		printf(")%s", type->retval_count > 0 ? " ->" : "");
 		for (int i = 0; i < type->retval_count; i += 1) {
 			print_type(type->retvals[i]);
 			if (i < type->retval_count - 1)  printf(", ");

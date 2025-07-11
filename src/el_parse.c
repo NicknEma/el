@@ -514,6 +514,8 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 			// Do *NOT* report an error if lhs_count != count: it's not the number of expressions
 			// that matters, but the number of values. One expression could yield multiple values,
 			// e.g. a function call with multiple returns.
+			(void) lhs_count;
+			(void) lhs_last;
 			
 			if (lhs_first != NULL && first != NULL) {
 				result = make_statement(parser, kind, assigner.loc, .assigner = assigner.kind,
@@ -843,6 +845,7 @@ internal Type_Ann parse_type_annotation(Parser *parser) {
 	Type_Ann result = {0};
 	
 	Token token = peek_token(parser->lexer);
+	(void) token;
 	
 	// case ident    ->
 	// case "proc"   ->

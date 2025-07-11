@@ -140,7 +140,6 @@ internal Token make_token(Lexer *lexer) {
 		if (token.kind == TOKEN_INVALID && source.data[index] == '"') {
 			token.kind = TOKEN_STRING;
 			
-			i64 start = index;
 			index += 1;
 			while (index < source.len && !(source.data[index] == '"' && source.data[index-1] != '\\')) {
 				index += 1;
@@ -211,7 +210,6 @@ internal Token make_token(Lexer *lexer) {
 		if (token.kind == TOKEN_INVALID && (isalpha(source.data[index]) || source.data[index] == '_')) {
 			token.kind = TOKEN_IDENT;
 			
-			i64 start = index;
 			while (isalpha(source.data[index]) || isdigit(source.data[index]) || source.data[index] == '_') {
 				index += 1;
 			}

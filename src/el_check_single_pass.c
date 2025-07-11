@@ -433,8 +433,10 @@ internal void typecheck_decl(Typechecker *checker, Ast_Declaration *decl) {
 						symbol_kind = SYMBOL_PROC;
 					} else {
 						symbol_kind = SYMBOL_LOCAL_VAR;
-						if (checker->symbol_table.current_scope == checker->symbol_table.global_scope)
+						if (checker->symbol_table.current_scope == checker->symbol_table.global_scope) {
 							symbol_kind = SYMBOL_GLOBAL_VAR;
+							checker->symbol_table.global_var_count += 1;
+						}
 					}
 					
 					
@@ -458,6 +460,7 @@ internal void typecheck_decl(Typechecker *checker, Ast_Declaration *decl) {
 			decl->entities[entities_done].initter_value_index = 0;
 			
 			declare_symbol(checker, &decl->entities[entities_done], make_proc_defn_type(checker, decl->initters[i].first_param, decl->initters[i].body), SYMBOL_PROC);
+			checker->symbol_table.proc_count += 1;
 			
 			{
 				enter_procedure_scope(checker, decl->entities[entities_done].ident);
@@ -559,6 +562,7 @@ internal Symbol_Table do_all_checks(Ast_Declaration *prog) {
 		typecheck_decl(checker, decl);
 	}
 	
+	printf("Global var count: %d\nProc count: %d\n", checker->symbol_table.global_var_count, checker->symbol_table.proc_count);
 	print_scope(checker->symbol_table.global_scope);
 	
 	return checker->symbol_table;

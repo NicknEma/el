@@ -31,6 +31,9 @@ struct Symbol_Table {
 	
 	// Temporary stack for nested procedures
 	Scope *check_top;
+	
+	int global_var_count;
+	int proc_count;
 };
 
 struct Typechecker {

@@ -563,6 +563,7 @@ internal void do_all_checks(Typechecker *checker, Ast_Declaration *prog) {
 	
 	printf("Global var count: %d\nProc count: %d\n", checker->symbol_table.global_var_count, checker->symbol_table.proc_count);
 	print_scope(checker->symbol_table.global_scope);
+	printf("\n");
 }
 
 #endif

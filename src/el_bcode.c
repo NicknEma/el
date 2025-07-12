@@ -567,6 +567,7 @@ internal void generate_bcode(Bcode_Builder *builder, Ast_Declaration *prog) {
 			}
 		}
 	}
+	printf("\n");
 	
 	return;
 }

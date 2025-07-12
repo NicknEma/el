@@ -321,23 +321,6 @@ internal Reg_Group generate_bytecode_for_expression(Bcode_Builder *builder, Ast_
 				// after the call instruction, pop all registers that were pushed before
 				dests.regs[0] = 0;
 				dests.reg_count = 1;
-			} else if (0 /*&& binary == Binary_Operator_COMMA*/) {
-				Reg_Group left_dests  = generate_bytecode_for_expression(builder, expr->left);
-				Reg_Group right_dests = generate_bytecode_for_expression(builder, expr->right);
-				assert(left_dests.reg_count >= 1); // Same as above
-				assert(right_dests.reg_count >= 1);
-				
-				// No new instructions generated; a COMMA operator simply evaluates both lhs and rhs.
-				
-				assert(left_dests.reg_count + right_dests.reg_count <= array_count(dests.regs));
-				for (int si = 0; si < left_dests.reg_count; si += 1) {
-					dests.regs[dests.reg_count] = left_dests.regs[si];
-					dests.reg_count += 1;
-				}
-				for (int si = 0; si < right_dests.reg_count; si += 1) {
-					dests.regs[dests.reg_count] = right_dests.regs[si];
-					dests.reg_count += 1;
-				}
 			} else {
 				Reg_Group left_dests  = generate_bytecode_for_expression(builder, expr->left);
 				Reg_Group right_dests = generate_bytecode_for_expression(builder, expr->right);

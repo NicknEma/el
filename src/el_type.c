@@ -34,7 +34,7 @@ internal Type *type_from_id(Type_Id id) {
 
 internal Type *type_from_name(String name) {
 	Type *result = NULL;
-	for (i64 type_index = 0; type_index < the_type_table.type_count; type_index) {
+	for (i64 type_index = 0; type_index < the_type_table.type_count; type_index += 1) {
 		if (string_equals(name, the_type_table.types[type_index].name)) {
 			result = &the_type_table.types[type_index];
 			break;

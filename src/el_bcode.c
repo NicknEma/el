@@ -322,8 +322,18 @@ internal void generate_bytecode_for_declaration(Bcode_Builder *builder, Ast_Decl
 			assert(!check_nil_statement(decl->initters[i].body));
 			assert(decl->initters[i].body->kind == Ast_Statement_Kind_BLOCK);
 			
+			assert(builder->proc_count < builder->proc_capacity, "Not enough space for bcode proc");
+			
+			Bcode_Proc proc = {0};
+			proc.name = entity->ident;
+			
+			builder->procs[builder->proc_count] = proc;
+			builder->proc_count += 1;
+			
+			// This appends to the last proc in the buffer. Do this AFTER putting the proc in the buffer
+			// and incrementing proc_count.
 			Bcode_Block *new_block = push_bcode_block(builder);
-			new_block->name = entity->ident;
+			(void) new_block;
 			
 			Initter *initter = entity->initter;
 			generate_bytecode_for_statement(builder, initter->body);
@@ -339,10 +349,6 @@ internal void generate_bytecode_for_declaration(Bcode_Builder *builder, Ast_Decl
 }
 
 internal void generate_bcode(Bcode_Builder *builder, Ast_Declaration *prog) {
-	builder->global_var_capacity = builder->table->global_var_count + 1;
-	builder->global_vars = push_array(builder->arena, Bcode_Var, builder->global_var_capacity);
-	builder->global_var_count = 1; // Null variable, to reduce codepaths later
-	
 	for (Ast_Declaration *decl = prog; !check_nil_declaration(decl); decl = decl->next) {
 		generate_bytecode_for_declaration(builder, decl);
 	}

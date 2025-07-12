@@ -103,9 +103,15 @@ struct Bcode_Block {
 	i64    instruction_count;
 	i64    instruction_capacity;
 	
-	String name;
-	
 	Bcode_Block *next;
+};
+
+typedef struct Bcode_Proc Bcode_Proc;
+struct Bcode_Proc {
+	Bcode_Block  *first_block;
+	Bcode_Block  *last_block;
+	
+	String name;
 };
 
 typedef struct Bcode_Var Bcode_Var;
@@ -119,19 +125,23 @@ typedef struct Bcode_Builder Bcode_Builder;
 struct Bcode_Builder {
 	Arena *arena;
 	Symbol_Table *table;
-	Bcode_Block  *first_block;
-	Bcode_Block  *last_block;
 	
-	Bcode_Var *global_vars;
-	i64        global_var_count;
-	i64        global_var_capacity;
+	Bcode_Proc *procs;
+	i64         proc_count;
+	i64         proc_capacity;
+	
+	Bcode_Var  *global_vars;
+	i64         global_var_count;
+	i64         global_var_capacity;
 	
 	int registers_used;
 };
 
 internal Bcode_Block *push_bcode_block(Bcode_Builder *builder) {
+	Bcode_Proc *last_proc = &builder->procs[builder->proc_count - 1];
+	
 	Bcode_Block *new_block = push_type(builder->arena, Bcode_Block);
-	queue_push(builder->first_block, builder->last_block, new_block);
+	queue_push(last_proc->first_block, last_proc->last_block, new_block);
 	
 	new_block->instruction_capacity = 256;
 	new_block->instructions = push_array(builder->arena, Instr, new_block->instruction_capacity);
@@ -140,7 +150,9 @@ internal Bcode_Block *push_bcode_block(Bcode_Builder *builder) {
 }
 
 internal void append_bcode_instr(Bcode_Builder *builder, Instr instr) {
-	Bcode_Block *block = builder->last_block;
+	Bcode_Proc *last_proc = &builder->procs[builder->proc_count - 1];
+	
+	Bcode_Block *block = last_proc->last_block;
 	assert(block != NULL, "Bytecode builder not initialized");
 	
 	if (block->instruction_count >= block->instruction_capacity) {
@@ -157,7 +169,15 @@ internal void bcode_builder_init(Bcode_Builder *builder, Arena *arena, Symbol_Ta
 	builder->arena = arena;
 	builder->table = table;
 	
-	push_bcode_block(builder);
+	builder->global_var_count    = 1; // Null variable, to reduce codepaths later
+	builder->global_var_capacity = builder->table->global_var_count + 1;
+	builder->global_vars = push_array(builder->arena, Bcode_Var, builder->global_var_capacity);
+	
+	builder->proc_count    = 1; // Null procedure, to reduce codepaths later
+	builder->proc_capacity = builder->table->proc_count + 1;
+	builder->procs = push_array(builder->arena, Bcode_Proc, builder->proc_capacity);
+	
+	return;
 }
 
 internal i64 push_bcode_register(Bcode_Builder *builder) {

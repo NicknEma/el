@@ -76,7 +76,8 @@ internal String masm_generate_source(Bcode_Builder *builder) {
 	masm_append_line(string_from_lit("\n"));
 	masm_append_line(string_from_lit(".code\n")); // Not .text, aparently
 	
-	for (Bcode_Block *bcode_block = builder->first_block; bcode_block != NULL; bcode_block = bcode_block->next)
+	for (i64 proc_index = 0; proc_index < builder->proc_count; proc_index += 1)
+		for (Bcode_Block *bcode_block = builder->procs[proc_index].first_block; bcode_block != NULL; bcode_block = bcode_block->next)
 		for (int i = 0; i < bcode_block->instruction_count; i += 1) {
 		arena_reset(scratch.arena);
 		

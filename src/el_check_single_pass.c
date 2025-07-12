@@ -444,8 +444,8 @@ internal void typecheck_decl(Typechecker *checker, Ast_Declaration *decl) {
 					}
 					
 					
-					decl->entities[entities_done].initter = &decl->initters[j];
-					decl->entities[entities_done].initter_value_index = 0;
+					decl->entities[entities_done].initter = &decl->initters[i];
+					decl->entities[entities_done].initter_value_index = j;
 					
 					declare_symbol(checker, &decl->entities[e], types.data[j], symbol_kind);
 				} else {

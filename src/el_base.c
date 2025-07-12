@@ -316,6 +316,57 @@ internal void scratch_end(Scratch scratch) {
 }
 
 ////////////////////////////////
+//~ Heap
+
+//- Generic heap interface
+
+internal void *heap_alloc(Heap heap, u64 size) {
+	return heap.proc(0, 0, size, Heap_Mode_ALLOC);
+}
+
+internal void heap_free(Heap heap, void *ptr, u64 size) {
+	heap.proc(ptr, size, 0, Heap_Mode_FREE);
+}
+
+internal void heap_free_all(Heap heap) {
+	heap.proc(0, 0, 0, Heap_Mode_FREE_ALL);
+}
+
+internal Heap_Features heap_query_features(Heap heap) {
+	return cast(Heap_Features) cast(u64) heap.proc(0, 0, 0, Heap_Mode_QUERY_FEATURES);
+}
+
+//- Default C heap
+
+void *libc_heap_proc(void *old_ptr, u64 old_size, u64 size, Heap_Mode mode) {
+	void *result = 0;
+	
+	switch (mode) {
+		case Heap_Mode_ALLOC: {
+			result = calloc(1, size);
+			mem_failure_handler(result, size);
+		} break;
+		
+		case Heap_Mode_FREE: {
+			free(old_ptr);
+			(void) old_size;
+		} break;
+		
+		case Heap_Mode_FREE_ALL: {
+			allow_break();
+		} break;
+		
+		case Heap_Mode_QUERY_FEATURES: {
+			result = 0;
+		} break;
+		
+		default: panic();
+	}
+	
+	return result;
+}
+
+////////////////////////////////
 //~ Strings and slices
 
 //- Slice functions

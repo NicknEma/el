@@ -332,6 +332,43 @@ internal Scratch scratch_begin(Arena **conflicts, i64 conflict_count);
 internal void    scratch_end(Scratch scratch);
 
 ////////////////////////////////
+//~ Heap
+
+//- Generic heap interface
+
+typedef enum Heap_Mode {
+	Heap_Mode_ALLOC,
+	Heap_Mode_FREE,
+	Heap_Mode_FREE_ALL,
+	Heap_Mode_QUERY_FEATURES,
+} Heap_Mode;
+
+typedef enum Heap_Features {
+	Heap_Feature_FREE_ALL = (1<<0),
+} Heap_Features;
+
+typedef void *(*Heap_Proc)(void *old_ptr, u64 old_size, u64 size, Heap_Mode mode);
+
+typedef struct Heap Heap;
+struct Heap {
+	Heap_Proc proc;
+	void *data;
+};
+
+internal void *heap_alloc(Heap heap, u64 size);
+internal void  heap_free(Heap heap, void *ptr, u64 size);
+internal void  heap_free_all(Heap heap);
+internal Heap_Features heap_query_features(Heap heap);
+
+//- Default C heap
+
+internal void *libc_heap_proc(void *old_ptr, u64 old_size, u64 size, Heap_Mode mode);
+
+global Heap libc_heap = {
+	.proc = libc_heap_proc,
+};
+
+////////////////////////////////
 //~ Strings and slices
 
 //- Types

@@ -667,6 +667,7 @@ internal Ast_Declaration *parse_declaration_after_lhs(Parser *parser, String *id
 			consume_token(parser->lexer); // type ident
 			
 			flags |= Ast_Declaration_Flag_TYPE_ANNOTATION;
+			type_annotation.kind  = Type_Ann_Kind_IDENT;
 			type_annotation.ident = lexeme_from_token(parser->lexer, next_token);
 		} else {
 			report_parse_error(parser, "Expected type annotation after :");

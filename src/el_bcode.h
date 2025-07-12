@@ -32,6 +32,13 @@ global read_only String bcode_operation_names[] = {
 #undef  X
 };
 
+internal String bcode_operation_name(Bcode_Operation op) {
+	if (op < BCODE_COUNT) return bcode_operation_names[op];
+	
+	panic("Bcode operation out of range");
+	return string_from_lit("UNKNOWN");
+}
+
 typedef enum Addressing_Mode {
 	Addressing_Mode_CONSTANT,
 	Addressing_Mode_REGISTER,
@@ -62,11 +69,11 @@ struct Reg_Group {
 typedef struct Instr Instr;
 struct Instr {
 	String label;
-	Label_Kind label_kind;
+	
 	String jump_dest_label; // For jumps and procedure calls.
 	Bcode_Operation operation;
 	
-	int source; // Register
+	union { int source; int source_register; i64 source_imm; };
 	union { int dest; int dest_register; }; // Union is temporary
 	
 	// int ret_regs[8]; // Arbitrary number for now
@@ -85,6 +92,31 @@ struct Instr {
 
 typedef Instr Bcode_Instr; // Temporary
 
+// Assigns an immediate (constant) to a register
+internal Bcode_Instr make_bcode_mov_imm2reg(int dest_register, i64 imm) {
+	Bcode_Instr result = {0};
+	
+	result.operation     = BCODE_SET;
+	result.mode          = Addressing_Mode_CONSTANT;
+	result.dest_register = dest_register;
+	result.source_imm    = imm;
+	
+	return result;
+}
+
+// Loads a local variable into a register.
+// 'source_register' is the register that stores the *pointer* to the variable's address/offset
+internal Bcode_Instr make_bcode_load_local(int dest_register, int source_register) {
+	Bcode_Instr result = {0};
+	
+	result.operation       = BCODE_LOAD;
+	// result.mode            = Addressing_Mode_;
+	result.dest_register   = dest_register;
+	result.source_register = source_register;
+	
+	return result;
+}
+
 // Moves the stack pointer by 'size' bytes and stores a pointer to the original address into 'dest_register'.
 internal Bcode_Instr make_bcode_alloca(int dest_register, int size) {
 	Bcode_Instr result = {0};
@@ -96,6 +128,71 @@ internal Bcode_Instr make_bcode_alloca(int dest_register, int size) {
 	return result;
 }
 
+internal void print_bcode_instr(Bcode_Instr instr) {
+	printf("[%.*s", string_expand(bcode_operation_name(instr.operation)));
+	if (instr.operation != BCODE_NULL && instr.operation != BCODE_NOP)
+		printf(", ");
+	
+	switch (instr.operation) {
+		case BCODE_ALLOCA: {
+			printf("r%d, size %d", instr.dest_register, instr.alloca_size);
+		} break;
+		
+		case BCODE_STORE: {
+			printf("[r%d] = r%d", instr.dest_register, instr.source_register);
+		} break;
+		
+		case BCODE_LOAD: {
+			printf("r%d = [r%d]", instr.dest_register, instr.source_register);
+		} break;
+		
+		case BCODE_SET: {
+			if (instr.mode == Addressing_Mode_CONSTANT) {
+#if COMPILER_MSVC
+				printf("r%d = %lld", instr.dest_register, instr.source_imm);
+#else
+				printf("r%d = %ld", instr.dest_register, instr.source_imm);
+#endif
+			} else {
+				printf("r%d = r%d", instr.dest_register, instr.source_register);
+			}
+		} break;
+		
+		case BCODE_NEG: {
+			printf("r%d = -r%d", instr.dest_register, instr.source_register);
+		} break;
+		
+		case BCODE_ADD:
+		case BCODE_SUB:
+		case BCODE_MUL:
+		case BCODE_DIV: {
+			char c = '?';
+			switch (instr.operation) {
+				case BCODE_ADD: c = '+';
+				case BCODE_SUB: c = '-';
+				case BCODE_MUL: c = '*';
+				case BCODE_DIV: c = '/';
+			}
+			
+			printf("r%d %c= r%d", instr.dest_register, c, instr.source_register);
+		} break;
+		
+		case BCODE_SWAP: {
+			printf("r%d <-> r%d", instr.dest_register, instr.source_register);
+		} break;
+		
+		case BCODE_RETURN: {
+			printf("r%d", instr.source_register);
+		} break;
+		
+		case BCODE_CALL: {
+			printf("?");
+		} break;
+		
+		default: break;
+	}
+	printf("]");
+}
 
 typedef struct Bcode_Block Bcode_Block;
 struct Bcode_Block {

@@ -114,6 +114,7 @@ struct Bcode_Proc {
 	String name;
 };
 
+// TODO: Store the (evaluated?) initializer here
 typedef struct Bcode_Var Bcode_Var;
 struct Bcode_Var {
 	String ident;

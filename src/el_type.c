@@ -45,10 +45,27 @@ internal Type_Array push_type_array(Arena *arena, i64 count) {
 		.count = count,
 	};
 	
-	for (i64 i = 0; i < count; i += 1)
-		a.data[i] = push_type(arena, Type);
-	
 	return a;
+}
+
+////////////////////////////////
+//~ Type table
+
+internal Type *lookup_type(Type_Table *table, String name) {
+	Type *result = NULL;
+	for (Type_Table_Node *node = table->first; node; node = node->next) {
+		if (string_equals(name, node->type->name)) {
+			result = node->type;
+			break;
+		}
+	}
+	return result;
+}
+
+internal void define_type(Arena *arena, Type_Table *table, Type *type) {
+	Type_Table_Node *node = push_type(arena, Type_Table_Node);
+	node->type = type;
+	queue_push(table->first, table->last, node);
 }
 
 ////////////////////////////////

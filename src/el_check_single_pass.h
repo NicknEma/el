@@ -41,6 +41,7 @@ struct Typechecker {
 	Arena *name_arena;
 	
 	Symbol_Table symbol_table;
+	Type_Table type_table;
 	
 	Ast_Declaration *first_decl;
 	int error_count;

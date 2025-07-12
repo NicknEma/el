@@ -129,16 +129,18 @@ internal Symbol *lookup_symbol(Symbol_Table *table, String ident) {
 ////////////////////////////////
 //~ Typechecking
 
-internal void typecheck_expr(Typechecker *checker, Ast_Expression *expr) {
+internal void infer_expr_type(Typechecker *checker, Ast_Expression *expr) {
 	assert(!check_nil_expression(expr));
 	
 	switch (expr->kind) {
 		case Ast_Expression_Kind_INT_LITERAL: {
 			expr->flags |= Ast_Expression_Flag_CONSTANT;
 			
-			expr->types = push_type_array(checker->arena, 1); // TODO: Avoid duplication
-			expr->types.data[0]->kind = TYPE_INTEGER;
-			expr->types.data[0]->size = 8;
+			Type *type = lookup_type(&checker->type_table, string_from_lit("untyped-int"));
+			assert(type);
+			
+			expr->types = push_type_array(checker->arena, 1);
+			expr->types.data[0] = type;
 		} break;
 		
 		case Ast_Expression_Kind_STRING_LITERAL: {
@@ -170,7 +172,7 @@ internal void typecheck_expr(Typechecker *checker, Ast_Expression *expr) {
 		
 		case Ast_Expression_Kind_UNARY: {
 			assert(!check_nil_expression(expr->subexpr));
-			typecheck_expr(checker, expr->subexpr);
+			infer_expr_type(checker, expr->subexpr);
 			
 			switch (expr->unary) {
 				case Unary_Operator_PLUS:
@@ -236,8 +238,8 @@ internal void typecheck_expr(Typechecker *checker, Ast_Expression *expr) {
 		
 		case Ast_Expression_Kind_BINARY: {
 			assert(!check_nil_expression(expr->left) && !check_nil_expression(expr->right));
-			typecheck_expr(checker, expr->left);
-			typecheck_expr(checker, expr->right);
+			infer_expr_type(checker, expr->left);
+			infer_expr_type(checker, expr->right);
 			
 			switch (expr->binary) {
 				case Binary_Operator_PLUS:
@@ -379,10 +381,10 @@ internal void typecheck_stat(Typechecker *checker, Ast_Statement *stat) {
 	assert(!check_nil_statement(stat));
 	
 	if (stat->kind == Ast_Statement_Kind_EXPR) {
-		typecheck_expr(checker, stat->expr);
+		infer_expr_type(checker, stat->expr);
 	} else if (stat->kind == Ast_Statement_Kind_RETURN) {
 		if (!check_nil_expression(stat->expr))
-			typecheck_expr(checker, stat->expr);
+			infer_expr_type(checker, stat->expr);
 	} else if (stat->kind == Ast_Statement_Kind_BLOCK) {
 		enter_nested_scope(checker);
 		
@@ -394,13 +396,13 @@ internal void typecheck_stat(Typechecker *checker, Ast_Statement *stat) {
 	} else if (stat->kind == Ast_Statement_Kind_ASSIGNMENT) {
 		
 		for (Ast_Expression *lhs = stat->lhs; !check_nil_expression(lhs); lhs = lhs->next) {
-			typecheck_expr(checker, lhs);
+			infer_expr_type(checker, lhs);
 			
 			// TODO: Check that it will evaluate to a memory location
 		}
 		
 		for (Ast_Expression *rhs = stat->rhs; !check_nil_expression(rhs); rhs = rhs->next) {
-			typecheck_expr(checker, rhs);
+			infer_expr_type(checker, rhs);
 			
 			// TODO: Check the type against the lhss types, and their count
 		}
@@ -419,7 +421,7 @@ internal void typecheck_decl(Typechecker *checker, Ast_Declaration *decl) {
 	for (int i = 0; i < decl->initter_count; i += 1) {
 		if (decl->initters[i].kind == Initter_Kind_EXPR) {
 			assert(!check_nil_expression(decl->initters[i].expr));
-			typecheck_expr(checker, decl->initters[i].expr);
+			infer_expr_type(checker, decl->initters[i].expr);
 			
 			Type_Array types = decl->initters[i].expr->types;
 			
@@ -451,7 +453,7 @@ internal void typecheck_decl(Typechecker *checker, Ast_Declaration *decl) {
 					declare_symbol(checker, &decl->entities[e], types.data[j], symbol_kind);
 				} else {
 					assert(checker->error_count > 0, "Could not resolve the type of an expression, but no errors were reported");
-					break;  // Even if the assertion didn't fire, all the errors were already reported in typecheck_expr() so we can stop
+					break;  // Even if the assertion didn't fire, all the errors were already reported in infer_expr_type() so we can stop
 				}
 			}
 			
@@ -551,6 +553,15 @@ internal void typechecker_init(Typechecker *checker, Arena *arena, Arena *name_a
 	// Init global scope
 	checker->symbol_table.global_scope = push_type(checker->arena, Scope);
 	checker->symbol_table.current_scope = checker->symbol_table.global_scope;
+	
+	{
+		Type *untyped_int = push_type(checker->arena, Type);
+		untyped_int->kind = TYPE_INTEGER;
+		untyped_int->name = string_from_lit("untyped-int");
+		untyped_int->signedness = SIGNEDNESS_NONE;
+		untyped_int->size = -1;
+		define_type(checker->arena, &checker->type_table, untyped_int);
+	}
 }
 
 internal void do_all_checks(Typechecker *checker, Ast_Declaration *prog) {

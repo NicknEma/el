@@ -41,6 +41,19 @@ typedef struct Initter Initter;
 
 typedef struct Scope Scope;
 
+// TODO: In the type-checking phase, decls must either have an explicit type or an initializer, or something...
+typedef enum Type_Ann_Kind {
+	Type_Ann_Kind_NONE = 0,
+	Type_Ann_Kind_IDENT,
+	Type_Ann_Kind_COUNT,
+} Type_Ann_Kind;
+
+typedef struct Type_Ann Type_Ann;
+struct Type_Ann {
+	Type_Ann_Kind kind;
+	String ident;
+};
+
 //- Expressions
 
 typedef enum Ast_Expression_Kind {
@@ -48,6 +61,7 @@ typedef enum Ast_Expression_Kind {
 	Ast_Expression_Kind_BOOL_LITERAL,
 	Ast_Expression_Kind_INT_LITERAL,
 	Ast_Expression_Kind_STRING_LITERAL,
+	Ast_Expression_Kind_COMPOUND_LITERAL,
 	Ast_Expression_Kind_IDENT,
 	Ast_Expression_Kind_UNARY,
 	Ast_Expression_Kind_BINARY,
@@ -74,6 +88,7 @@ struct Ast_Expression {
 	String lexeme; // If we have the location, do we need this? @Cleanup
 	
 	union {
+		struct { Type_Ann type_annotation; Ast_Expression *exprs; i64 expr_count; }; // Compound literals
 		struct { String ident; Symbol *symbol; };
 		String string_value;
 		i64    i64_value;
@@ -115,19 +130,6 @@ struct Ast_Statement {
 };
 
 //- Declarations
-
-// TODO: In the type-checking phase, decls must either have an explicit type or an initializer, or something...
-typedef enum Type_Ann_Kind {
-	Type_Ann_Kind_NONE = 0,
-	Type_Ann_Kind_IDENT,
-	Type_Ann_Kind_COUNT,
-} Type_Ann_Kind;
-
-typedef struct Type_Ann Type_Ann;
-struct Type_Ann {
-	Type_Ann_Kind kind;
-	String ident;
-};
 
 
 typedef enum Entity_Kind {

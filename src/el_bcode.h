@@ -53,10 +53,12 @@ typedef enum Label_Kind {
 // (or index of the instruction in the array). There was a paper somewhere on the internet about building
 // an assembler which explained the algorithm to do just that.
 
-typedef struct Reg_Group Reg_Group; // Temporary
-struct Reg_Group {
-	int regs[8];
-	int reg_count;
+// NOTE: The only expressions that can evaluate to multiple values are function calls, so as long as
+// the code for the return statement of the callee puts values in consecutive registers,
+// we can expect the expression dests to be in consecutive registers.
+typedef struct Bcode_Reg_Span Bcode_Reg_Span;
+struct Bcode_Reg_Span {
+	int first, count;
 };
 
 typedef struct Instr Instr;
@@ -71,9 +73,11 @@ struct Instr {
 	
 	// int ret_regs[8]; // Arbitrary number for now
 	int ret_reg_count;
+	Bcode_Reg_Span ret_registers;
 	
 	int arg_regs[8]; // Arbitrary number for now
 	int arg_reg_count;
+	Bcode_Reg_Span arg_registers;
 	
 	int alloca_size;
 	

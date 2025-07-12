@@ -416,12 +416,16 @@ internal void typecheck_decl(Typechecker *checker, Ast_Declaration *decl) {
 	assert(!check_nil_declaration(decl));
 	
 	Type *annotated_type = NULL;
+	Type_Id annotated_id = 0;
 	
+	// If the type annotation is an identifier, it needs to be a type
 	if (decl->type_annotation.kind == Type_Ann_Kind_IDENT) {
-		Type *type = type_from_name(decl->type_annotation.ident);
+		Type_Id id = type_id_from_name(decl->type_annotation.ident);
+		Type *type = type_from_id(id);
 		
 		if (type) {
 			annotated_type = type;
+			annotated_id   = id;
 		} else {
 			Symbol *symbol = lookup_symbol(&checker->symbol_table, decl->type_annotation.ident);
 			
@@ -433,80 +437,109 @@ internal void typecheck_decl(Typechecker *checker, Ast_Declaration *decl) {
 		}
 	}
 	
-	int entities_done = 0;
-	for (int initter_index = 0; initter_index < decl->initter_count; initter_index += 1) {
-		if (decl->initters[initter_index].kind == Initter_Kind_EXPR) {
-			assert(!check_nil_expression(decl->initters[initter_index].expr));
-			infer_expr_type(checker, decl->initters[initter_index].expr);
-			
-			Type_Array types = decl->initters[initter_index].expr->types;
-			
-			for (int type_index = 0, entity_index = entities_done; type_index < types.count; type_index += 1, entity_index += 1) {
-				if (entity_index >= decl->entity_count) {
-					report_type_error(checker, "Too many initializers on the right side of the declaration");
-					break;
-				}
+	if (decl->initter_count > 0) {
+		
+		int entities_done = 0;
+		for (int initter_index = 0; initter_index < decl->initter_count; initter_index += 1) {
+			if (decl->initters[initter_index].kind == Initter_Kind_EXPR) {
+				assert(!check_nil_expression(decl->initters[initter_index].expr));
+				infer_expr_type(checker, decl->initters[initter_index].expr);
 				
-				Type *type = type_from_id(types.data[type_index]);
+				Type_Array types = decl->initters[initter_index].expr->types;
 				
-				if (type->kind != TYPE_UNKNOWN) {  // Initializer expression has a type.
-					
-					Symbol_Kind symbol_kind = SYMBOL_NONE;
-					if (type->kind == TYPE_TYPE) {
-						symbol_kind = SYMBOL_TYPE;
-					} else if (type->kind == TYPE_PROC) {
-						symbol_kind = SYMBOL_PROC;
-					} else {
-						symbol_kind = SYMBOL_LOCAL_VAR;
-						if (checker->symbol_table.current_scope == checker->symbol_table.global_scope) {
-							symbol_kind = SYMBOL_GLOBAL_VAR;
-							checker->symbol_table.global_var_count += 1;
-						}
+				for (int type_index = 0, entity_index = entities_done; type_index < types.count; type_index += 1, entity_index += 1) {
+					if (entity_index >= decl->entity_count) {
+						report_type_error(checker, "Too many initializers on the right side of the declaration");
+						break;
 					}
 					
+					Type *type = type_from_id(types.data[type_index]);
 					
-					decl->entities[entities_done].initter = &decl->initters[initter_index];
-					decl->entities[entities_done].initter_value_index = type_index;
-					
-					declare_symbol(checker, &decl->entities[entity_index], types.data[type_index], symbol_kind);
-				} else {
-					assert(checker->error_count > 0, "Could not resolve the type of an expression, but no errors were reported");
-					break;  // Even if the assertion didn't fire, all the errors were already reported in infer_expr_type() so we can stop
-				}
-			}
-			
-			entities_done += types.count;
-		} else if (decl->initters[initter_index].kind == Initter_Kind_PROCEDURE) {
-			assert(!check_nil_statement(decl->initters[initter_index].body));
-			assert(decl->initters[initter_index].body->kind == Ast_Statement_Kind_BLOCK);
-			
-			
-			decl->entities[entities_done].initter = &decl->initters[initter_index];
-			decl->entities[entities_done].initter_value_index = 0;
-			
-			Type proc_defn_type = make_proc_defn_type(checker, decl->initters[initter_index].first_param, decl->initters[initter_index].body);
-			Type_Id id = define_type(proc_defn_type);
-			
-			declare_symbol(checker, &decl->entities[entities_done], id, SYMBOL_PROC);
-			checker->symbol_table.proc_count += 1;
-			
-			{
-				enter_procedure_scope(checker, decl->entities[entities_done].ident);
-				
-				// TODO: Check params
-				
-				Ast_Statement *body = decl->initters[initter_index].body;
-				for (Ast_Statement *stat = body->block; !check_nil_statement(stat); stat = stat->next) {
-					typecheck_stat(checker, stat);
+					if (type->kind != TYPE_UNKNOWN) {  // Initializer expression has a type.
+						
+						Symbol_Kind symbol_kind = SYMBOL_NONE;
+						if (type->kind == TYPE_TYPE) {
+							symbol_kind = SYMBOL_TYPE;
+						} else if (type->kind == TYPE_PROC) {
+							symbol_kind = SYMBOL_PROC;
+						} else {
+							symbol_kind = SYMBOL_LOCAL_VAR;
+							if (checker->symbol_table.current_scope == checker->symbol_table.global_scope) {
+								symbol_kind = SYMBOL_GLOBAL_VAR;
+								checker->symbol_table.global_var_count += 1;
+							}
+						}
+						
+						
+						decl->entities[entities_done].initter = &decl->initters[initter_index];
+						decl->entities[entities_done].initter_value_index = type_index;
+						
+						declare_symbol(checker, &decl->entities[entity_index], types.data[type_index], symbol_kind);
+					} else {
+						assert(checker->error_count > 0, "Could not resolve the type of an expression, but no errors were reported");
+						break;  // Even if the assertion didn't fire, all the errors were already reported in infer_expr_type() so we can stop
+					}
 				}
 				
-				leave_procedure_scope(checker);
+				entities_done += types.count;
+			} else if (decl->initters[initter_index].kind == Initter_Kind_PROCEDURE) {
+				assert(!check_nil_statement(decl->initters[initter_index].body));
+				assert(decl->initters[initter_index].body->kind == Ast_Statement_Kind_BLOCK);
+				
+				
+				decl->entities[entities_done].initter = &decl->initters[initter_index];
+				decl->entities[entities_done].initter_value_index = 0;
+				
+				Type proc_defn_type = make_proc_defn_type(checker, decl->initters[initter_index].first_param, decl->initters[initter_index].body);
+				Type_Id id = define_type(proc_defn_type);
+				
+				declare_symbol(checker, &decl->entities[entities_done], id, SYMBOL_PROC);
+				checker->symbol_table.proc_count += 1;
+				
+				{
+					enter_procedure_scope(checker, decl->entities[entities_done].ident);
+					
+					// TODO: Check params
+					
+					Ast_Statement *body = decl->initters[initter_index].body;
+					for (Ast_Statement *stat = body->block; !check_nil_statement(stat); stat = stat->next) {
+						typecheck_stat(checker, stat);
+					}
+					
+					leave_procedure_scope(checker);
+				}
+				
+				entities_done += 1;
+			} else {
+				unimplemented();
 			}
-			
-			entities_done += 1;
-		} else {
-			unimplemented();
 		}
+		
+	} else {
+		// There are no initializers: use the type annotation
+		
+		if (annotated_type) {
+			Symbol_Kind kind = SYMBOL_NONE;
+			
+			if (decl->flags & Ast_Declaration_Flag_CONSTANT) {
+				// if (annotated_type->kind == TYPE) {
+				// }
+			} else {
+				if (checker->symbol_table.current_scope == checker->symbol_table.global_scope) {
+					kind = SYMBOL_GLOBAL_VAR;
+					checker->symbol_table.global_var_count += 1;
+				} else {
+					kind = SYMBOL_LOCAL_VAR;
+				}
+			}
+			
+			for (int entity_index = 0; entity_index < decl->entity_count; entity_index += 1) {
+				declare_symbol(checker, &decl->entities[entity_index], annotated_id, kind);
+			}
+		} else {
+			assert(checker->error_count > 0, "Neither type annotation nor initializers, but no errors were reported");
+		}
+		
 	}
 	
 	return;

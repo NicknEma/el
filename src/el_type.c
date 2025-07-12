@@ -43,6 +43,17 @@ internal Type *type_from_name(String name) {
 	return result;
 }
 
+internal Type_Id type_id_from_name(String name) {
+	Type_Id id = -1;
+	for (i64 type_index = 0; type_index < the_type_table.type_count; type_index += 1) {
+		if (string_equals(name, the_type_table.types[type_index].name)) {
+			id = type_index;
+			break;
+		}
+	}
+	return id;
+}
+
 internal Type make_void_type(String name) {
 	Type type = {.kind = TYPE_VOID, .name = name};
 	return type;

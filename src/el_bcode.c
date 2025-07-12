@@ -92,6 +92,11 @@ internal void print_bcode_instr(Bcode_Instr instr) {
 ////////////////////////////////
 //~ Instruction constructors
 
+internal Bcode_Instr make_bcode_nop() {
+	Bcode_Instr result = {.operation = BCODE_NOP};
+	return result;
+}
+
 // Assigns an immediate (constant) to a register
 internal Bcode_Instr make_bcode_mov_imm2reg(int dest_register, i64 imm) {
 	Bcode_Instr result = {0};
@@ -348,16 +353,85 @@ internal Bcode_Reg_Span generate_bytecode_for_expression(Bcode_Builder *builder,
 	return dest_registers;
 }
 
-internal void generate_bytecode_for_statement(Bcode_Builder *builder, Ast_Statement *statement) {
-	switch (statement->kind) {
+internal void generate_bytecode_for_statement(Bcode_Builder *builder, Ast_Statement *stat) {
+	switch (stat->kind) {
 		case Ast_Statement_Kind_EXPR: {
-			generate_bytecode_for_expression(builder, statement->expr);
+			generate_bytecode_for_expression(builder, stat->expr);
 		} break;
 		
 		case Ast_Statement_Kind_BLOCK: {
-			for (Ast_Statement *s = statement->block; s != NULL && s != &nil_statement; s = s->next) {
+			for (Ast_Statement *s = stat->block; s != NULL && s != &nil_statement; s = s->next) {
 				generate_bytecode_for_statement(builder, s);
 			}
+		} break;
+		
+		case Ast_Statement_Kind_ASSIGNMENT: {
+			
+			{
+				Bcode_Instr nop = make_bcode_nop();
+				nop.comment = push_bcode_commentf(builder, "Assignment");
+				append_bcode_instr(builder, nop);
+			}
+			
+			// Evaluate rhs
+			Bcode_Reg_Span all_rhs_dests = {0};
+			{
+				Ast_Expression *rhs = stat->rhs;
+				if (!check_nil_expression(rhs)) {
+					all_rhs_dests = generate_bytecode_for_expression(builder, rhs);
+					rhs = rhs->next;
+					
+					for (; !check_nil_expression(rhs); rhs = rhs->next) {
+						Bcode_Reg_Span rhs_dests = generate_bytecode_for_expression(builder, rhs);
+						assert(all_rhs_dests.first + all_rhs_dests.count == rhs_dests.first, "Assignment rhss were put in non-consecutive registers");
+						
+						all_rhs_dests.count += rhs_dests.count;
+					}
+				}
+			}
+			
+			int rhs_index = 0;
+			for (Ast_Expression *lhs = stat->expr; !check_nil_expression(lhs); lhs = lhs->next) {
+				
+				if (lhs->kind == Ast_Expression_Kind_IDENT) {
+					Symbol *symbol = lhs->symbol;
+					assert(symbol);
+					
+					int dest = 0;
+					if (symbol->kind == SYMBOL_LOCAL_VAR) {
+						dest = symbol->bcode_reg;
+					} else {
+						dest = symbol->bcode_address;
+					}
+					
+					Bcode_Instr instr = {0};
+					
+					instr.operation  = BCODE_STORE;
+					instr.dest       = dest;
+					instr.source     = all_rhs_dests.first + rhs_index;
+					instr.store_mode = Addressing_Mode_REGISTER;
+					
+					append_bcode_instr(builder, instr);
+				} else {
+					Bcode_Reg_Span lhs_dests = generate_bytecode_for_expression(builder, lhs);
+					
+					for (int lhs_index = 0; lhs_index < lhs_dests.count; lhs_index += 1) {
+						Bcode_Instr instr = {0};
+						
+						instr.operation  = BCODE_STORE;
+						instr.dest       = lhs_dests.first + lhs_index;
+						instr.source     = all_rhs_dests.first + rhs_index;
+						instr.store_mode = Addressing_Mode_REGISTER;
+						
+						append_bcode_instr(builder, instr);
+					}
+				}
+				
+				rhs_index += 1;
+			}
+			assert(all_rhs_dests.count == rhs_index);
+			
+			allow_break();
 		} break;
 		
 		case Ast_Statement_Kind_RETURN: {
@@ -369,7 +443,7 @@ internal void generate_bytecode_for_statement(Bcode_Builder *builder, Ast_Statem
 				// Remember the destination register of each of the returned expressions,
 				// as well as how many there are.
 				// int i = 0;
-				for (Ast_Expression *expr = statement->expr; expr != NULL; expr = expr->next) {
+				for (Ast_Expression *expr = stat->expr; expr != NULL; expr = expr->next) {
 					Reg_Group dests = generate_bytecode_for_expression(builder, expr);
 					
 					for (int di = 0; di < dests.reg_count; di += 1) {
@@ -394,7 +468,7 @@ internal void generate_bytecode_for_statement(Bcode_Builder *builder, Ast_Statem
 				typedef struct Expr_Node Expr_Node;
 				struct Expr_Node { Ast_Expression *expr; Expr_Node *next; };
 				
-				Expr_Node *expr = statement->expr;
+				Expr_Node *expr = stat->expr;
 				
 				for (;expr != NULL;) {
 					if (expr->kind == Ast_Expression_Kind_COMMA) {
@@ -411,7 +485,7 @@ internal void generate_bytecode_for_statement(Bcode_Builder *builder, Ast_Statem
 					}
 				}
 #else
-				Reg_Group dests = generate_bytecode_for_expression(builder, statement->expr);
+				Reg_Group dests = generate_bytecode_for_expression(builder, stat->expr);
 				for (int di = 0; di < dests.reg_count; di += 1) {
 					unmapped_ret_regs[unmapped_ret_reg_count] = dests.regs[di];
 					unmapped_ret_reg_count += 1;
@@ -444,7 +518,7 @@ internal void generate_bytecode_for_statement(Bcode_Builder *builder, Ast_Statem
 		} break;
 		
 		case Ast_Statement_Kind_DECLARATION: {
-			generate_bytecode_for_declaration(builder, statement->decl);
+			generate_bytecode_for_declaration(builder, stat->decl);
 		} break;
 		
 		default: break;

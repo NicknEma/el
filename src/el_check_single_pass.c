@@ -160,6 +160,7 @@ internal void typecheck_expr(Typechecker *checker, Ast_Expression *expr) {
 		case Ast_Expression_Kind_IDENT: {
 			Symbol *entry = lookup_symbol(&checker->symbol_table, expr->ident);
 			if (entry != NULL) {
+				expr->symbol = entry;
 				expr->types = push_type_array(checker->arena, 1);
 				expr->types.data[0] = entry->type; // TODO: @Leak
 			} else {

@@ -45,8 +45,8 @@ internal Reg_Group generate_bytecode_for_expression(Bcode_Builder *builder, Ast_
 		} break;
 		
 		case Ast_Expression_Kind_IDENT: {
-			Symbol *symbol = lookup_symbol(builder->table, expr->ident);
-			assert(symbol != NULL, "Symbol lookup failed in bytecode generation");
+			Symbol *symbol = expr->symbol;
+			assert(symbol, "Null symbol in bytecode generation");
 			
 			if (symbol->kind == SYMBOL_LOCAL_VAR) {
 				instr = make_bcode_load_local(push_bcode_register(builder), symbol->bcode_reg);

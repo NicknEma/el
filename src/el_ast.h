@@ -35,6 +35,10 @@ typedef struct Ast_Expression Ast_Expression;
 typedef struct Ast_Statement Ast_Statement;
 typedef struct Ast_Declaration Ast_Declaration;
 
+typedef struct Symbol Symbol;
+typedef struct Entity Entity;
+typedef struct Initter Initter;
+
 typedef struct Scope Scope;
 
 //- Expressions
@@ -70,7 +74,7 @@ struct Ast_Expression {
 	String lexeme; // If we have the location, do we need this? @Cleanup
 	
 	union {
-		String ident;
+		struct { String ident; Symbol *symbol; };
 		String string_value;
 		i64    i64_value;
 		bool   bool_value;
@@ -136,10 +140,6 @@ typedef enum Entity_Kind {
 	Entity_Kind_PROCEDURE_PROTO,
 	Entity_Kind_COUNT,
 } Entity_Kind;
-
-typedef struct Symbol Symbol;
-typedef struct Entity Entity;
-typedef struct Initter Initter;
 
 struct Entity {
 	Entity_Kind kind;

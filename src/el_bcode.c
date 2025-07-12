@@ -338,7 +338,8 @@ internal Bcode_Reg_Span generate_bytecode_for_expression(Bcode_Builder *builder,
 				instr.mode      = Addressing_Mode_REGISTER;
 				instr.source    = right_dest_registers.first;
 				instr.dest      = left_dest_registers.first;
-				pop_bcode_register(builder);         // This instruction puts the result in left.dest;  right.dest can be used by the next instruction
+				// pop_bcode_register(builder);         // This instruction puts the result in left.dest;  right.dest can be used by the next instruction
+				// Never free registers for now - just like LLVM IR does
 				
 				append_bcode_instr(builder, instr);
 				

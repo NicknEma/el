@@ -100,6 +100,12 @@ struct Ast_Expression {
 	Ast_Expression *next;
 };
 
+typedef struct Ast_Expression_Array Ast_Expression_Array;
+struct Ast_Expression_Array {
+	Ast_Expression *data;
+	i64 count;
+};
+
 //- Statements
 
 typedef enum Ast_Statement_Kind {

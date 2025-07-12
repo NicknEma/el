@@ -243,6 +243,56 @@ internal Ast_Expression *make_ternary_expression(Parser *parser, Ast_Expression 
 	return node;
 }
 
+internal Ast_Expression_Array parse_compound_literal_content(Parser *parser) {
+	Scratch scratch = scratch_begin(&parser->arena, 1);
+	
+	typedef struct Node Node;
+	struct Node { Node *next; void *user; };
+	
+	// Parse an expression list, stopping at any 'assigner' or 'declarator' token,
+	// or when there are no more expressions.
+	//
+	// Do not require any expression at all.
+	Node *first = 0, *last = 0;
+	int   count = 0;
+	
+	for (;;) {
+		Ast_Expression *expr = parse_expression(parser, PREC_NONE, false);
+		if (expr == &nil_expression) {
+			break;
+		}
+		
+		Node *node = push_type(scratch.arena, Node);
+		node->user = expr;
+		queue_push(first, last, node);
+		count += 1;
+		
+		Token token = peek_token(parser->lexer);
+		
+		if (token.kind == ',') {
+			consume_token(parser->lexer);
+		} else {
+			break; // That was the last expr in the list
+		}
+	}
+	
+	Ast_Expression_Array result = {0};
+	result.data  = push_array(parser->arena, Ast_Expression, count);
+	result.count = count;
+	
+	int expr_index = 0;
+	for (Node *node = first; node; node = node->next, expr_index += 1) {
+		assert(expr_index < count);
+		result.data[expr_index] = * cast(Ast_Expression *) node->user;
+		
+		// free(node->expr) // TODO: @Leak
+	}
+	
+	scratch_end(scratch);
+	
+	return result;
+}
+
 internal Ast_Expression *parse_expression(Parser *parser, Precedence caller_precedence, bool required) {
 	Ast_Expression *left = &nil_expression;
 	
@@ -257,38 +307,9 @@ internal Ast_Expression *parse_expression(Parser *parser, Precedence caller_prec
 			if (token.kind == '{') { // It is a compound literal
 				consume_token(parser->lexer); // {
 				
-				Scratch scratch = scratch_begin(&parser->arena, 1);
+				Ast_Expression_Array compound_exprs = parse_compound_literal_content(parser);
 				
-				typedef struct Node Node;
-				struct Node { Node *next; void *user; };
-				
-				// Parse an expression list, stopping at any 'assigner' or 'declarator' token,
-				// or when there are no more expressions.
-				//
-				// Do not require any expression at all.
-				Node *first = 0, *last = 0;
-				int   count = 0;
-				
-				for (;;) {
-					Ast_Expression *expr = parse_expression(parser, PREC_NONE, false);
-					if (expr == &nil_expression) {
-						break;
-					}
-					
-					Node *node = push_type(scratch.arena, Node);
-					node->user = expr;
-					queue_push(first, last, node);
-					count += 1;
-					
-					token = peek_token(parser->lexer);
-					
-					if (token.kind == ',') {
-						consume_token(parser->lexer);
-					} else {
-						break; // That was the last expr in the list
-					}
-				}
-				
+				token = peek_token(parser->lexer); // Save copy of } so we have the loc
 				expect_token_kind(parser, '}', "Expected '}' closing compound literal");
 				
 				if (!there_were_parse_errors(parser)) {
@@ -298,18 +319,9 @@ internal Ast_Expression *parse_expression(Parser *parser, Precedence caller_prec
 					left->kind = Ast_Expression_Kind_COMPOUND_LITERAL;
 					left->type_annotation.kind = Type_Ann_Kind_IDENT;
 					left->type_annotation.ident = lexeme_from_token(parser->lexer, ident);
-					left->exprs = push_array(parser->arena, Ast_Expression, count);
-					left->expr_count = count;
-					int expr_index = 0;
-					for (Node *node = first; node; node = node->next, expr_index += 1) {
-						assert(expr_index < count);
-						left->exprs[expr_index] = * cast(Ast_Expression *) node->user;
-						
-						// free(node->expr) // TODO: @Leak
-					}
+					left->exprs = compound_exprs.data;
+					left->expr_count = compound_exprs.count;
 				}
-				
-				scratch_end(scratch);
 			} else {
 				left = make_atom_expression(parser, token);
 			}

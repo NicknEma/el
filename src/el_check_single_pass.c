@@ -415,6 +415,24 @@ internal void typecheck_stat(Typechecker *checker, Ast_Statement *stat) {
 internal void typecheck_decl(Typechecker *checker, Ast_Declaration *decl) {
 	assert(!check_nil_declaration(decl));
 	
+	Type *annotated_type = NULL;
+	
+	if (decl->type_annotation.kind == Type_Ann_Kind_IDENT) {
+		Type *type = type_from_name(decl->type_annotation.ident);
+		
+		if (type) {
+			annotated_type = type;
+		} else {
+			Symbol *symbol = lookup_symbol(&checker->symbol_table, decl->type_annotation.ident);
+			
+			if (!symbol) {
+				report_type_errorf(checker, "Undeclared identifier '%.*s'", string_expand(decl->type_annotation.ident));
+			} else {
+				report_type_errorf(checker, "Identifier '%.*s' is used as a type but it is not a type", string_expand(decl->type_annotation.ident));
+			}
+		}
+	}
+	
 	int entities_done = 0;
 	for (int initter_index = 0; initter_index < decl->initter_count; initter_index += 1) {
 		if (decl->initters[initter_index].kind == Initter_Kind_EXPR) {

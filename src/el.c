@@ -49,61 +49,53 @@
 ** [ ] Input reading
 */
 
-int main(void) {
+int main(int argc, char **argv) {
 	test_all();
 	printf("### Main program output ###\n\n");
 	
-#if 0
-	String source = string_from_lit("main :: proc() { return other(); }"
-									"other :: proc() { return 2*3 + 10/(4+1); 7-0; }");
-#elif 0
-	String source = string_from_lit("a := 0\n"
-									"\n"
-									"main :: proc() {\n"
-									"a = 5;\n"
-									"a := \"Hello\";\n"
-									"a = \"world\";\n"
-									"\n"
-									"{\n"
-									"a = \"goodbye\";\n"
-									"a := \"moon\";\n"
-									"}\n"
-									"\n"
-									"b = 69.420;\n"
-									"\n"
-									"c := C;\n"
-									"C :: 1;\n"
-									"\n"
-									"d := D;\n"
-									"}\n"
-									"\n"
-									"b := 314\n"
-									"D :: 0\n"
-									);
-#elif 1
-	String source = string_from_lit("a, b, d := 0, \"Hi\", true\n"
-									"c := a\n"
-									"main, x :: proc() {\n"
-									"a;\n"
-									"a := 5;\n"
-									"a;\n"
-									"}, 0\n"
-									);
-#endif
-	
 	bool all_ok = true;
 	
-	Arena tree_arena = {0};
-	arena_init(&tree_arena);
+	Arena source_arena = {0};
+	arena_init(&source_arena);
 	
-	Parser parser = {0};
-	parser_init(&parser, &tree_arena, source);
-	
-	Ast_Declaration *program = &nil_declaration;
-	program = parse_program(&parser);
-	
-	if (there_were_parse_errors(&parser)) {
+	String source = {0};
+	if (argc > 1) {
+		FILE *file = fopen(argv[1], "rb");
+		if (file) {
+			fseek(file, 0, SEEK_END);
+			size_t file_size = ftell(file);
+			fseek(file, 0, SEEK_SET);
+			
+			u8 *file_data = push_nozero(&source_arena, file_size);
+			
+			if (fread(file_data, sizeof(u8), file_size, file) == file_size) {
+				source = make_string(file_data, file_size);
+			} else {
+				perror("fread");
+				all_ok = false;
+			}
+			
+			fclose(file);
+		} else {
+			perror("fopen");
+			all_ok = false;
+		}
+	} else {
 		all_ok = false;
+	}
+	
+	Arena tree_arena = {0};
+	Parser parser = {0};
+	Ast_Declaration *program = &nil_declaration;
+	if (all_ok) {
+		arena_init(&tree_arena);
+		parser_init(&parser, &tree_arena, source);
+		
+		program = parse_program(&parser);
+		
+		if (there_were_parse_errors(&parser)) {
+			all_ok = false;
+		}
 	}
 	
 	Arena symbol_arena = {0};

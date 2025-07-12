@@ -328,6 +328,45 @@ internal Ast_Expression *parse_expression(Parser *parser, Precedence caller_prec
 		} else {
 			left = make_atom_expression(parser, token);
 		}
+	} else if (token.kind == '[') { // Array/slice compound literal
+		consume_token(parser->lexer); // [
+		
+		Token lbrack = token; // Save copy of { so we have the loc
+		token = peek_token(parser->lexer);
+		
+		if (token.kind == ']') {
+			consume_token(parser->lexer); // ]
+			
+			token = peek_token(parser->lexer);
+			if (token.kind == TOKEN_IDENT) {
+				Token ident = peek_token(parser->lexer);
+				expect_token_kind(parser, '{', "Expected '{'");
+				
+				Ast_Expression_Array compound_exprs = parse_compound_literal_content(parser);
+				
+				token = peek_token(parser->lexer); // Save copy of } so we have the loc
+				expect_token_kind(parser, '}', "Expected '}' closing compound literal");
+				
+				if (!there_were_parse_errors(parser)) {
+					left = ast_expression_alloc(parser->arena);
+					left->lexeme   = string_slice(parser->lexer->source, lbrack.loc.start, token.loc.end);
+					left->location = range1di32_merge(ident.loc, token.loc);
+					left->kind = Ast_Expression_Kind_COMPOUND_LITERAL;
+					left->exprs = compound_exprs.data;
+					left->expr_count = compound_exprs.count;
+					
+					left->type_annotation.kind = Type_Ann_Kind_SLICE;
+					left->type_annotation.slice = push_type(parser->arena, Type_Ann);
+					left->type_annotation.slice->kind = Type_Ann_Kind_IDENT;
+					left->type_annotation.slice->ident = lexeme_from_token(parser->lexer, ident);
+				}
+			} else {
+				// TODO: This could also be the 'struct/union/enum' keyword in the future.
+				report_parse_errorf(parser, "Unexpected token '%.*s'", lexeme_from_token(parser->lexer, token));
+			}
+		} else {
+			report_parse_error(parser, "Expected ']'");
+		}
 	} else if (token_is_prefix(token)) {
 		consume_token(parser->lexer); // prefix
 		Ast_Expression *right = parse_expression(parser, prefix_precedence_from_token(token), true);

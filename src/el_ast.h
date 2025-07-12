@@ -40,18 +40,22 @@ typedef struct Entity Entity;
 typedef struct Initter Initter;
 
 typedef struct Scope Scope;
+typedef struct Type_Ann Type_Ann;
 
-// TODO: In the type-checking phase, decls must either have an explicit type or an initializer, or something...
 typedef enum Type_Ann_Kind {
 	Type_Ann_Kind_NONE = 0,
 	Type_Ann_Kind_IDENT,
+	Type_Ann_Kind_SLICE,
 	Type_Ann_Kind_COUNT,
 } Type_Ann_Kind;
 
-typedef struct Type_Ann Type_Ann;
 struct Type_Ann {
 	Type_Ann_Kind kind;
-	String ident;
+	
+	union {
+		String ident;
+		Type_Ann *slice;
+	};
 };
 
 //- Expressions

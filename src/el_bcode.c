@@ -82,6 +82,10 @@ internal void print_bcode_instr(Bcode_Instr instr) {
 		
 		default: break;
 	}
+	
+	if (instr.comment.len > 0)
+		printf("; %.*s", string_expand(instr.comment));
+	
 	printf("]");
 }
 
@@ -137,6 +141,16 @@ internal Bcode_Block *push_bcode_block(Bcode_Builder *builder) {
 	new_block->instructions = push_array(builder->arena, Instr, new_block->instruction_capacity);
 	
 	return new_block;
+}
+
+internal String push_bcode_commentf(Bcode_Builder *builder, char *fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	
+	String comment = push_stringf_va_list(builder->arena, fmt, args);
+	
+	va_end(args);
+	return comment;
 }
 
 internal void append_bcode_instr(Bcode_Builder *builder, Instr instr) {
@@ -466,6 +480,7 @@ internal void generate_bytecode_for_declaration(Bcode_Builder *builder, Ast_Decl
 			int original_reg = push_bcode_register(builder);
 			
 			instr = make_bcode_alloca(original_reg, symbol->type->size);
+			instr.comment = push_bcode_commentf(builder, "Declaration of %.*s", string_expand(entity->ident));
 			append_bcode_instr(builder, instr);
 			
 			symbol->bcode_reg = instr.dest;

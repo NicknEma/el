@@ -81,6 +81,8 @@ struct Instr {
 		Addressing_Mode mode;
 		Addressing_Mode store_mode;
 	};
+	
+	String comment;
 };
 
 typedef Instr Bcode_Instr; // Temporary

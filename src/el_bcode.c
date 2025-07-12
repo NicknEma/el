@@ -310,7 +310,7 @@ internal Bcode_Reg_Span generate_bytecode_for_expression(Bcode_Builder *builder,
 					
 					all_param_dests.count += param_dests.count;
 				}
-				assert(all_param_dests.count == symbol->type->param_count);
+				assert(all_param_dests.count == type_from_id(symbol->type)->param_count);
 				
 				instr.operation = instr_operation_from_expr_binary(expr->binary);
 				instr.mode      = Addressing_Mode_REGISTER;
@@ -319,7 +319,7 @@ internal Bcode_Reg_Span generate_bytecode_for_expression(Bcode_Builder *builder,
 				// Allocate a register for each return value
 				Bcode_Reg_Span ret_dests = {0};
 				ret_dests.first = push_bcode_register(builder);
-				ret_dests.count = symbol->type->retval_count;
+				ret_dests.count = type_from_id(symbol->type)->retval_count;
 				
 				instr.ret_registers = ret_dests;
 				
@@ -541,7 +541,7 @@ internal void generate_bytecode_for_declaration(Bcode_Builder *builder, Ast_Decl
 			
 			int original_reg = push_bcode_register(builder);
 			
-			instr = make_bcode_alloca(original_reg, symbol->type->size);
+			instr = make_bcode_alloca(original_reg, type_from_id(symbol->type)->size);
 			instr.comment = push_bcode_commentf(builder, "Declaration of %.*s", string_expand(entity->ident));
 			append_bcode_instr(builder, instr);
 			
@@ -591,7 +591,7 @@ internal void generate_bytecode_for_declaration(Bcode_Builder *builder, Ast_Decl
 			
 			Bcode_Var var = {0};
 			var.address = prev->address + prev->size;
-			var.size = symbol->type->size;
+			var.size = type_from_id(symbol->type)->size;
 			var.ident = symbol->ident;
 			
 			symbol->bcode_address = var.address;

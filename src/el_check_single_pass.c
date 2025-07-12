@@ -83,7 +83,7 @@ internal void leave_procedure_scope(Typechecker *checker) {
 ////////////////////////////////
 //~ Symbol resolving
 
-internal void declare_symbol(Typechecker *checker, Entity *entity, Type *type, Symbol_Kind kind) {
+internal void declare_symbol(Typechecker *checker, Entity *entity, Type_Id type, Symbol_Kind kind) {
 	Scope *inner = checker->symbol_table.current_scope;
 	
 	bool can_declare = true;
@@ -136,27 +136,22 @@ internal void infer_expr_type(Typechecker *checker, Ast_Expression *expr) {
 		case Ast_Expression_Kind_INT_LITERAL: {
 			expr->flags |= Ast_Expression_Flag_CONSTANT;
 			
-			Type *type = lookup_type(&checker->type_table, string_from_lit("untyped-int"));
-			assert(type);
-			
 			expr->types = push_type_array(checker->arena, 1);
-			expr->types.data[0] = type;
+			expr->types.data[0] = Type_Id_UNTYPED_INT;
 		} break;
 		
 		case Ast_Expression_Kind_STRING_LITERAL: {
 			expr->flags |= Ast_Expression_Flag_CONSTANT;
 			
-			expr->types = push_type_array(checker->arena, 1); // TODO: Avoid duplication
-			expr->types.data[0]->kind = TYPE_STRING;
-			expr->types.data[0]->size = 16;
+			expr->types = push_type_array(checker->arena, 1);
+			expr->types.data[0] = Type_Id_UNTYPED_STRING;
 		} break;
 		
 		case Ast_Expression_Kind_BOOL_LITERAL: {
 			expr->flags |= Ast_Expression_Flag_CONSTANT;
 			
-			expr->types = push_type_array(checker->arena, 1); // TODO: Avoid duplication
-			expr->types.data[0]->kind = TYPE_BOOLEAN;
-			expr->types.data[0]->size = 1;
+			expr->types = push_type_array(checker->arena, 1);
+			expr->types.data[0] = Type_Id_UNTYPED_BOOL;
 		} break;
 		
 		case Ast_Expression_Kind_IDENT: {
@@ -164,7 +159,7 @@ internal void infer_expr_type(Typechecker *checker, Ast_Expression *expr) {
 			if (entry != NULL) {
 				expr->symbol = entry;
 				expr->types = push_type_array(checker->arena, 1);
-				expr->types.data[0] = entry->type; // TODO: @Leak
+				expr->types.data[0] = entry->type;
 			} else {
 				report_type_errorf(checker, "Undeclared identifier '%.*s'", string_expand(expr->ident));
 			}
@@ -194,7 +189,9 @@ internal void infer_expr_type(Typechecker *checker, Ast_Expression *expr) {
 						ok = false;
 					}
 					
-					if (ok && expr->subexpr->types.data[0]->kind == TYPE_INTEGER) {
+					Type *type = type_from_id(expr->subexpr->types.data[0]);
+					
+					if (ok && type->kind != TYPE_INTEGER) {
 						report_type_error(checker, "Cannot apply + or - to this type");
 						ok = false;
 					}
@@ -221,7 +218,9 @@ internal void infer_expr_type(Typechecker *checker, Ast_Expression *expr) {
 						ok = false;
 					}
 					
-					if (ok && expr->subexpr->types.data[0]->kind == TYPE_POINTER) {
+					Type *type = type_from_id(expr->subexpr->types.data[0]);
+					
+					if (ok && type->kind != TYPE_POINTER) {
 						report_type_error(checker, "Cannot apply ^ to this type");
 						ok = false;
 					}
@@ -268,12 +267,11 @@ internal void infer_expr_type(Typechecker *checker, Ast_Expression *expr) {
 					
 					// These operators only work on integers. If either side is not an integer
 					// (but it has another known type), it's an error.
-					//
-					// TODO: Types here can never be UNKNOWN if we 'break;' right when we check
-					// the result of previous analyse_expression()...
 					
-					if (ok && expr->left->types.data[0]->kind != TYPE_INTEGER && expr->left->types.data[0]->kind != TYPE_UNKNOWN &&
-						expr->right->types.data[0]->kind != TYPE_INTEGER && expr->right->types.data[0]->kind != TYPE_UNKNOWN) {
+					Type *ltype = type_from_id(expr->left->types.data[0]);
+					Type *rtype = type_from_id(expr->right->types.data[0]);
+					
+					if (ok && ltype->kind != TYPE_INTEGER && rtype->kind != TYPE_INTEGER) {
 						report_type_error(checker, "Cannot apply operator to this type");
 						ok = false;
 					}
@@ -418,25 +416,27 @@ internal void typecheck_decl(Typechecker *checker, Ast_Declaration *decl) {
 	assert(!check_nil_declaration(decl));
 	
 	int entities_done = 0;
-	for (int i = 0; i < decl->initter_count; i += 1) {
-		if (decl->initters[i].kind == Initter_Kind_EXPR) {
-			assert(!check_nil_expression(decl->initters[i].expr));
-			infer_expr_type(checker, decl->initters[i].expr);
+	for (int initter_index = 0; initter_index < decl->initter_count; initter_index += 1) {
+		if (decl->initters[initter_index].kind == Initter_Kind_EXPR) {
+			assert(!check_nil_expression(decl->initters[initter_index].expr));
+			infer_expr_type(checker, decl->initters[initter_index].expr);
 			
-			Type_Array types = decl->initters[i].expr->types;
+			Type_Array types = decl->initters[initter_index].expr->types;
 			
-			for (int j = 0, e = entities_done; j < types.count; j += 1, e += 1) {
-				if (e >= decl->entity_count) {
+			for (int type_index = 0, entity_index = entities_done; type_index < types.count; type_index += 1, entity_index += 1) {
+				if (entity_index >= decl->entity_count) {
 					report_type_error(checker, "Too many initializers on the right side of the declaration");
 					break;
 				}
 				
-				if (types.data[j]->kind != TYPE_UNKNOWN) {  // Initializer expression has a type.
+				Type *type = type_from_id(types.data[type_index]);
+				
+				if (type->kind != TYPE_UNKNOWN) {  // Initializer expression has a type.
 					
 					Symbol_Kind symbol_kind = SYMBOL_NONE;
-					if (types.data[j]->kind == TYPE_TYPE) {
+					if (type->kind == TYPE_TYPE) {
 						symbol_kind = SYMBOL_TYPE;
-					} else if (types.data[j]->kind == TYPE_PROC) {
+					} else if (type->kind == TYPE_PROC) {
 						symbol_kind = SYMBOL_PROC;
 					} else {
 						symbol_kind = SYMBOL_LOCAL_VAR;
@@ -447,10 +447,10 @@ internal void typecheck_decl(Typechecker *checker, Ast_Declaration *decl) {
 					}
 					
 					
-					decl->entities[entities_done].initter = &decl->initters[i];
-					decl->entities[entities_done].initter_value_index = j;
+					decl->entities[entities_done].initter = &decl->initters[initter_index];
+					decl->entities[entities_done].initter_value_index = type_index;
 					
-					declare_symbol(checker, &decl->entities[e], types.data[j], symbol_kind);
+					declare_symbol(checker, &decl->entities[entity_index], types.data[type_index], symbol_kind);
 				} else {
 					assert(checker->error_count > 0, "Could not resolve the type of an expression, but no errors were reported");
 					break;  // Even if the assertion didn't fire, all the errors were already reported in infer_expr_type() so we can stop
@@ -458,15 +458,18 @@ internal void typecheck_decl(Typechecker *checker, Ast_Declaration *decl) {
 			}
 			
 			entities_done += types.count;
-		} else if (decl->initters[i].kind == Initter_Kind_PROCEDURE) {
-			assert(!check_nil_statement(decl->initters[i].body));
-			assert(decl->initters[i].body->kind == Ast_Statement_Kind_BLOCK);
+		} else if (decl->initters[initter_index].kind == Initter_Kind_PROCEDURE) {
+			assert(!check_nil_statement(decl->initters[initter_index].body));
+			assert(decl->initters[initter_index].body->kind == Ast_Statement_Kind_BLOCK);
 			
 			
-			decl->entities[entities_done].initter = &decl->initters[i];
+			decl->entities[entities_done].initter = &decl->initters[initter_index];
 			decl->entities[entities_done].initter_value_index = 0;
 			
-			declare_symbol(checker, &decl->entities[entities_done], make_proc_defn_type(checker, decl->initters[i].first_param, decl->initters[i].body), SYMBOL_PROC);
+			Type proc_defn_type = make_proc_defn_type(checker, decl->initters[initter_index].first_param, decl->initters[initter_index].body);
+			Type_Id id = define_type(proc_defn_type);
+			
+			declare_symbol(checker, &decl->entities[entities_done], id, SYMBOL_PROC);
 			checker->symbol_table.proc_count += 1;
 			
 			{
@@ -474,7 +477,7 @@ internal void typecheck_decl(Typechecker *checker, Ast_Declaration *decl) {
 				
 				// TODO: Check params
 				
-				Ast_Statement *body = decl->initters[i].body;
+				Ast_Statement *body = decl->initters[initter_index].body;
 				for (Ast_Statement *stat = body->block; !check_nil_statement(stat); stat = stat->next) {
 					typecheck_stat(checker, stat);
 				}
@@ -521,7 +524,7 @@ internal Entity_Group *group_entities(Arena *arena, Initter *initters, i64 initt
 
 internal void print_symbol(Symbol *symbol) {
 	printf("%.*s: ", string_expand(symbol->ident));
-	print_type(symbol->type);
+	print_type(type_from_id(symbol->type));
 	printf(" (%.*s)", string_expand(symbol_kind_names[symbol->kind]));
 }
 
@@ -554,14 +557,12 @@ internal void typechecker_init(Typechecker *checker, Arena *arena, Arena *name_a
 	checker->symbol_table.global_scope = push_type(checker->arena, Scope);
 	checker->symbol_table.current_scope = checker->symbol_table.global_scope;
 	
-	{
-		Type *untyped_int = push_type(checker->arena, Type);
-		untyped_int->kind = TYPE_INTEGER;
-		untyped_int->name = string_from_lit("untyped-int");
-		untyped_int->signedness = SIGNEDNESS_NONE;
-		untyped_int->size = -1;
-		define_type(checker->arena, &checker->type_table, untyped_int);
-	}
+	define_type(make_void_type(string_from_lit("void")));
+	define_type(make_int_type(INT_SUBTYPE_UNTYPED, string_from_lit("untyped-int")));
+	define_type(make_int_type(INT_SUBTYPE_UINT,    string_from_lit("uint")));
+	define_type(make_int_type(INT_SUBTYPE_INT,     string_from_lit("int")));
+	define_type((Type){.kind = TYPE_STRING, .string_subtype = STRING_SUBTYPE_UNTYPED, .name = string_from_lit("untyped-string")});
+	define_type((Type){.kind = TYPE_BOOLEAN, .name = string_from_lit("untyped-bool")});
 }
 
 internal void do_all_checks(Typechecker *checker, Ast_Declaration *prog) {

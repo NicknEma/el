@@ -81,7 +81,7 @@ struct Symbol {
 	};
 	
 	String  ident;
-	Type   *type;
+	Type_Id type;
 };
 
 #endif

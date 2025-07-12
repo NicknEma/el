@@ -214,6 +214,12 @@ internal Instr_Operation instr_operation_from_expr_binary(Binary_Operator expr_o
 	return instr_op;
 }
 
+////////////////////////////////
+//~ Main logic
+
+internal void generate_bytecode_for_statement(Bcode_Builder *builder, Ast_Statement *statement);
+internal void generate_bytecode_for_declaration(Bcode_Builder *builder, Ast_Declaration *decl);
+
 internal Reg_Group generate_bytecode_for_expression(Bcode_Builder *builder, Ast_Expression *expr) {
 	Bcode_Instr instr = {0};
 	Reg_Group dests = {0};
@@ -434,6 +440,10 @@ internal void generate_bytecode_for_statement(Bcode_Builder *builder, Ast_Statem
 			ret.ret_reg_count = retval_count; // TODO: Remove; it should be stored in the procedure defition, not here
 			
 			append_bcode_instr(builder, ret);
+		} break;
+		
+		case Ast_Statement_Kind_DECLARATION: {
+			generate_bytecode_for_declaration(builder, statement->decl);
 		} break;
 		
 		default: break;

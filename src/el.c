@@ -1,3 +1,5 @@
+#include "raddbg_markup.h"
+
 #include "el_ctx_crack.h"
 #include "el_base.h"
 

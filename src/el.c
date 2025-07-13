@@ -2,8 +2,10 @@
 
 #include "el_ctx_crack.h"
 #include "el_base.h"
+#include "el_os.h"
 
 #include "el_base.c"
+#include "el_os.c"
 
 #define EL_CHECK_SINGLE_PASS 1
 
@@ -62,35 +64,19 @@ int main(int argc, char **argv) {
 	
 	bool all_ok = true;
 	
-	Arena source_arena = {0};
-	arena_init(&source_arena);
-	
+	// Load source
 	String source = {0};
+	Arena  source_arena = {0};
+	arena_init(&source_arena);
 	if (argc > 1) {
-		FILE *file = fopen(argv[1], "rb");
-		if (file) {
-			fseek(file, 0, SEEK_END);
-			size_t file_size = ftell(file);
-			fseek(file, 0, SEEK_SET);
-			
-			u8 *file_data = push_nozero(&source_arena, file_size);
-			
-			if (fread(file_data, sizeof(u8), file_size, file) == file_size) {
-				source = make_string(file_data, file_size);
-			} else {
-				perror("fread");
-				all_ok = false;
-			}
-			
-			fclose(file);
-		} else {
-			perror("fopen");
-			all_ok = false;
-		}
+		String_And_Bool load_result = load_file_string(&source_arena, argv[1]);
+		source = load_result.str;
+		all_ok = load_result.ok;
 	} else {
 		all_ok = false;
 	}
 	
+	// Parse
 	Ast_Declaration *program = &nil_declaration;
 	
 	Arena  ast_arena = {0};
@@ -106,6 +92,7 @@ int main(int argc, char **argv) {
 		}
 	}
 	
+	// Typecheck
 	Arena symbol_arena = {0};
 	Arena scope_name_arena = {0};
 	Typechecker checker = {0};
@@ -122,6 +109,7 @@ int main(int argc, char **argv) {
 		}
 	}
 	
+	// Generate code
 	if (all_ok) {
 		Arena bcode_arena;
 		arena_init(&bcode_arena);

@@ -96,7 +96,7 @@ internal Ast_Declaration *parse_declaration_after_lhs(Parser *parser, String *id
 internal Initter          parse_declaration_rhs(Parser *parser);
 
 internal Ast_Declaration *parse_proc_header(Parser *parser);
-internal Type_Ann         parse_type_annotation(Parser *parser);
+internal Type_Ann        *parse_type_annotation(Parser *parser, Arena *arena);
 
 internal String string_from_declaration_tree(Arena *arena, Ast_Declaration *root);
 internal void print_declaration_tree(Ast_Declaration *root);

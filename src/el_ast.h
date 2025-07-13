@@ -45,16 +45,19 @@ typedef struct Type_Ann Type_Ann;
 typedef enum Type_Ann_Kind {
 	Type_Ann_Kind_NONE = 0,
 	Type_Ann_Kind_IDENT,
+	Type_Ann_Kind_POINTER,
 	Type_Ann_Kind_SLICE,
 	Type_Ann_Kind_COUNT,
 } Type_Ann_Kind;
 
 struct Type_Ann {
 	Type_Ann_Kind kind;
+	Range1DI32 loc;
 	
 	union {
 		String ident;
-		Type_Ann *slice;
+		Type_Ann *pointed;
+		Type_Ann *elements;
 	};
 };
 
@@ -92,7 +95,7 @@ struct Ast_Expression {
 	String lexeme; // If we have the location, do we need this? @Cleanup
 	
 	union {
-		struct { Type_Ann type_annotation; Ast_Expression *exprs; i64 expr_count; }; // Compound literals
+		struct { Type_Ann *type_annotation; Ast_Expression *exprs; i64 expr_count; }; // Compound literals
 		struct { String ident; Symbol *symbol; };
 		String string_value;
 		i64    i64_value;

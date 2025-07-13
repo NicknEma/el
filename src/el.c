@@ -91,12 +91,13 @@ int main(int argc, char **argv) {
 		all_ok = false;
 	}
 	
-	Arena tree_arena = {0};
-	Parser parser = {0};
 	Ast_Declaration *program = &nil_declaration;
+	
+	Arena  ast_arena = {0};
+	Parser parser = {0};
 	if (all_ok) {
-		arena_init(&tree_arena);
-		parser_init(&parser, &tree_arena, source);
+		arena_init(&ast_arena, .reserve_size = estimate_ast_arena_size(source));
+		parser_init(&parser, &ast_arena, .text = source);
 		
 		program = parse_program(&parser);
 		

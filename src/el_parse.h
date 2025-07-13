@@ -5,9 +5,12 @@
 
 typedef struct Parser Parser;
 struct Parser {
+	// The arena is stored as a pointer because its lifetime should extend beyound the one of the
+	// parser. Its purpose is to be a "default allocator" for AST nodes, so the memory shall
+	// live for the entire compilation process and not just for the parsing phase.
 	Arena *arena;
-	Lexer *lexer;
 	
+	Lexer  lexer;
 	int error_count;
 };
 
@@ -102,13 +105,21 @@ internal void print_declaration_tree(Ast_Declaration *root);
 
 global   i64  max_printed_parse_errors = 1;
 
-internal void parser_init(Parser *parser, Arena *arena, String source);
-
 internal void report_parse_error(Parser *parser, char *message);
 internal void report_parse_errorf(Parser *parser, char *format, ...);
 
 internal void expect_token_kind(Parser *parser, Token_Kind kind, char *message);
 
 internal bool there_were_parse_errors(Parser *parser);
+
+typedef struct Parser_Init_Params Parser_Init_Params;
+struct Parser_Init_Params { String text; String file_name; };
+
+internal void parser_init_(Parser *parser, Arena *ast_arena, Parser_Init_Params init_params);
+#define parser_init(parser, arena, ...) \
+parser_init_(parser, arena, (Parser_Init_Params){ .text = {0}, .file_name = {0}, __VA_ARGS__ });
+
+internal void parser_set_source(Parser *parser, String source);
+internal u64  estimate_ast_arena_size(String source);
 
 #endif

@@ -243,8 +243,9 @@ internal Ast_Expression *make_ternary_expression(Parser *parser, Ast_Expression 
 	return node;
 }
 
-internal Ast_Expression_Array parse_compound_literal_content(Parser *parser) {
-	Scratch scratch = scratch_begin(&parser->arena, 1);
+internal Ast_Expression_Array parse_compound_literal_content(Parser *parser, Arena *arena) {
+	Arena *conflicts[] = {parser->arena, arena};
+	Scratch scratch = scratch_begin(conflicts, array_count(conflicts));
 	
 	typedef struct Node Node;
 	struct Node { Node *next; void *user; };
@@ -257,7 +258,7 @@ internal Ast_Expression_Array parse_compound_literal_content(Parser *parser) {
 	int   count = 0;
 	
 	for (;;) {
-		Ast_Expression *expr = parse_expression(parser, PREC_NONE, false);
+		Ast_Expression *expr = parse_expression(parser, scratch.arena, PREC_NONE, false);
 		if (expr == &nil_expression) {
 			break;
 		}
@@ -277,15 +278,13 @@ internal Ast_Expression_Array parse_compound_literal_content(Parser *parser) {
 	}
 	
 	Ast_Expression_Array result = {0};
-	result.data  = push_array(parser->arena, Ast_Expression, count);
+	result.data  = push_array(arena, Ast_Expression, count);
 	result.count = count;
 	
 	int expr_index = 0;
 	for (Node *node = first; node; node = node->next, expr_index += 1) {
 		assert(expr_index < count);
 		result.data[expr_index] = * cast(Ast_Expression *) node->user;
-		
-		// free(node->expr) // TODO: @Leak
 	}
 	
 	scratch_end(scratch);
@@ -293,7 +292,7 @@ internal Ast_Expression_Array parse_compound_literal_content(Parser *parser) {
 	return result;
 }
 
-internal Ast_Expression *parse_expression(Parser *parser, Precedence caller_precedence, bool required) {
+internal Ast_Expression *parse_expression(Parser *parser, Arena *arena, Precedence caller_precedence, bool required) {
 	Ast_Expression *left = &nil_expression;
 	
 	Token token = peek_token(&parser->lexer);
@@ -307,7 +306,7 @@ internal Ast_Expression *parse_expression(Parser *parser, Precedence caller_prec
 			if (token.kind == '{') { // It is a compound literal
 				consume_token(&parser->lexer); // {
 				
-				Ast_Expression_Array compound_exprs = parse_compound_literal_content(parser);
+				Ast_Expression_Array compound_exprs = parse_compound_literal_content(parser, parser->arena);
 				
 				token = peek_token(&parser->lexer); // Save copy of } so we have the loc
 				expect_token_kind(parser, '}', "Expected '}' closing compound literal");
@@ -340,9 +339,11 @@ internal Ast_Expression *parse_expression(Parser *parser, Precedence caller_prec
 			token = peek_token(&parser->lexer);
 			if (token.kind == TOKEN_IDENT) {
 				Token ident = peek_token(&parser->lexer);
+				consume_token(&parser->lexer); // ident
+				
 				expect_token_kind(parser, '{', "Expected '{'");
 				
-				Ast_Expression_Array compound_exprs = parse_compound_literal_content(parser);
+				Ast_Expression_Array compound_exprs = parse_compound_literal_content(parser, parser->arena);
 				
 				token = peek_token(&parser->lexer); // Save copy of } so we have the loc
 				expect_token_kind(parser, '}', "Expected '}' closing compound literal");
@@ -369,12 +370,12 @@ internal Ast_Expression *parse_expression(Parser *parser, Precedence caller_prec
 		}
 	} else if (token_is_prefix(token)) {
 		consume_token(&parser->lexer); // prefix
-		Ast_Expression *right = parse_expression(parser, prefix_precedence_from_token(token), true);
+		Ast_Expression *right = parse_expression(parser, parser->arena, prefix_precedence_from_token(token), true);
 		
 		left = make_unary_expression(parser, token, right);
 	} else if (token.kind == '(') {
 		consume_token(&parser->lexer); // (
-		Ast_Expression *grouped = parse_expression(parser, PREC_NONE, true);
+		Ast_Expression *grouped = parse_expression(parser, parser->arena, PREC_NONE, true);
 		expect_token_kind(parser, ')', "Expected )");
 		
 		left = grouped;
@@ -401,10 +402,10 @@ internal Ast_Expression *parse_expression(Parser *parser, Precedence caller_prec
 			consume_token(&parser->lexer); // infix
 			
 			if (token.kind == '?') {
-				Ast_Expression *middle = parse_expression(parser, PREC_NONE, true);
+				Ast_Expression *middle = parse_expression(parser, parser->arena, PREC_NONE, true);
 				
 				expect_token_kind(parser, ':', "Expected :");
-				Ast_Expression *right = parse_expression(parser, precedence, true);
+				Ast_Expression *right = parse_expression(parser, parser->arena, precedence, true);
 				
 				left = make_ternary_expression(parser, left, middle, right);
 			} else {
@@ -417,7 +418,7 @@ internal Ast_Expression *parse_expression(Parser *parser, Precedence caller_prec
 					}
 				}
 				
-				Ast_Expression *right = parse_expression(parser, precedence, subexpr_required);
+				Ast_Expression *right = parse_expression(parser, parser->arena, precedence, subexpr_required);
 				
 				left = make_binary_expression(parser, token, left, right);
 				
@@ -516,7 +517,7 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 		Ast_Expression *last  = NULL;
 		
 		for (bool is_expr_list = false; ; is_expr_list = true) {
-			Ast_Expression *expr = parse_expression(parser, PREC_NONE, false);
+			Ast_Expression *expr = parse_expression(parser, parser->arena, PREC_NONE, false);
 			if (expr == &nil_expression) {
 				if (is_expr_list) {
 					assert(there_were_parse_errors(parser));
@@ -551,7 +552,7 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 		i64 count = 0;
 		
 		for (bool is_expr_list = false; ; is_expr_list = true) {
-			Ast_Expression *expr = parse_expression(parser, PREC_NONE, is_expr_list);
+			Ast_Expression *expr = parse_expression(parser, parser->arena, PREC_NONE, is_expr_list);
 			if (expr == &nil_expression) {
 				if (is_expr_list) {
 					assert(there_were_parse_errors(parser));
@@ -610,7 +611,7 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 			count = 0;
 			
 			for (;;) {
-				Ast_Expression *expr = parse_expression(parser, PREC_NONE, true);
+				Ast_Expression *expr = parse_expression(parser, parser->arena, PREC_NONE, true);
 				if (expr == &nil_expression) {
 					assert(there_were_parse_errors(parser));
 					break; // Avoid writing to read-only memory
@@ -946,7 +947,7 @@ internal Initter parse_declaration_rhs(Parser *parser) {
 		// and we figure out later what exactly that is.
 		
 		result.kind = Initter_Kind_EXPR;
-		result.expr = parse_expression(parser, PREC_NONE, true);
+		result.expr = parse_expression(parser, parser->arena, PREC_NONE, true);
 	}
 	
 	// TODO: 'distinct'
@@ -1201,7 +1202,7 @@ internal Ast_Expression *parse_expression_string(Arena *arena, String source) {
 	Parser parser = {0};
 	parser_init(&parser, arena, .text = source);
 	
-	return parse_expression(&parser, PREC_NONE, true);
+	return parse_expression(&parser, parser.arena, PREC_NONE, true);
 }
 
 internal Ast_Statement *parse_statement_string(Arena *arena, String source) {

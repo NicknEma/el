@@ -56,7 +56,7 @@ internal Ast_Expression *make_unary_expression(Parser *parser, Token unary, Ast_
 internal Ast_Expression *make_binary_expression(Parser *parser, Token binary, Ast_Expression *left, Ast_Expression *right);
 internal Ast_Expression *make_ternary_expression(Parser *parser, Ast_Expression *left, Ast_Expression *middle, Ast_Expression *right);
 
-internal Ast_Expression *parse_expression(Parser *parser, Precedence caller_precedence, bool required);
+internal Ast_Expression *parse_expression(Parser *parser, Arena *arena, Precedence caller_precedence, bool required);
 
 internal String string_from_expression_tree(Arena *arena, Ast_Expression *root);
 internal void print_expression_tree(Ast_Expression *root);

@@ -171,23 +171,21 @@ internal Ast_Declaration *ast_declaration_alloc(Arena *arena) {
 internal Ast_Expression *make_atom_expression(Parser *parser, Token token) {
 	Ast_Expression *node = ast_expression_alloc(parser->arena);
 	
-	if (node != NULL) {
-		node->location = token.loc;
-		
-		if (token.kind == TOKEN_BOOLEAN) {
-			node->kind         = Ast_Expression_Kind_BOOL_LITERAL;
-			node->bool_value   = token.int_val;
-		} else if (token.kind == TOKEN_INTEGER) {
-			node->kind         = Ast_Expression_Kind_INT_LITERAL;
-			node->i64_value    = token.int_val;
-		} else if (token.kind == TOKEN_STRING) {
-			node->kind         = Ast_Expression_Kind_STRING_LITERAL;
-			node->string_value = token.string_val;
-		} else if (token.kind == TOKEN_IDENT) {
-			node->kind         = Ast_Expression_Kind_IDENT;
-			node->ident        = lexeme_from_token(&parser->lexer, token);
-		} else { panic(); }
-	}
+	node->location = token.loc;
+	
+	if (token.kind == TOKEN_BOOLEAN) {
+		node->kind         = Ast_Expression_Kind_BOOL_LITERAL;
+		node->bool_value   = token.int_val;
+	} else if (token.kind == TOKEN_INTEGER) {
+		node->kind         = Ast_Expression_Kind_INT_LITERAL;
+		node->i64_value    = token.int_val;
+	} else if (token.kind == TOKEN_STRING) {
+		node->kind         = Ast_Expression_Kind_STRING_LITERAL;
+		node->string_value = token.string_val;
+	} else if (token.kind == TOKEN_IDENT) {
+		node->kind         = Ast_Expression_Kind_IDENT;
+		node->ident        = lexeme_from_token(&parser->lexer, token);
+	} else { panic(); }
 	
 	return node;
 }
@@ -195,13 +193,11 @@ internal Ast_Expression *make_atom_expression(Parser *parser, Token token) {
 internal Ast_Expression *make_unary_expression(Parser *parser, Token unary, Ast_Expression *subexpr) {
 	Ast_Expression *node = ast_expression_alloc(parser->arena);
 	
-	if (node != NULL) {
-		node->kind     = Ast_Expression_Kind_UNARY;
-		node->unary    = unary_from_token(unary);
-		node->subexpr  = subexpr;
-		node->location = unary.loc;
-		node->location = range1di32_merge(node->location, subexpr->location);
-	}
+	node->kind     = Ast_Expression_Kind_UNARY;
+	node->unary    = unary_from_token(unary);
+	node->subexpr  = subexpr;
+	node->location = unary.loc;
+	node->location = range1di32_merge(node->location, subexpr->location);
 	
 	return node;
 }
@@ -209,16 +205,14 @@ internal Ast_Expression *make_unary_expression(Parser *parser, Token unary, Ast_
 internal Ast_Expression *make_binary_expression(Parser *parser, Token binary, Ast_Expression *left, Ast_Expression *right) {
 	Ast_Expression *node = ast_expression_alloc(parser->arena);
 	
-	if (node != NULL) {
-		node->kind     = Ast_Expression_Kind_BINARY;
-		node->binary   = binary_from_token(binary);
-		node->left     = left;
-		node->right    = right;
-		node->location = binary.loc;
-		node->location = range1di32_merge(node->location, left->location);
-		if (right != NULL && right != &nil_expression)
-			node->location = range1di32_merge(node->location, right->location);
-	}
+	node->kind     = Ast_Expression_Kind_BINARY;
+	node->binary   = binary_from_token(binary);
+	node->left     = left;
+	node->right    = right;
+	node->location = binary.loc;
+	node->location = range1di32_merge(node->location, left->location);
+	if (right != NULL && right != &nil_expression)
+		node->location = range1di32_merge(node->location, right->location);
 	
 	return node;
 }
@@ -226,15 +220,13 @@ internal Ast_Expression *make_binary_expression(Parser *parser, Token binary, As
 internal Ast_Expression *make_ternary_expression(Parser *parser, Ast_Expression *left, Ast_Expression *middle, Ast_Expression *right) {
 	Ast_Expression *node = ast_expression_alloc(parser->arena);
 	
-	if (node != NULL) {
-		node->kind     = Ast_Expression_Kind_TERNARY;
-		node->left     = left;
-		node->middle   = middle;
-		node->right    = right;
-		node->location = left->location;
-		node->location = range1di32_merge(node->location, middle->location);
-		node->location = range1di32_merge(node->location, right->location);
-	}
+	node->kind     = Ast_Expression_Kind_TERNARY;
+	node->left     = left;
+	node->middle   = middle;
+	node->right    = right;
+	node->location = left->location;
+	node->location = range1di32_merge(node->location, middle->location);
+	node->location = range1di32_merge(node->location, right->location);
 	
 	return node;
 }

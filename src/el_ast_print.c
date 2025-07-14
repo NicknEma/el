@@ -52,6 +52,14 @@ internal void string_from_expression_tree_internal(Arena *arena, Ast_Expression 
 			string_list_push(arena, builder, root->bool_value ? string_from_lit("true") : string_from_lit("false"));
 		} break;
 		
+		case Ast_Expression_Kind_COMPOUND_LITERAL: {
+			// TODO: Print type annotation
+			
+			string_list_push(arena, builder, string_from_lit("{"));
+			string_from_expression_tree_internal(arena, root->subexpr, builder);
+			string_list_push(arena, builder, string_from_lit("}"));
+		} break;
+		
 		case Ast_Expression_Kind_IDENT: {
 			string_list_push(arena, builder, root->ident);
 		} break;

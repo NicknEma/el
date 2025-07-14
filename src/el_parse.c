@@ -172,7 +172,6 @@ internal Ast_Expression *make_atom_expression(Parser *parser, Token token) {
 	Ast_Expression *node = ast_expression_alloc(parser->arena);
 	
 	if (node != NULL) {
-		node->lexeme   = lexeme_from_token(&parser->lexer, token);
 		node->location = token.loc;
 		
 		if (token.kind == TOKEN_BOOLEAN) {
@@ -186,7 +185,7 @@ internal Ast_Expression *make_atom_expression(Parser *parser, Token token) {
 			node->string_value = token.string_val;
 		} else if (token.kind == TOKEN_IDENT) {
 			node->kind         = Ast_Expression_Kind_IDENT;
-			node->ident        = node->lexeme;
+			node->ident        = lexeme_from_token(&parser->lexer, token);
 		} else { panic(); }
 	}
 	
@@ -198,7 +197,6 @@ internal Ast_Expression *make_unary_expression(Parser *parser, Token unary, Ast_
 	
 	if (node != NULL) {
 		node->kind     = Ast_Expression_Kind_UNARY;
-		node->lexeme   = lexeme_from_token(&parser->lexer, unary);
 		node->unary    = unary_from_token(unary);
 		node->subexpr  = subexpr;
 		node->location = unary.loc;
@@ -213,7 +211,6 @@ internal Ast_Expression *make_binary_expression(Parser *parser, Token binary, As
 	
 	if (node != NULL) {
 		node->kind     = Ast_Expression_Kind_BINARY;
-		node->lexeme   = lexeme_from_token(&parser->lexer, binary);
 		node->binary   = binary_from_token(binary);
 		node->left     = left;
 		node->right    = right;
@@ -231,7 +228,6 @@ internal Ast_Expression *make_ternary_expression(Parser *parser, Ast_Expression 
 	
 	if (node != NULL) {
 		node->kind     = Ast_Expression_Kind_TERNARY;
-		node->lexeme   = string_from_lit("?:");
 		node->left     = left;
 		node->middle   = middle;
 		node->right    = right;
@@ -246,7 +242,6 @@ internal Ast_Expression *make_ternary_expression(Parser *parser, Ast_Expression 
 internal Ast_Expression *make_compound_literal_expression(Parser *parser, Arena *arena, Type_Ann *type_annotation, Ast_Expression_Array exprs, Range1DI32 loc) {
 	Ast_Expression *expr = ast_expression_alloc(arena);
 	
-	expr->lexeme     = string_slice(parser->lexer.source, loc.start, loc.end);
 	expr->location   = loc;
 	expr->kind       = Ast_Expression_Kind_COMPOUND_LITERAL;
 	expr->exprs      = exprs.data;

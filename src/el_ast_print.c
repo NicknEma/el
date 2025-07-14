@@ -7,11 +7,11 @@
 internal void string_from_expression_tree_internal(Arena *arena, Ast_Expression *root, String_List *builder) {
 	switch (root->kind) {
 		case Ast_Expression_Kind_INT_LITERAL: {
-			string_list_push(arena, builder, root->lexeme);
+			string_list_pushf(arena, builder, "%lld", root->i64_value);
 		} break;
 		
 		case Ast_Expression_Kind_STRING_LITERAL: {
-			string_list_push(arena, builder, root->lexeme);
+			string_list_push(arena, builder, root->string_value);
 		} break;
 		
 		case Ast_Expression_Kind_IDENT: {
@@ -19,10 +19,11 @@ internal void string_from_expression_tree_internal(Arena *arena, Ast_Expression 
 		} break;
 		
 		case Ast_Expression_Kind_UNARY: {
+			char c = '-';
 			switch (root->unary) {
-				case Unary_Operator_PLUS:
+				case Unary_Operator_PLUS: c = '+'; // fallthrough
 				case Unary_Operator_MINUS: {
-					string_list_pushf(arena, builder, "%.*s(", string_expand(root->lexeme));
+					string_list_pushf(arena, builder, "%c(", c);
 					string_from_expression_tree_internal(arena, root->left, builder);
 					string_list_push(arena, builder, string_from_lit(")"));
 				} break;
@@ -30,7 +31,7 @@ internal void string_from_expression_tree_internal(Arena *arena, Ast_Expression 
 				case Unary_Operator_DEREFERENCE: {
 					string_list_push(arena, builder, string_from_lit("("));
 					string_from_expression_tree_internal(arena, root->left, builder);
-					string_list_pushf(arena, builder, ")%.*s", string_expand(root->lexeme));
+					string_list_pushf(arena, builder, ")^");
 				} break;
 				
 				default: break;
@@ -40,7 +41,7 @@ internal void string_from_expression_tree_internal(Arena *arena, Ast_Expression 
 		case Ast_Expression_Kind_BINARY: {
 			string_list_push(arena, builder, string_from_lit("("));
 			string_from_expression_tree_internal(arena, root->left, builder);
-			string_list_pushf(arena, builder, ")%.*s(", string_expand(root->lexeme));
+			string_list_pushf(arena, builder, ")%c(", '$'); // TODO: Use the correct char
 			string_from_expression_tree_internal(arena, root->right, builder);
 			string_list_push(arena, builder, string_from_lit(")"));
 		} break;

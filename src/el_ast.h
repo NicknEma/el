@@ -92,8 +92,6 @@ struct Ast_Expression {
 	
 	Range1DI32 location;
 	
-	String lexeme; // If we have the location, do we need this? @Cleanup
-	
 	union {
 		struct { Type_Ann *type_annotation; Ast_Expression *exprs; i64 expr_count; }; // Compound literals
 		struct { String ident; Symbol *symbol; };

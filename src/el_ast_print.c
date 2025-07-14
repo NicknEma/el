@@ -4,6 +4,34 @@
 ////////////////////////////////
 //~ Expressions
 
+internal char char_from_unary_op(Unary_Operator op) {
+	switch (op) {
+		case Unary_Operator_PLUS:         return '+';
+		case Unary_Operator_MINUS:        return '-';
+		case Unary_Operator_DEREFERENCE:  return '^';
+		default: panic("Invalid codepath");
+	}
+	
+	return 0;
+}
+
+internal char char_from_binary_op(Binary_Operator op) {
+	switch (op) {
+		case Binary_Operator_PLUS:         return '+';
+		case Binary_Operator_MINUS:        return '-';
+		case Binary_Operator_TIMES:        return '*';
+		case Binary_Operator_DIVIDE:       return '/';
+		case Binary_Operator_MODULUS:      return '%';
+		case Binary_Operator_TERNARY:      return '?';
+		case Binary_Operator_MEMBER:       return '.';
+		case Binary_Operator_CALL:         return '(';
+		case Binary_Operator_ARRAY_ACCESS: return '[';
+		default: panic("Invalid codepath");
+	}
+	
+	return 0;
+}
+
 internal void string_from_expression_tree_internal(Arena *arena, Ast_Expression *root, String_List *builder) {
 	switch (root->kind) {
 		case Ast_Expression_Kind_INT_LITERAL: {
@@ -19,11 +47,10 @@ internal void string_from_expression_tree_internal(Arena *arena, Ast_Expression 
 		} break;
 		
 		case Ast_Expression_Kind_UNARY: {
-			char c = '-';
 			switch (root->unary) {
-				case Unary_Operator_PLUS: c = '+'; // fallthrough
+				case Unary_Operator_PLUS:
 				case Unary_Operator_MINUS: {
-					string_list_pushf(arena, builder, "%c(", c);
+					string_list_pushf(arena, builder, "%c(", char_from_unary_op(root->unary));
 					string_from_expression_tree_internal(arena, root->left, builder);
 					string_list_push(arena, builder, string_from_lit(")"));
 				} break;
@@ -41,18 +68,18 @@ internal void string_from_expression_tree_internal(Arena *arena, Ast_Expression 
 		case Ast_Expression_Kind_BINARY: {
 			string_list_push(arena, builder, string_from_lit("("));
 			string_from_expression_tree_internal(arena, root->left, builder);
-			string_list_pushf(arena, builder, ")%c(", '$'); // TODO: Use the correct char
-			string_from_expression_tree_internal(arena, root->right, builder);
-			string_list_push(arena, builder, string_from_lit(")"));
-		} break;
-		
-		case Ast_Expression_Kind_TERNARY: {
-			string_list_push(arena, builder, string_from_lit("("));
-			string_from_expression_tree_internal(arena, root->left, builder);
-			string_list_push(arena, builder, string_from_lit(")?("));
-			string_from_expression_tree_internal(arena, root->middle, builder);
-			string_list_push(arena, builder, string_from_lit("):("));
-			string_from_expression_tree_internal(arena, root->right, builder);
+			string_list_pushf(arena, builder, ")%c(", char_from_binary_op(root->binary));
+			
+			if (root->binary != Binary_Operator_TERNARY) {
+				string_from_expression_tree_internal(arena, root->right, builder);
+			} else {
+				string_list_push(arena, builder, string_from_lit("("));
+				string_from_expression_tree_internal(arena, root->middle, builder);
+				string_list_push(arena, builder, string_from_lit("):("));
+				string_from_expression_tree_internal(arena, root->right, builder);
+				string_list_push(arena, builder, string_from_lit(")"));
+			}
+			
 			string_list_push(arena, builder, string_from_lit(")"));
 		} break;
 		

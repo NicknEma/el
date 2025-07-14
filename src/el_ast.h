@@ -21,6 +21,7 @@ typedef enum Binary_Operator {
 	Binary_Operator_TIMES,
 	Binary_Operator_DIVIDE,
 	Binary_Operator_MODULUS,
+	Binary_Operator_TERNARY,
 	// Binary_Operator_COMMA,
 	Binary_Operator_MEMBER,
 	Binary_Operator_CALL,
@@ -72,7 +73,6 @@ typedef enum Ast_Expression_Kind {
 	Ast_Expression_Kind_IDENT,
 	Ast_Expression_Kind_UNARY,
 	Ast_Expression_Kind_BINARY,
-	Ast_Expression_Kind_TERNARY,
 	Ast_Expression_Kind_COUNT,
 } Ast_Expression_Kind;
 

@@ -62,6 +62,7 @@ internal Binary_Operator binary_from_token_kind(Token_Kind kind) {
 		case '*':    { binary = Binary_Operator_TIMES; } break;
 		case '/':   { binary = Binary_Operator_DIVIDE; } break;
 		case '%': { binary = Binary_Operator_MODULUS; } break;
+		case '?': { binary = Binary_Operator_TERNARY; } break;
 		// case ',':   { binary = Binary_Operator_COMMA; } break;
 		case '.':     { binary = Binary_Operator_MEMBER; } break;
 		case '(':  { binary = Binary_Operator_CALL; } break;
@@ -220,7 +221,8 @@ internal Ast_Expression *make_binary_expression(Parser *parser, Token binary, As
 internal Ast_Expression *make_ternary_expression(Parser *parser, Ast_Expression *left, Ast_Expression *middle, Ast_Expression *right) {
 	Ast_Expression *node = ast_expression_alloc(parser->arena);
 	
-	node->kind     = Ast_Expression_Kind_TERNARY;
+	node->kind     = Ast_Expression_Kind_BINARY;
+	node->binary   = Binary_Operator_TERNARY;
 	node->left     = left;
 	node->middle   = middle;
 	node->right    = right;
@@ -339,6 +341,7 @@ internal Ast_Expression *parse_expression(Parser *parser, Arena *arena, Preceden
 	
 	Token token = peek_token(&parser->lexer);
 	if (token_is_expression_atom(token)) {
+		Token atom = token;
 		consume_token(&parser->lexer); // atom
 		
 		if (token.kind == TOKEN_IDENT) { // It could be a compound literal
@@ -363,10 +366,10 @@ internal Ast_Expression *parse_expression(Parser *parser, Arena *arena, Preceden
 					left = make_compound_literal_expression(parser, arena, type_annotation, compound_exprs, loc);
 				}
 			} else {
-				left = make_atom_expression(parser, token);
+				left = make_atom_expression(parser, atom);
 			}
 		} else {
-			left = make_atom_expression(parser, token);
+			left = make_atom_expression(parser, atom);
 		}
 	} else if (token.kind == '[') { // Array/slice compound literal
 		

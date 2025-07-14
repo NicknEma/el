@@ -23,13 +23,16 @@ internal void test_expression_parser(void) {
 	test_expression_parser_single((String)string_from_lit_const("5 + (+4)"));               // 9
 	test_expression_parser_single((String)string_from_lit_const("1++2"));                   // 3
 	test_expression_parser_single((String)string_from_lit_const("foo()"));
-#endif
 	
 	test_expression_parser_single((String)string_from_lit_const("a?b:c"));
 	test_expression_parser_single((String)string_from_lit_const("a?b:c?d:e"));
 	test_expression_parser_single((String)string_from_lit_const("a?b?c:d:e"));
 	test_expression_parser_single((String)string_from_lit_const("a?b+c:d+e"));
 	test_expression_parser_single((String)string_from_lit_const("a+b?c:d"));
+#endif
+	
+	test_expression_parser_single((String)string_from_lit_const("true"));
+	test_expression_parser_single((String)string_from_lit_const("true + false"));
 	
 #if 0
 	// With errors

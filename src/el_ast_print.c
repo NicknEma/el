@@ -42,6 +42,10 @@ internal void string_from_expression_tree_internal(Arena *arena, Ast_Expression 
 			string_list_push(arena, builder, root->string_value);
 		} break;
 		
+		case Ast_Expression_Kind_BOOL_LITERAL: {
+			string_list_push(arena, builder, root->bool_value ? string_from_lit("true") : string_from_lit("false"));
+		} break;
+		
 		case Ast_Expression_Kind_IDENT: {
 			string_list_push(arena, builder, root->ident);
 		} break;

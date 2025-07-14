@@ -4,6 +4,9 @@
 ////////////////////////////////
 //~ Expressions
 
+internal String string_from_expression_tree(Arena *arena, Ast_Expression *root);
+internal void print_expression_tree(Ast_Expression *root);
+
 internal char char_from_unary_op(Unary_Operator op) {
 	switch (op) {
 		case Unary_Operator_PLUS:         return '+';
@@ -112,6 +115,9 @@ internal void print_expression_tree(Ast_Expression *root) {
 ////////////////////////////////
 //~ Statements
 
+internal String string_from_statement_tree(Arena *arena, Ast_Statement *root);
+internal void print_statement_tree(Ast_Statement *root);
+
 internal void string_from_statement_tree_internal(Arena *arena, Ast_Statement *root, String_List *builder) {
 	switch (root->kind) {
 		case Ast_Statement_Kind_EXPR: {
@@ -161,6 +167,9 @@ internal void print_statement_tree(Ast_Statement *root) {
 
 ////////////////////////////////
 //~ Declarations
+
+internal String string_from_declaration_tree(Arena *arena, Ast_Declaration *root);
+internal void print_declaration_tree(Ast_Declaration *root);
 
 internal void string_from_declaration_tree_internal(Arena *arena, Ast_Declaration *root, String_List *builder) {
 #if 0

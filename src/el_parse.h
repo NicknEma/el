@@ -62,9 +62,6 @@ internal Ast_Expression *make_ternary_expression(Parser *parser, Ast_Expression 
 
 internal Ast_Expression *parse_expression(Parser *parser, Arena *arena, Precedence caller_precedence, Parse_Expr_Flags parse_flags);
 
-internal String string_from_expression_tree(Arena *arena, Ast_Expression *root);
-internal void print_expression_tree(Ast_Expression *root);
-
 //- Statements
 
 typedef struct Make_Statement_Params Make_Statement_Params;
@@ -90,9 +87,6 @@ internal Ast_Statement *make_statement_(Parser *parser, Ast_Statement_Kind kind,
 
 internal Ast_Statement *parse_statement(Parser *parser);
 
-internal String string_from_statement_tree(Arena *arena, Ast_Statement *root);
-internal void print_statement_tree(Ast_Statement *root);
-
 //- Declarations
 
 internal Ast_Declaration *parse_declaration(Parser *parser);
@@ -101,9 +95,6 @@ internal Initter          parse_declaration_rhs(Parser *parser);
 
 internal Ast_Declaration *parse_proc_header(Parser *parser);
 internal Type_Ann        *parse_type_annotation(Parser *parser, Arena *arena);
-
-internal String string_from_declaration_tree(Arena *arena, Ast_Declaration *root);
-internal void print_declaration_tree(Ast_Declaration *root);
 
 //- General/errors
 

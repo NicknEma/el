@@ -260,7 +260,7 @@ internal Ast_Expression_Array parse_compound_literal_content(Parser *parser, Are
 	int   count = 0;
 	
 	for (;;) {
-		Ast_Expression *expr = parse_expression(parser, scratch.arena, PREC_NONE, false);
+		Ast_Expression *expr = parse_expression(parser, scratch.arena, PREC_NONE, 0);
 		if (expr == &nil_expression) {
 			break;
 		}
@@ -336,7 +336,7 @@ internal Type_Ann *parse_type_annotation(Parser *parser, Arena *arena) {
 	return result;
 }
 
-internal Ast_Expression *parse_expression(Parser *parser, Arena *arena, Precedence caller_precedence, bool required) {
+internal Ast_Expression *parse_expression(Parser *parser, Arena *arena, Precedence caller_precedence, Parse_Expr_Flags parse_flags) {
 	Ast_Expression *left = &nil_expression;
 	
 	Token token = peek_token(&parser->lexer);
@@ -388,17 +388,17 @@ internal Ast_Expression *parse_expression(Parser *parser, Arena *arena, Preceden
 		
 	} else if (token_is_prefix(token)) {
 		consume_token(&parser->lexer); // prefix
-		Ast_Expression *right = parse_expression(parser, arena, prefix_precedence_from_token(token), true);
+		Ast_Expression *right = parse_expression(parser, arena, prefix_precedence_from_token(token), Parse_Expr_Flags_REQUIRED);
 		
 		left = make_unary_expression(parser, token, right);
 	} else if (token.kind == '(') {
 		consume_token(&parser->lexer); // (
-		Ast_Expression *grouped = parse_expression(parser, arena, PREC_NONE, true);
+		Ast_Expression *grouped = parse_expression(parser, arena, PREC_NONE, Parse_Expr_Flags_REQUIRED);
 		expect_token_kind(parser, ')', "Expected )");
 		
 		left = grouped;
 	} else { // This token is not the beginning of any expression.
-		if (required) {
+		if (parse_flags & Parse_Expr_Flags_REQUIRED) {
 			report_parse_error(parser, "Expected an expression");
 		}
 	}
@@ -420,23 +420,23 @@ internal Ast_Expression *parse_expression(Parser *parser, Arena *arena, Preceden
 			consume_token(&parser->lexer); // infix
 			
 			if (token.kind == '?') {
-				Ast_Expression *middle = parse_expression(parser, arena, PREC_NONE, true);
+				Ast_Expression *middle = parse_expression(parser, arena, PREC_NONE, Parse_Expr_Flags_REQUIRED);
 				
 				expect_token_kind(parser, ':', "Expected :");
-				Ast_Expression *right = parse_expression(parser, arena, precedence, true);
+				Ast_Expression *right = parse_expression(parser, arena, precedence, Parse_Expr_Flags_REQUIRED);
 				
 				left = make_ternary_expression(parser, left, middle, right);
 			} else {
-				bool subexpr_required = true;
+				Parse_Expr_Flags subexpr_parse_flags = Parse_Expr_Flags_REQUIRED;
 				if (token.kind == '(' || token.kind == '[') {
 					precedence = 0;
 					
 					if (token.kind == '(') {
-						subexpr_required = false;
+						subexpr_parse_flags &= ~Parse_Expr_Flags_REQUIRED;
 					}
 				}
 				
-				Ast_Expression *right = parse_expression(parser, arena, precedence, subexpr_required);
+				Ast_Expression *right = parse_expression(parser, arena, precedence, subexpr_parse_flags);
 				
 				left = make_binary_expression(parser, token, left, right);
 				
@@ -535,7 +535,7 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 		Ast_Expression *last  = NULL;
 		
 		for (bool is_expr_list = false; ; is_expr_list = true) {
-			Ast_Expression *expr = parse_expression(parser, parser->arena, PREC_NONE, false);
+			Ast_Expression *expr = parse_expression(parser, parser->arena, PREC_NONE, 0);
 			if (expr == &nil_expression) {
 				if (is_expr_list) {
 					assert(there_were_parse_errors(parser));
@@ -570,7 +570,7 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 		i64 count = 0;
 		
 		for (bool is_expr_list = false; ; is_expr_list = true) {
-			Ast_Expression *expr = parse_expression(parser, parser->arena, PREC_NONE, is_expr_list);
+			Ast_Expression *expr = parse_expression(parser, parser->arena, PREC_NONE, is_expr_list ? Parse_Expr_Flags_REQUIRED : 0);
 			if (expr == &nil_expression) {
 				if (is_expr_list) {
 					assert(there_were_parse_errors(parser));
@@ -629,7 +629,7 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 			count = 0;
 			
 			for (;;) {
-				Ast_Expression *expr = parse_expression(parser, parser->arena, PREC_NONE, true);
+				Ast_Expression *expr = parse_expression(parser, parser->arena, PREC_NONE, Parse_Expr_Flags_REQUIRED);
 				if (expr == &nil_expression) {
 					assert(there_were_parse_errors(parser));
 					break; // Avoid writing to read-only memory
@@ -965,7 +965,7 @@ internal Initter parse_declaration_rhs(Parser *parser) {
 		// and we figure out later what exactly that is.
 		
 		result.kind = Initter_Kind_EXPR;
-		result.expr = parse_expression(parser, parser->arena, PREC_NONE, true);
+		result.expr = parse_expression(parser, parser->arena, PREC_NONE, Parse_Expr_Flags_REQUIRED);
 	}
 	
 	// TODO: 'distinct'
@@ -1206,7 +1206,7 @@ internal Ast_Expression *parse_expression_string(Arena *arena, String source) {
 	Parser parser = {0};
 	parser_init(&parser, arena, .text = source);
 	
-	return parse_expression(&parser, parser.arena, PREC_NONE, true);
+	return parse_expression(&parser, parser.arena, PREC_NONE, Parse_Expr_Flags_REQUIRED);
 }
 
 internal Ast_Statement *parse_statement_string(Arena *arena, String source) {

@@ -51,12 +51,16 @@ internal bool token_is_assigner(Token token);
 
 //- Expressions
 
+typedef enum Parse_Expr_Flags {
+	Parse_Expr_Flags_REQUIRED = 1 << 0,
+} Parse_Expr_Flags;
+
 internal Ast_Expression *make_atom_expression(Parser *parser, Token token);
 internal Ast_Expression *make_unary_expression(Parser *parser, Token unary, Ast_Expression *subexpr);
 internal Ast_Expression *make_binary_expression(Parser *parser, Token binary, Ast_Expression *left, Ast_Expression *right);
 internal Ast_Expression *make_ternary_expression(Parser *parser, Ast_Expression *left, Ast_Expression *middle, Ast_Expression *right);
 
-internal Ast_Expression *parse_expression(Parser *parser, Arena *arena, Precedence caller_precedence, bool required);
+internal Ast_Expression *parse_expression(Parser *parser, Arena *arena, Precedence caller_precedence, Parse_Expr_Flags parse_flags);
 
 internal String string_from_expression_tree(Arena *arena, Ast_Expression *root);
 internal void print_expression_tree(Ast_Expression *root);

@@ -29,10 +29,16 @@ internal void test_expression_parser(void) {
 	test_expression_parser_single((String)string_from_lit_const("a?b?c:d:e"));
 	test_expression_parser_single((String)string_from_lit_const("a?b+c:d+e"));
 	test_expression_parser_single((String)string_from_lit_const("a+b?c:d"));
-#endif
 	
 	test_expression_parser_single((String)string_from_lit_const("true"));
 	test_expression_parser_single((String)string_from_lit_const("true + false"));
+#endif
+	
+	// Compound literals
+	test_expression_parser_single((String)string_from_lit_const("int{}"));
+	test_expression_parser_single((String)string_from_lit_const("int{0}"));
+	test_expression_parser_single((String)string_from_lit_const("int{0,0}"));
+	test_expression_parser_single((String)string_from_lit_const("int{0,}"));
 	
 #if 0
 	// With errors
@@ -77,10 +83,14 @@ test_statement_parser(void) {
 #if 0
 	// Simple statements
 	test_statement_parser_single((String)string_from_lit_const("1 + 2;"));
+#endif
+	
 	test_statement_parser_single((String)string_from_lit_const("return;"));
 	test_statement_parser_single((String)string_from_lit_const("return 0;"));
 	test_statement_parser_single((String)string_from_lit_const("return 1 + 2;"));
 	test_statement_parser_single((String)string_from_lit_const("return (1 + 2);"));
+	
+#if 0
 	test_statement_parser_single((String)string_from_lit_const("{ return; return; }"));
 	test_statement_parser_single((String)string_from_lit_const("{ ;; }"));
 	
@@ -90,13 +100,14 @@ test_statement_parser(void) {
 	test_statement_parser_single((String)string_from_lit_const("{ return; "));
 #endif
 	
-#if 0
 	// Assignments and declarations
 	test_statement_parser_single((String)string_from_lit_const("a = 0;"));
 	test_statement_parser_single((String)string_from_lit_const("a, b = 0;"));
 	test_statement_parser_single((String)string_from_lit_const("a, b = 0, 0;"));
 	test_statement_parser_single((String)string_from_lit_const("a := 0;"));
 	test_statement_parser_single((String)string_from_lit_const("a : int = 0;"));
+	
+#if 0
 	test_statement_parser_single((String)string_from_lit_const("a :: proc();"));
 	test_statement_parser_single((String)string_from_lit_const("a :: proc() ---;"));
 	test_statement_parser_single((String)string_from_lit_const("a :: proc() {}"));
@@ -193,7 +204,7 @@ internal void test_all(void) {
 		// max_printed_parse_errors = 0;
 		
 		test_expression_parser();
-		// test_statement_parser();
+		test_statement_parser();
 		// test_declaration_parser();
 		
 		// max_printed_lex_errors   = I64_MAX;

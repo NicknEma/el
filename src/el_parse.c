@@ -63,7 +63,7 @@ internal Binary_Operator binary_from_token_kind(Token_Kind kind) {
 		case '/':   { binary = Binary_Operator_DIVIDE; } break;
 		case '%': { binary = Binary_Operator_MODULUS; } break;
 		case '?': { binary = Binary_Operator_TERNARY; } break;
-		// case ',':   { binary = Binary_Operator_COMMA; } break;
+		case ',':   { binary = Binary_Operator_COMMA; } break;
 		case '.':     { binary = Binary_Operator_MEMBER; } break;
 		case '(':  { binary = Binary_Operator_CALL; } break;
 		case '[':  { binary = Binary_Operator_ARRAY_ACCESS; } break;
@@ -77,7 +77,7 @@ internal Binary_Operator binary_from_token_kind(Token_Kind kind) {
 internal Precedence infix_precedence_from_token(Token token) {
 	Precedence precedence = PREC_NONE;
 	switch (token.kind) {
-		// case ',': precedence = PREC_COMMA; break;
+		case ',': precedence = PREC_COMMA; break;
 		
 		// case '=': precedence = PREC_ASSIGNMENT; break;
 		
@@ -233,19 +233,19 @@ internal Ast_Expression *make_ternary_expression(Parser *parser, Ast_Expression 
 	return node;
 }
 
-internal Ast_Expression *make_compound_literal_expression(Parser *parser, Arena *arena, Type_Ann *type_annotation, Ast_Expression_Array exprs, Range1DI32 loc) {
+internal Ast_Expression *make_compound_literal_expression(Parser *parser, Arena *arena, Type_Ann *type_annotation, Ast_Expression *exprs, Range1DI32 loc) {
 	Ast_Expression *expr = ast_expression_alloc(arena);
 	
 	expr->location   = loc;
 	expr->kind       = Ast_Expression_Kind_COMPOUND_LITERAL;
-	expr->exprs      = exprs.data;
-	expr->expr_count = exprs.count;
+	expr->subexpr    = exprs;
 	expr->type_annotation = type_annotation;
 	
 	return expr;
 }
 
-internal Ast_Expression_Array parse_compound_literal_content(Parser *parser, Arena *arena) {
+internal Ast_Expression *parse_compound_literal_content(Parser *parser, Arena *arena) {
+#if 0
 	Arena *conflicts[] = {parser->arena, arena};
 	Scratch scratch = scratch_begin(conflicts, array_count(conflicts));
 	
@@ -292,6 +292,9 @@ internal Ast_Expression_Array parse_compound_literal_content(Parser *parser, Are
 	scratch_end(scratch);
 	
 	return result;
+#else
+	return parse_expression(parser, arena, PREC_NONE, Parse_Expr_Flags_ALLOW_COMMA|Parse_Expr_Flags_ALLOW_TRAILING_COMMA);
+#endif
 }
 
 internal Type_Ann *parse_type_annotation(Parser *parser, Arena *arena) {
@@ -356,7 +359,7 @@ internal Ast_Expression *parse_expression(Parser *parser, Arena *arena, Preceden
 			if (token.kind == '{') { // It is a compound literal
 				consume_token(&parser->lexer); // {
 				
-				Ast_Expression_Array compound_exprs = parse_compound_literal_content(parser, arena);
+				Ast_Expression *compound_exprs = parse_compound_literal_content(parser, arena);
 				
 				token = peek_token(&parser->lexer); // Save copy of } so we have the loc
 				expect_token_kind(parser, '}', "Expected '}' closing compound literal");
@@ -376,7 +379,7 @@ internal Ast_Expression *parse_expression(Parser *parser, Arena *arena, Preceden
 		Type_Ann *type_annotation = parse_type_annotation(parser, arena);
 		expect_token_kind(parser, '{', "Expected '{'");
 		
-		Ast_Expression_Array compound_exprs = parse_compound_literal_content(parser, arena);
+		Ast_Expression *compound_exprs = parse_compound_literal_content(parser, arena);
 		
 		token = peek_token(&parser->lexer); // Save copy of } so we have the loc
 		expect_token_kind(parser, '}', "Expected '}' closing compound literal");
@@ -413,7 +416,7 @@ internal Ast_Expression *parse_expression(Parser *parser, Arena *arena, Preceden
 			consume_token(&parser->lexer); // postfix
 			
 			left = make_unary_expression(parser, token, left);
-		} else if (token_is_infix(token)) {
+		} else if (token_is_infix(token) && implies(token.kind == ',', Parse_Expr_Flags_ALLOW_COMMA)) {
 			Precedence precedence = infix_precedence_from_token(token);
 			if (precedence < caller_precedence)  break;
 			
@@ -434,6 +437,12 @@ internal Ast_Expression *parse_expression(Parser *parser, Arena *arena, Preceden
 					if (token.kind == '(') {
 						subexpr_parse_flags &= ~Parse_Expr_Flags_REQUIRED;
 					}
+				}
+				
+				// If we allow a trailing comma and this token is a comma, don't
+				// require an expression afterward.
+				if (token.kind == ',' && parse_flags & Parse_Expr_Flags_ALLOW_TRAILING_COMMA) {
+					subexpr_parse_flags &= ~Parse_Expr_Flags_REQUIRED;
 				}
 				
 				Ast_Expression *right = parse_expression(parser, arena, precedence, subexpr_parse_flags);
@@ -469,6 +478,54 @@ internal Ast_Statement *make_statement_(Parser *parser, Ast_Statement_Kind kind,
 	
 	return result;
 }
+
+#if 1
+// TODO: Remove, this is all *very* temporary
+typedef struct Temp_Ident_From_Expr_Result Temp_Ident_From_Expr_Result;
+struct Temp_Ident_From_Expr_Result {
+	i64 count;
+	i64 ident_count;
+	String *idents;
+	Range1DI32 *ident_locations;
+};
+
+internal i64 temp_ident_from_expr_count(Ast_Expression *expr) {
+	i64 result = 0;
+	if (expr->kind == Ast_Expression_Kind_BINARY && expr->binary == Binary_Operator_COMMA) {
+		result += temp_ident_from_expr_count(expr->left);
+		result += temp_ident_from_expr_count(expr->right);
+	} else {
+		result = 1;
+	}
+	return result;
+}
+
+internal void temp_ident_from_expr_append(Temp_Ident_From_Expr_Result *temp_, Ast_Expression *expr) {
+	if (expr->kind == Ast_Expression_Kind_IDENT) {
+		temp_->ident_locations[temp_->ident_count] = expr->location;
+		temp_->idents[temp_->ident_count] = expr->ident;
+		temp_->ident_count += 1;
+	} else if (expr->kind == Ast_Expression_Kind_BINARY && expr->binary == Binary_Operator_COMMA) {
+		temp_ident_from_expr_append(temp_, expr->left);
+		temp_ident_from_expr_append(temp_, expr->right);
+	} else {
+		// report_parse_error(parser, "Only identifiers are allowed on the left of a declaration");
+	}
+}
+
+internal Temp_Ident_From_Expr_Result temp_ident_from_expr(Arena *arena, Ast_Expression *expr) {
+	Temp_Ident_From_Expr_Result temp_ = {
+		.count = temp_ident_from_expr_count(expr),
+	};
+	
+	temp_.idents  = push_array(arena, String, temp_.count);
+	temp_.ident_locations = push_array(arena, Range1DI32, temp_.count);
+	
+	temp_ident_from_expr_append(&temp_, expr);
+	
+	return temp_;
+}
+#endif
 
 internal Ast_Statement *parse_statement(Parser *parser) {
 	Ast_Statement *result = &nil_statement;
@@ -527,6 +584,7 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 		
 		Range1DI32 location = token.loc;
 		
+#if 0
 		// Parse return values: either nothing, or an expression list.
 		//
 		// Do not require an expression to begin with (it could be a "void" return),
@@ -549,6 +607,9 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 			token = peek_token(&parser->lexer);
 			if (token.kind != ',') break; // That was the last expr in the list
 		}
+#else
+		Ast_Expression *first = parse_expression(parser, parser->arena, PREC_NONE, Parse_Expr_Flags_ALLOW_COMMA);
+#endif
 		
 		if (first != NULL) {
 			result = make_statement(parser, Ast_Statement_Kind_RETURN, location, .expr = first);
@@ -560,6 +621,7 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 		
 		Ast_Statement_Kind kind = Ast_Statement_Kind_EXPR;
 		
+#if 0
 		// Parse an expression list, stopping at any 'assigner' or 'declarator' token,
 		// or when there are no more expressions.
 		//
@@ -600,6 +662,20 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 				break; // That was the last expr in the list
 			}
 		}
+#else
+		Ast_Expression *first = NULL;
+		Ast_Expression *last  = NULL;
+		// i64 count = 0;
+		
+		first = parse_expression(parser, parser->arena, PREC_NONE, Parse_Expr_Flags_ALLOW_COMMA);
+		
+		token = peek_token(&parser->lexer);
+		if (token_is_assigner(token))
+			kind = Ast_Statement_Kind_ASSIGNMENT;
+		if (token_is_declarator(token))
+			kind = Ast_Statement_Kind_DECLARATION;
+		
+#endif
 		
 		if (kind == Ast_Statement_Kind_EXPR) {
 			
@@ -609,13 +685,20 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 			
 		} else if (kind == Ast_Statement_Kind_ASSIGNMENT) {
 			
-			if (count == 0) {
+			// The parse_expression flags don't include REQUIRED because we want to allow
+			// the empty statement. This means that in order to check wether there were any expressions
+			// on the left of the assigner, check the root against NULL/nil_expression
+			// :AssignToNothing
+			
+			// if (count == 0) {
+			if (check_nil_expression(first)) {
 				report_parse_error(parser, "Cannot assign to nothing. At least one expression must be on the left of the assignment");
 			}
 			
 			Token assigner = peek_token(&parser->lexer);
 			consume_token(&parser->lexer); // assigner
 			
+#if 0
 			// Parse assignment right-hand-side, stopping when there are no more expressions.
 			//
 			// At least one is required, and every comma requires another one after, so
@@ -656,10 +739,27 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 				result = make_statement(parser, kind, assigner.loc, .assigner = assigner.kind,
 										.lhs = lhs_first, .rhs = first);
 			}
+#else
+			Ast_Expression *lhs_first = first;
+			// Ast_Expression *lhs_last  = last;
+			// i64 lhs_count = count;
+			first = NULL;
+			last  = NULL;
+			// count = 0;
+			
+			first = parse_expression(parser, parser->arena, PREC_NONE, Parse_Expr_Flags_REQUIRED|Parse_Expr_Flags_ALLOW_COMMA);
+			
+			result = make_statement(parser, kind, assigner.loc, .assigner = assigner.kind,
+									.lhs = lhs_first, .rhs = first);
+#endif
 			
 		} else if (kind == Ast_Statement_Kind_DECLARATION) {
 			
-			if (count == 0) {
+			// See above comment about this check
+			// :AssignToNothing
+			
+			// if (count == 0) {
+			if (check_nil_expression(first)) {
 				report_parse_error(parser, "Cannot declare nothing. At least one identifier must be on the left of the declaration");
 			}
 			
@@ -668,6 +768,7 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 			// for passing them to parse_declaration_after_lhs().
 			Scratch scratch = scratch_begin(&parser->arena, 1);
 			
+#if 0
 			i64 ident_count = 0;
 			String *idents  = push_array(scratch.arena, String, count);
 			Range1DI32 *ident_locations = push_array(scratch.arena, Range1DI32, count);
@@ -680,6 +781,16 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 					report_parse_error(parser, "Only identifiers are allowed on the left of a declaration");
 				}
 			}
+#else
+			// TODO: This is all temporary, remove once you allow declarations to have expression
+			// trees both as lhs and rhs.
+			
+			Temp_Ident_From_Expr_Result temp_ = temp_ident_from_expr(scratch.arena, first);
+			i64 count = temp_.count;
+			i64 ident_count = temp_.ident_count;
+			String *idents = temp_.idents;
+			Range1DI32 *ident_locations = temp_.ident_locations;
+#endif
 			
 			if (count == ident_count) {
 				// Do *NOT* consume the declarator as it will be used in parse_declaration_after_lhs().
@@ -690,7 +801,8 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 				Ast_Declaration *decl = parse_declaration_after_lhs(parser, idents, ident_locations, ident_count);
 				result = make_statement(parser, kind, declarator.loc, .decl = decl);
 			} else {
-				assert(there_were_parse_errors(parser));
+				// assert(there_were_parse_errors(parser));
+				report_parse_error(parser, "Only identifiers are allowed on the left of a declaration");
 			}
 			
 			scratch_end(scratch);

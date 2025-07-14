@@ -22,7 +22,7 @@ typedef enum Binary_Operator {
 	Binary_Operator_DIVIDE,
 	Binary_Operator_MODULUS,
 	Binary_Operator_TERNARY,
-	// Binary_Operator_COMMA,
+	Binary_Operator_COMMA, // :CommaOperator
 	Binary_Operator_MEMBER,
 	Binary_Operator_CALL,
 	Binary_Operator_ARRAY_ACCESS,
@@ -91,9 +91,9 @@ struct Ast_Expression {
 	Ast_Expression *right;
 	
 	Range1DI32 location;
+	Type_Ann  *type_annotation;
 	
 	union {
-		struct { Type_Ann *type_annotation; Ast_Expression *exprs; i64 expr_count; }; // Compound literals
 		struct { String ident; Symbol *symbol; };
 		String string_value;
 		i64    i64_value;

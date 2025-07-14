@@ -18,7 +18,11 @@ struct Parser {
 
 typedef enum Precedence {
 	PREC_NONE = 0,
-	// PREC_COMMA,
+	
+	// The comma "operator" is not the same as the C comma operator; it is just a way
+	// to encode a list of expressions without requiring an additional *next member
+	// and additional code paths.  :CommaOperator
+	PREC_COMMA,
 	// PREC_ASSIGNMENT,
 	PREC_TERNARY,
 	PREC_LOGICAL,
@@ -52,7 +56,9 @@ internal bool token_is_assigner(Token token);
 //- Expressions
 
 typedef enum Parse_Expr_Flags {
-	Parse_Expr_Flags_REQUIRED = 1 << 0,
+	Parse_Expr_Flags_REQUIRED             = 1 << 0,
+	Parse_Expr_Flags_ALLOW_COMMA          = 1 << 1,
+	Parse_Expr_Flags_ALLOW_TRAILING_COMMA = 1 << 2,
 } Parse_Expr_Flags;
 
 internal Ast_Expression *make_atom_expression(Parser *parser, Token token);

@@ -26,6 +26,7 @@ internal char char_from_binary_op(Binary_Operator op) {
 		case Binary_Operator_DIVIDE:       return '/';
 		case Binary_Operator_MODULUS:      return '%';
 		case Binary_Operator_TERNARY:      return '?';
+		case Binary_Operator_COMMA:        return ',';
 		case Binary_Operator_MEMBER:       return '.';
 		case Binary_Operator_CALL:         return '(';
 		case Binary_Operator_ARRAY_ACCESS: return '[';
@@ -34,6 +35,8 @@ internal char char_from_binary_op(Binary_Operator op) {
 	
 	return 0;
 }
+
+internal void string_from_declaration_tree_internal(Arena *arena, Ast_Declaration *root, String_List *builder);
 
 internal void string_from_expression_tree_internal(Arena *arena, Ast_Expression *root, String_List *builder) {
 	switch (root->kind) {
@@ -127,6 +130,18 @@ internal void string_from_statement_tree_internal(Arena *arena, Ast_Statement *r
 		case Ast_Statement_Kind_RETURN: {
 			string_list_push(arena, builder, string_from_lit("return "));
 			string_from_expression_tree_internal(arena, root->expr, builder);
+		} break;
+		
+		case Ast_Statement_Kind_ASSIGNMENT: {
+			string_from_expression_tree_internal(arena, root->lhs, builder);
+			string_list_push(arena, builder, string_from_lit(" = "));
+			string_from_expression_tree_internal(arena, root->rhs, builder);
+		} break;
+		
+		case Ast_Statement_Kind_DECLARATION: {
+			string_from_declaration_tree_internal(arena, root->decl, builder);
+			string_list_push(arena, builder, string_from_lit(" := "));
+			// string_from_expression_tree_internal(arena, root->rhs, builder);
 		} break;
 		
 		case Ast_Statement_Kind_BLOCK: {

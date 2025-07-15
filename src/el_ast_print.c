@@ -26,7 +26,7 @@ internal char char_from_binary_op(Binary_Operator op) {
 		case Binary_Operator_DIVIDE:       return '/';
 		case Binary_Operator_MODULUS:      return '%';
 		case Binary_Operator_TERNARY:      return '?';
-		case Binary_Operator_COMMA:        return ',';
+		// case Binary_Operator_COMMA:        return ',';
 		case Binary_Operator_MEMBER:       return '.';
 		case Binary_Operator_CALL:         return '(';
 		case Binary_Operator_ARRAY_ACCESS: return '[';

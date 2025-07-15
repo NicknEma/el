@@ -63,7 +63,7 @@ internal Binary_Operator binary_from_token_kind(Token_Kind kind) {
 		case '/':   { binary = Binary_Operator_DIVIDE; } break;
 		case '%': { binary = Binary_Operator_MODULUS; } break;
 		case '?': { binary = Binary_Operator_TERNARY; } break;
-		case ',':   { binary = Binary_Operator_COMMA; } break;
+		// case ',':   { binary = Binary_Operator_COMMA; } break;
 		case '.':     { binary = Binary_Operator_MEMBER; } break;
 		case '(':  { binary = Binary_Operator_CALL; } break;
 		case '[':  { binary = Binary_Operator_ARRAY_ACCESS; } break;
@@ -77,7 +77,7 @@ internal Binary_Operator binary_from_token_kind(Token_Kind kind) {
 internal Precedence infix_precedence_from_token(Token token) {
 	Precedence precedence = PREC_NONE;
 	switch (token.kind) {
-		case ',': precedence = PREC_COMMA; break;
+		// case ',': precedence = PREC_COMMA; break;
 		
 		// case '=': precedence = PREC_ASSIGNMENT; break;
 		
@@ -357,10 +357,31 @@ internal Ast_Expression *parse_expression(Parser *parser, Arena *arena, Preceden
 		}
 	}
 	
+	// TODO: Maybe continue until there is a parse error?
 	for (;;) {
 		token = peek_token(&parser->lexer);
 		
-		if (token_is_postfix(token)) {
+		if (token.kind == ',') {
+			if (parse_flags & Parse_Expr_Flags_ALLOW_COMMA) {
+				consume_token(&parser->lexer);
+				
+				Parse_Expr_Flags next_parse_flags = Parse_Expr_Flags_REQUIRED;
+				if (parse_flags & Parse_Expr_Flags_ALLOW_TRAILING_COMMA) {
+					next_parse_flags &= ~Parse_Expr_Flags_REQUIRED;
+				}
+				
+				Ast_Expression *next = parse_expression(parser, arena, PREC_NONE, next_parse_flags);
+				
+				// This check is required because we're assigning to 'left', which has been
+				// initialized with &nil_expression which is in read-only memory.
+				if (!there_were_parse_errors(parser)) {
+					assert(!check_nil_expression(left));
+					
+					left->next        = next;
+					left->next_count += next->next_count + 1;
+				}
+			}
+		} else if (token_is_postfix(token)) {
 			Precedence precedence = postfix_precedence_from_token(token);
 			if (precedence < caller_precedence)  break;
 			
@@ -440,6 +461,7 @@ struct Temp_Ident_From_Expr_Result {
 	Range1DI32 *ident_locations;
 };
 
+#if 0
 internal i64 temp_ident_from_expr_count(Ast_Expression *expr) {
 	i64 result = 0;
 	if (expr->kind == Ast_Expression_Kind_BINARY && expr->binary == Binary_Operator_COMMA) {
@@ -463,16 +485,25 @@ internal void temp_ident_from_expr_append(Temp_Ident_From_Expr_Result *temp_, As
 		// report_parse_error(parser, "Only identifiers are allowed on the left of a declaration");
 	}
 }
+#endif
 
 internal Temp_Ident_From_Expr_Result temp_ident_from_expr(Arena *arena, Ast_Expression *expr) {
 	Temp_Ident_From_Expr_Result temp_ = {
-		.count = temp_ident_from_expr_count(expr),
+		.count = expr->next_count + 1,
 	};
 	
 	temp_.idents  = push_array(arena, String, temp_.count);
 	temp_.ident_locations = push_array(arena, Range1DI32, temp_.count);
 	
-	temp_ident_from_expr_append(&temp_, expr);
+	// temp_ident_from_expr_append(&temp_, expr);
+	for (Ast_Expression *e = expr; !check_nil_expression(e); e = e->next) {
+		// Count "top-level" identifiers
+		if (e->kind == Ast_Expression_Kind_IDENT) {
+			temp_.ident_locations[temp_.ident_count] = e->location;
+			temp_.idents[temp_.ident_count] = e->ident;
+			temp_.ident_count += 1;
+		}
+	}
 	
 	return temp_;
 }

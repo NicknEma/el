@@ -22,7 +22,7 @@ typedef enum Binary_Operator {
 	Binary_Operator_DIVIDE,
 	Binary_Operator_MODULUS,
 	Binary_Operator_TERNARY,
-	Binary_Operator_COMMA, // :CommaOperator
+	// Binary_Operator_COMMA, // :CommaOperator
 	Binary_Operator_MEMBER,
 	Binary_Operator_CALL,
 	Binary_Operator_ARRAY_ACCESS,
@@ -103,6 +103,7 @@ struct Ast_Expression {
 	Type_Array types;
 	
 	Ast_Expression *next;
+	i64             next_count;
 };
 
 typedef struct Ast_Expression_Array Ast_Expression_Array;

@@ -192,6 +192,8 @@ global read_only Ast_Statement nil_statement = {
 
 global read_only Ast_Declaration nil_declaration = {
 	.next = &nil_declaration,
+	.lhs  = &nil_expression,
+	.rhs  = &nil_expression,
 };
 
 #define check_nil_declaration(p) ((p)==0||(p)==&nil_declaration)

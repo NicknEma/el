@@ -245,56 +245,7 @@ internal Ast_Expression *make_compound_literal_expression(Parser *parser, Arena 
 }
 
 internal Ast_Expression *parse_compound_literal_content(Parser *parser, Arena *arena) {
-#if 0
-	Arena *conflicts[] = {parser->arena, arena};
-	Scratch scratch = scratch_begin(conflicts, array_count(conflicts));
-	
-	typedef struct Node Node;
-	struct Node { Node *next; void *user; };
-	
-	// Parse an expression list, stopping at any 'assigner' or 'declarator' token,
-	// or when there are no more expressions.
-	//
-	// Do not require any expression at all.
-	Node *first = 0, *last = 0;
-	int   count = 0;
-	
-	for (;;) {
-		Ast_Expression *expr = parse_expression(parser, scratch.arena, PREC_NONE, 0);
-		if (expr == &nil_expression) {
-			break;
-		}
-		
-		Node *node = push_type(scratch.arena, Node);
-		node->user = expr;
-		queue_push(first, last, node);
-		count += 1;
-		
-		Token token = peek_token(&parser->lexer);
-		
-		if (token.kind == ',') {
-			consume_token(&parser->lexer);
-		} else {
-			break; // That was the last expr in the list
-		}
-	}
-	
-	Ast_Expression_Array result = {0};
-	result.data  = push_array(arena, Ast_Expression, count);
-	result.count = count;
-	
-	int expr_index = 0;
-	for (Node *node = first; node; node = node->next, expr_index += 1) {
-		assert(expr_index < count);
-		result.data[expr_index] = * cast(Ast_Expression *) node->user;
-	}
-	
-	scratch_end(scratch);
-	
-	return result;
-#else
 	return parse_expression(parser, arena, PREC_NONE, Parse_Expr_Flags_ALLOW_COMMA|Parse_Expr_Flags_ALLOW_TRAILING_COMMA);
-#endif
 }
 
 internal Type_Ann *parse_type_annotation(Parser *parser, Arena *arena) {
@@ -351,15 +302,15 @@ internal Ast_Expression *parse_expression(Parser *parser, Arena *arena, Preceden
 			Token ident = token;
 			token = peek_token(&parser->lexer);
 			
-			Type_Ann *type_annotation = push_type(arena, Type_Ann);
-			type_annotation->kind  = Type_Ann_Kind_IDENT;
-			type_annotation->ident = lexeme_from_token(&parser->lexer, ident);
-			type_annotation->loc   = ident.loc;
-			
 			if (token.kind == '{') { // It is a compound literal
 				consume_token(&parser->lexer); // {
 				
-				Ast_Expression *compound_exprs = parse_compound_literal_content(parser, arena);
+				Type_Ann *type_annotation = push_type(arena, Type_Ann);
+				type_annotation->kind  = Type_Ann_Kind_IDENT;
+				type_annotation->ident = lexeme_from_token(&parser->lexer, ident);
+				type_annotation->loc   = ident.loc;
+				
+				Ast_Expression *compound_exprs = parse_expression(parser, arena, PREC_NONE, Parse_Expr_Flags_ALLOW_COMMA|Parse_Expr_Flags_ALLOW_TRAILING_COMMA);
 				
 				token = peek_token(&parser->lexer); // Save copy of } so we have the loc
 				expect_token_kind(parser, '}', "Expected '}' closing compound literal");
@@ -375,11 +326,12 @@ internal Ast_Expression *parse_expression(Parser *parser, Arena *arena, Preceden
 			left = make_atom_expression(parser, atom);
 		}
 	} else if (token.kind == '[') { // Array/slice compound literal
+		// Do *NOT* consume the token as it will be used to parse the type annotation
 		
 		Type_Ann *type_annotation = parse_type_annotation(parser, arena);
 		expect_token_kind(parser, '{', "Expected '{'");
 		
-		Ast_Expression *compound_exprs = parse_compound_literal_content(parser, arena);
+		Ast_Expression *compound_exprs = parse_expression(parser, arena, PREC_NONE, Parse_Expr_Flags_ALLOW_COMMA|Parse_Expr_Flags_ALLOW_TRAILING_COMMA);
 		
 		token = peek_token(&parser->lexer); // Save copy of } so we have the loc
 		expect_token_kind(parser, '}', "Expected '}' closing compound literal");
@@ -388,7 +340,6 @@ internal Ast_Expression *parse_expression(Parser *parser, Arena *arena, Preceden
 			Range1DI32 loc = range1di32_merge(type_annotation->loc, token.loc);
 			left = make_compound_literal_expression(parser, arena, type_annotation, compound_exprs, loc);
 		}
-		
 	} else if (token_is_prefix(token)) {
 		consume_token(&parser->lexer); // prefix
 		Ast_Expression *right = parse_expression(parser, arena, prefix_precedence_from_token(token), Parse_Expr_Flags_REQUIRED);

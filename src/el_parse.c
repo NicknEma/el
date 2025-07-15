@@ -574,9 +574,73 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 			}
 			
 			Token declarator = token;
-			// Do *NOT* consume the declarator as it will be used in parse_declaration_after_lhs().
 			
-			Ast_Declaration *decl = parse_declaration_after_lhs(parser, lhs);
+			Ast_Declaration *decl = &nil_declaration;
+			
+			// Determine the kind of declaration
+			bool     parse_initializers = false;
+			Type_Ann   *type_annotation = NULL;
+			Ast_Declaration_Flags flags = 0;
+			
+			if (declarator.kind == ':') {
+				consume_token(&parser->lexer); // :
+				
+				// ':' alone (NOT ':=' or '::') means there MUST be an explicit type annotation,
+				// so we parse that.
+				// TODO: For now the only valid type annotations are identifiers.
+				
+				token = peek_token(&parser->lexer);
+				if (token.kind == TOKEN_IDENT ||
+					token.kind == '^' ||
+					token.kind == '[') {
+					
+					flags |= Ast_Declaration_Flag_TYPE_ANNOTATION;
+					type_annotation = parse_type_annotation(parser, parser->arena);
+				} else {
+					report_parse_error(parser, "Expected type annotation after :");
+				}
+				
+				token = peek_token(&parser->lexer);
+				if (token.kind == '=' || token.kind == ':') {
+					consume_token(&parser->lexer); // = or :
+					parse_initializers = true;
+					
+					if (token.kind == ':') flags |= Ast_Declaration_Flag_CONSTANT;
+				}
+			} else if (declarator.kind == TOKEN_COLON_EQUALS ||
+					   declarator.kind == TOKEN_DOUBLE_COLON) {
+				consume_token(&parser->lexer); // := or ::
+				parse_initializers = true;
+				
+				if (declarator.kind == TOKEN_DOUBLE_COLON) flags |= Ast_Declaration_Flag_CONSTANT;
+			} else {
+				panic("Attempt to parse a declaration but 'declarator' was not a declarator");
+			}
+			
+			{
+				// Build the declaration: either by parsing the initializers,
+				// or by looking at the type annotation.
+				
+				decl = ast_declaration_alloc(parser->arena);
+				decl->flags           = flags;
+				decl->lhs             = lhs;
+				decl->type_annotation = type_annotation;
+				
+				if (parse_initializers) {
+					
+					decl->rhs = parse_expression(parser, parser->arena, PREC_NONE, Parse_Expr_Flags_REQUIRED|Parse_Expr_Flags_ALLOW_COMMA);
+					
+					// Do *NOT* report an error if ident_count != count: it's not the number of initializers
+					// that matters, but the number of values. One expression could yield multiple values,
+					// e.g. a function call with multiple returns.
+				} else {
+					assert((flags & Ast_Declaration_Flag_TYPE_ANNOTATION) || there_were_parse_errors(parser));
+					
+					// The declaration only has a type annotation, without initializers.
+					// Leave rhs empty.
+				}
+			}
+			
 			result = make_statement(parser, kind, declarator.loc, .decl = decl);
 			
 			for (Ast_Expression *rhs = decl->rhs; !check_nil_expression(rhs); rhs = rhs->next) {

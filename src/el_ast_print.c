@@ -103,6 +103,11 @@ internal void string_from_expression_tree_internal(Arena *arena, Ast_Expression 
 		
 		default: break;
 	}
+	
+	if (!check_nil_expression(root->next)) {
+		string_list_push(arena, builder, string_from_lit(","));
+		string_from_expression_tree_internal(arena, root->next, builder);
+	}
 }
 
 internal String string_from_expression_tree(Arena *arena, Ast_Expression *root) {

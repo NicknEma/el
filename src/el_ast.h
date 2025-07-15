@@ -159,8 +159,8 @@ struct Ast_Declaration {
 	Ast_Expression *lhs;
 	Ast_Expression *rhs;
 	
+	Ast_Expression *type_annotation;
 	Range1DI32 location;
-	Type_Ann  *type_annotation;
 	
 	Ast_Declaration *next;
 };

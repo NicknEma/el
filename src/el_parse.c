@@ -578,8 +578,8 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 			Ast_Declaration *decl = &nil_declaration;
 			
 			// Determine the kind of declaration
-			bool     parse_initializers = false;
-			Type_Ann   *type_annotation = NULL;
+			bool parse_initializers = false;
+			Ast_Expression *type_annotation = NULL;
 			Ast_Declaration_Flags flags = 0;
 			
 			if (declarator.kind == ':') {
@@ -587,17 +587,13 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 				
 				// ':' alone (NOT ':=' or '::') means there MUST be an explicit type annotation,
 				// so we parse that.
-				// TODO: For now the only valid type annotations are identifiers.
+				//
+				// We don't pass the REQUIRED flag so that we can print a customized
+				// error message later.
 				
-				token = peek_token(&parser->lexer);
-				if (token.kind == TOKEN_IDENT ||
-					token.kind == '^' ||
-					token.kind == '[') {
-					
+				type_annotation = parse_expression(parser, parser->arena, PREC_NONE, 0);
+				if (!check_nil_expression(type_annotation)) { // There was a type annotation
 					flags |= Ast_Declaration_Flag_TYPE_ANNOTATION;
-					type_annotation = parse_type_annotation(parser, parser->arena);
-				} else {
-					report_parse_error(parser, "Expected type annotation after :");
 				}
 				
 				token = peek_token(&parser->lexer);
@@ -606,7 +602,13 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 					parse_initializers = true;
 					
 					if (token.kind == ':') flags |= Ast_Declaration_Flag_CONSTANT;
+				} else if ((flags & Ast_Declaration_Flag_TYPE_ANNOTATION) == 0) {
+					// The declarator was : (not := nor ::) and there is no initializer:
+					// Report an error
+					
+					report_parse_error(parser, "Expected type annotation after :");
 				}
+				
 			} else if (declarator.kind == TOKEN_COLON_EQUALS ||
 					   declarator.kind == TOKEN_DOUBLE_COLON) {
 				consume_token(&parser->lexer); // := or ::
@@ -654,7 +656,7 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 			}
 			
 		} else {
-			panic("Invalid codepath");
+			panic("Invalid assignment to the statement kind");
 		}
 		
 		allow_break();
@@ -673,6 +675,7 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 
 //- Parser: Declarations
 
+#if 0
 internal Ast_Declaration *parse_declaration_after_lhs(Parser *parser, Ast_Expression *lhs) {
 	Ast_Declaration *result = &nil_declaration;
 	
@@ -747,6 +750,7 @@ internal Ast_Declaration *parse_declaration_after_lhs(Parser *parser, Ast_Expres
 	
 	return result;
 }
+#endif
 
 #if 0
 internal Ast_Expression *parse_declaration_rhs(Parser *parser) {

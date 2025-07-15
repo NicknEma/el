@@ -136,7 +136,6 @@ struct Ast_Statement {
 	
 	Scope *scope;
 	
-	bool typechecked;
 	Ast_Statement *next;
 };
 

@@ -39,6 +39,7 @@ internal void test_expression_parser(void) {
 	test_expression_parser_single((String)string_from_lit_const("int{0}"));
 	test_expression_parser_single((String)string_from_lit_const("int{0,0}"));
 	test_expression_parser_single((String)string_from_lit_const("int{0,}"));
+	test_expression_parser_single((String)string_from_lit_const("[]int{}"));
 	
 #if 0
 	// With errors
@@ -106,6 +107,11 @@ test_statement_parser(void) {
 	test_statement_parser_single((String)string_from_lit_const("a, b = 0, 0;"));
 	test_statement_parser_single((String)string_from_lit_const("a := 0;"));
 	test_statement_parser_single((String)string_from_lit_const("a : int = 0;"));
+	test_statement_parser_single((String)string_from_lit_const("a : ^int = 0;"));
+	test_statement_parser_single((String)string_from_lit_const("a : []int = 0;"));
+	test_statement_parser_single((String)string_from_lit_const("a := struct{x:int}{0};"));
+	
+	test_statement_parser_single((String)string_from_lit_const("a := struct{x:int};"));
 	
 #if 0
 	test_statement_parser_single((String)string_from_lit_const("a :: proc();"));
@@ -132,6 +138,7 @@ test_statement_parser(void) {
 	printf("\n");
 }
 
+#if 0
 internal void test_declaration_parser_single(String source) {
 	Scratch scratch = scratch_begin(0, 0);
 	
@@ -196,6 +203,7 @@ internal void test_declaration_parser(void) {
 	
 	printf("\n");
 }
+#endif
 
 internal void test_all(void) {
 	

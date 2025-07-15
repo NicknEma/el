@@ -153,8 +153,6 @@ internal void string_from_statement_tree_internal(Arena *arena, Ast_Statement *r
 		
 		case Ast_Statement_Kind_DECLARATION: {
 			string_from_declaration_tree_internal(arena, root->decl, builder);
-			string_list_push(arena, builder, string_from_lit(" := "));
-			// string_from_expression_tree_internal(arena, root->rhs, builder);
 		} break;
 		
 		case Ast_Statement_Kind_BLOCK: {
@@ -200,6 +198,20 @@ internal String string_from_declaration_tree(Arena *arena, Ast_Declaration *root
 internal void print_declaration_tree(Ast_Declaration *root);
 
 internal void string_from_declaration_tree_internal(Arena *arena, Ast_Declaration *root, String_List *builder) {
+	string_from_expression_tree_internal(arena, root->lhs, builder);
+	
+	if (root->flags & Ast_Declaration_Flag_TYPE_ANNOTATION) {
+		string_list_push(arena, builder, string_from_lit(":"));
+		string_list_push(arena, builder, string_from_lit("<type>")); // TODO: Actual type
+		string_list_push(arena, builder, string_from_lit("="));
+	} else {
+		string_list_push(arena, builder, string_from_lit(":="));
+	}
+	
+	if (!check_nil_expression(root->rhs)) {
+		string_from_expression_tree_internal(arena, root->rhs, builder);
+	}
+	
 #if 0
 	switch (root->entity) {
 		case Ast_Declaration_Entity_PROCEDURE: {
@@ -216,7 +228,7 @@ internal void string_from_declaration_tree_internal(Arena *arena, Ast_Declaratio
 	}
 #endif
 	
-	string_list_push(arena, builder, string_from_lit("\n"));
+	// string_list_push(arena, builder, string_from_lit("\n"));
 }
 
 internal String string_from_declaration_tree(Arena *arena, Ast_Declaration *root) {

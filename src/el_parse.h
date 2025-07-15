@@ -96,8 +96,8 @@ internal Ast_Statement *parse_statement(Parser *parser);
 //- Declarations
 
 internal Ast_Declaration *parse_declaration(Parser *parser);
-internal Ast_Declaration *parse_declaration_after_lhs(Parser *parser, String *idents, Range1DI32 *ident_locations, i64 ident_count);
-internal Initter          parse_declaration_rhs(Parser *parser);
+internal Ast_Declaration *parse_declaration_after_lhs(Parser *parser, Ast_Expression *lhs);
+internal Ast_Expression  *parse_declaration_rhs(Parser *parser);
 
 internal Ast_Declaration *parse_proc_header(Parser *parser);
 internal Type_Ann        *parse_type_annotation(Parser *parser, Arena *arena);

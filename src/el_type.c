@@ -69,6 +69,7 @@ internal Type make_int_type(Int_Subtype subtype, String name) {
 	return type;
 }
 
+typedef struct Typechecker Typechecker;
 internal Type make_proc_defn_type(Typechecker *checker, Ast_Declaration *first_param, Ast_Statement *body) {
 	Type type = {0};
 	

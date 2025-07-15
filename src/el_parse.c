@@ -268,7 +268,16 @@ internal Type_Ann *parse_type_annotation(Parser *parser, Arena *arena) {
 		}
 		
 	} else if (token.keyword == KEYWORD_STRUCT) {
-		allow_break();
+		consume_token(&parser->lexer); // struct
+		
+		// TODO: Temporarily skip until }... Implement actual struct body parsing
+		
+		while (peek_token(&parser->lexer).kind != '}') consume_token(&parser->lexer);
+		consume_token(&parser->lexer);
+		
+		result = push_type(arena, Type_Ann);
+		result->kind = Type_Ann_Kind_STRUCT;
+		
 	} else if (token.keyword == KEYWORD_PROC) {
 		allow_break();
 	} else if (token.kind == TOKEN_IDENT) {
@@ -325,7 +334,7 @@ internal Ast_Expression *parse_expression(Parser *parser, Arena *arena, Preceden
 		} else {
 			left = make_atom_expression(parser, atom);
 		}
-	} else if (token.kind == '[') { // Array/slice compound literal
+	} else if (token.kind == '[' || token.keyword == KEYWORD_STRUCT) { // Array/slice compound literal, or anonymous struct compound literal
 		// Do *NOT* consume the token as it will be used to parse the type annotation
 		
 		Type_Ann *type_annotation = parse_type_annotation(parser, arena);
@@ -451,66 +460,10 @@ internal Ast_Statement *make_statement_(Parser *parser, Ast_Statement_Kind kind,
 	return result;
 }
 
-#if 1
-// TODO: Remove, this is all *very* temporary
-typedef struct Temp_Ident_From_Expr_Result Temp_Ident_From_Expr_Result;
-struct Temp_Ident_From_Expr_Result {
-	i64 count;
-	i64 ident_count;
-	String *idents;
-	Range1DI32 *ident_locations;
-};
-
-#if 0
-internal i64 temp_ident_from_expr_count(Ast_Expression *expr) {
-	i64 result = 0;
-	if (expr->kind == Ast_Expression_Kind_BINARY && expr->binary == Binary_Operator_COMMA) {
-		result += temp_ident_from_expr_count(expr->left);
-		result += temp_ident_from_expr_count(expr->right);
-	} else {
-		result = 1;
-	}
-	return result;
-}
-
-internal void temp_ident_from_expr_append(Temp_Ident_From_Expr_Result *temp_, Ast_Expression *expr) {
-	if (expr->kind == Ast_Expression_Kind_IDENT) {
-		temp_->ident_locations[temp_->ident_count] = expr->location;
-		temp_->idents[temp_->ident_count] = expr->ident;
-		temp_->ident_count += 1;
-	} else if (expr->kind == Ast_Expression_Kind_BINARY && expr->binary == Binary_Operator_COMMA) {
-		temp_ident_from_expr_append(temp_, expr->left);
-		temp_ident_from_expr_append(temp_, expr->right);
-	} else {
-		// report_parse_error(parser, "Only identifiers are allowed on the left of a declaration");
-	}
-}
-#endif
-
-internal Temp_Ident_From_Expr_Result temp_ident_from_expr(Arena *arena, Ast_Expression *expr) {
-	Temp_Ident_From_Expr_Result temp_ = {
-		.count = expr->next_count + 1,
-	};
-	
-	temp_.idents  = push_array(arena, String, temp_.count);
-	temp_.ident_locations = push_array(arena, Range1DI32, temp_.count);
-	
-	// temp_ident_from_expr_append(&temp_, expr);
-	for (Ast_Expression *e = expr; !check_nil_expression(e); e = e->next) {
-		// Count "top-level" identifiers
-		if (e->kind == Ast_Expression_Kind_IDENT) {
-			temp_.ident_locations[temp_.ident_count] = e->location;
-			temp_.idents[temp_.ident_count] = e->ident;
-			temp_.ident_count += 1;
-		}
-	}
-	
-	return temp_;
-}
-#endif
-
 internal Ast_Statement *parse_statement(Parser *parser) {
 	Ast_Statement *result = &nil_statement;
+	
+	bool require_semicolon = true;
 	
 	Token token = peek_token(&parser->lexer);
 	if (token.kind == '{') {
@@ -561,37 +514,18 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 			result = make_statement(parser, Ast_Statement_Kind_BLOCK, range1di32_merge(lbrace_location, rbrace_location),
 									.block = first);
 		}
+		
+		require_semicolon = false;
 	} else if (token.keyword == KEYWORD_RETURN) {
 		consume_token(&parser->lexer); // return
 		
 		Range1DI32 location = token.loc;
 		
-#if 0
 		// Parse return values: either nothing, or an expression list.
 		//
 		// Do not require an expression to begin with (it could be a "void" return),
 		// but require one more expression after each comma.
-		Ast_Expression *first = NULL;
-		Ast_Expression *last  = NULL;
-		
-		for (bool is_expr_list = false; ; is_expr_list = true) {
-			Ast_Expression *expr = parse_expression(parser, parser->arena, PREC_NONE, 0);
-			if (expr == &nil_expression) {
-				if (is_expr_list) {
-					assert(there_were_parse_errors(parser));
-				}
-				
-				break; // Avoid writing to read-only memory
-			}
-			
-			queue_push_nz(first, last, expr, next, check_nil_expression, set_nil_expression);
-			
-			token = peek_token(&parser->lexer);
-			if (token.kind != ',') break; // That was the last expr in the list
-		}
-#else
 		Ast_Expression *first = parse_expression(parser, parser->arena, PREC_NONE, Parse_Expr_Flags_ALLOW_COMMA);
-#endif
 		
 		if (first != NULL) {
 			result = make_statement(parser, Ast_Statement_Kind_RETURN, location, .expr = first);
@@ -603,50 +537,14 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 		
 		Ast_Statement_Kind kind = Ast_Statement_Kind_EXPR;
 		
-#if 0
 		// Parse an expression list, stopping at any 'assigner' or 'declarator' token,
 		// or when there are no more expressions.
 		//
 		// Do not require an expression to begin with (it could be the empty statement),
 		// but require one more expression after each comma.
-		Ast_Expression *first = NULL;
-		Ast_Expression *last  = NULL;
-		i64 count = 0;
 		
-		for (bool is_expr_list = false; ; is_expr_list = true) {
-			Ast_Expression *expr = parse_expression(parser, parser->arena, PREC_NONE, is_expr_list ? Parse_Expr_Flags_REQUIRED : 0);
-			if (expr == &nil_expression) {
-				if (is_expr_list) {
-					assert(there_were_parse_errors(parser));
-				}
-				
-				break; // Avoid writing to read-only memory
-			}
-			
-			count += 1;
-			queue_push_nz(first, last, expr, next, check_nil_expression, set_nil_expression);
-			location = range1di32_merge(location, expr->location);
-			
-			token = peek_token(&parser->lexer);
-			if (token_is_assigner(token)) {
-				kind = Ast_Statement_Kind_ASSIGNMENT;
-				break;
-			}
-			
-			if (token_is_declarator(token)) {
-				kind = Ast_Statement_Kind_DECLARATION;
-				break;
-			}
-			
-			if (token.kind == ',') {
-				consume_token(&parser->lexer);
-			} else {
-				break; // That was the last expr in the list
-			}
-		}
-#else
 		Ast_Expression *first = NULL;
-		Ast_Expression *last  = NULL;
+		// Ast_Expression *last  = NULL;
 		// i64 count = 0;
 		
 		first = parse_expression(parser, parser->arena, PREC_NONE, Parse_Expr_Flags_ALLOW_COMMA);
@@ -656,8 +554,6 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 			kind = Ast_Statement_Kind_ASSIGNMENT;
 		if (token_is_declarator(token))
 			kind = Ast_Statement_Kind_DECLARATION;
-		
-#endif
 		
 		if (kind == Ast_Statement_Kind_EXPR) {
 			
@@ -680,60 +576,15 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 			Token assigner = peek_token(&parser->lexer);
 			consume_token(&parser->lexer); // assigner
 			
-#if 0
 			// Parse assignment right-hand-side, stopping when there are no more expressions.
 			//
 			// At least one is required, and every comma requires another one after, so
 			// they are all required. The list ends when there are no more commas after
 			// the expression.
-			Ast_Expression *lhs_first = first;
-			Ast_Expression *lhs_last  = last;
-			i64 lhs_count = count;
-			first = NULL;
-			last  = NULL;
-			count = 0;
-			
-			for (;;) {
-				Ast_Expression *expr = parse_expression(parser, parser->arena, PREC_NONE, Parse_Expr_Flags_REQUIRED);
-				if (expr == &nil_expression) {
-					assert(there_were_parse_errors(parser));
-					break; // Avoid writing to read-only memory
-				}
-				
-				count += 1;
-				queue_push_nz(first, last, expr, next, check_nil_expression, set_nil_expression);
-				
-				token = peek_token(&parser->lexer);
-				if (token.kind == ',') {
-					consume_token(&parser->lexer);
-				} else {
-					break; // That was the last expr in the list
-				}
-			}
-			
-			// Do *NOT* report an error if lhs_count != count: it's not the number of expressions
-			// that matters, but the number of values. One expression could yield multiple values,
-			// e.g. a function call with multiple returns.
-			(void) lhs_count;
-			(void) lhs_last;
-			
-			if (lhs_first != NULL && first != NULL) {
-				result = make_statement(parser, kind, assigner.loc, .assigner = assigner.kind,
-										.lhs = lhs_first, .rhs = first);
-			}
-#else
-			Ast_Expression *lhs_first = first;
-			// Ast_Expression *lhs_last  = last;
-			// i64 lhs_count = count;
-			first = NULL;
-			last  = NULL;
-			// count = 0;
-			
-			first = parse_expression(parser, parser->arena, PREC_NONE, Parse_Expr_Flags_REQUIRED|Parse_Expr_Flags_ALLOW_COMMA);
+			Ast_Expression *rhs = parse_expression(parser, parser->arena, PREC_NONE, Parse_Expr_Flags_REQUIRED|Parse_Expr_Flags_ALLOW_COMMA);
 			
 			result = make_statement(parser, kind, assigner.loc, .assigner = assigner.kind,
-									.lhs = lhs_first, .rhs = first);
-#endif
+									.lhs = first, .rhs = rhs);
 			
 		} else if (kind == Ast_Statement_Kind_DECLARATION) {
 			
@@ -763,16 +614,7 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 					report_parse_error(parser, "Only identifiers are allowed on the left of a declaration");
 				}
 			}
-#else
-			// TODO: This is all temporary, remove once you allow declarations to have expression
-			// trees both as lhs and rhs.
 			
-			Temp_Ident_From_Expr_Result temp_ = temp_ident_from_expr(scratch.arena, first);
-			i64 count = temp_.count;
-			i64 ident_count = temp_.ident_count;
-			String *idents = temp_.idents;
-			Range1DI32 *ident_locations = temp_.ident_locations;
-#endif
 			
 			if (count == ident_count) {
 				// Do *NOT* consume the declarator as it will be used in parse_declaration_after_lhs().
@@ -783,9 +625,26 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 				Ast_Declaration *decl = parse_declaration_after_lhs(parser, idents, ident_locations, ident_count);
 				result = make_statement(parser, kind, declarator.loc, .decl = decl);
 			} else {
-				// assert(there_were_parse_errors(parser));
-				report_parse_error(parser, "Only identifiers are allowed on the left of a declaration");
+				assert(there_were_parse_errors(parser));
 			}
+#else
+			
+			// Do *NOT* consume the declarator as it will be used in parse_declaration_after_lhs().
+			Token declarator = token;
+			Ast_Expression *lhs = first;
+			Ast_Declaration *decl = parse_declaration_after_lhs(parser, lhs);
+			result = make_statement(parser, kind, declarator.loc, .decl = decl);
+			
+			for (Ast_Expression *rhs = decl->rhs; !check_nil_expression(rhs); rhs = rhs->next) {
+				if (check_nil_expression(rhs->next)) { // This is the last
+#if 0
+					if (rhs->kind == Ast_Expression_Kind_PROC_DEFN) {
+						require_semicolon = false;
+					}
+#endif
+				}
+			}
+#endif
 			
 			scratch_end(scratch);
 		} else {
@@ -795,18 +654,8 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 		allow_break();
 	}
 	
-	{
-		bool require_semicolon = true;
-		if (result->kind == Ast_Statement_Kind_BLOCK) require_semicolon = false;
-		if (result->kind == Ast_Statement_Kind_DECLARATION && result->decl->initter_count > 0 &&
-			result->decl->initters[result->decl->initter_count-1].kind == Initter_Kind_PROCEDURE) {
-			require_semicolon = false;
-		}
-		
-		if (require_semicolon) {
-			expect_token_kind(parser, TOKEN_SEMICOLON, "Expected ; after statement");
-		}
-	}
+	if (require_semicolon)
+		expect_token_kind(parser, TOKEN_SEMICOLON, "Expected ; after statement");
 	
 	if (there_were_parse_errors(parser)) {
 		result = &nil_statement; // TODO: @Leak, @Hack
@@ -818,6 +667,7 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 
 //- Parser: Declarations
 
+#if 0
 internal Ast_Declaration *parse_declaration(Parser *parser) {
 	Ast_Declaration *result = &nil_declaration;
 	Scratch scratch = scratch_begin(&parser->arena, 1);
@@ -874,13 +724,14 @@ internal Ast_Declaration *parse_declaration(Parser *parser) {
 	scratch_end(scratch);
 	return result;
 }
+#endif
 
-internal Ast_Declaration *parse_declaration_after_lhs(Parser *parser, String *idents, Range1DI32 *ident_locations, i64 ident_count) {
+internal Ast_Declaration *parse_declaration_after_lhs(Parser *parser, Ast_Expression *lhs) {
 	Ast_Declaration *result = &nil_declaration;
 	
 	// Determine the kind of declaration
 	bool     parse_initializers = false;
-	Type_Ann    type_annotation = {0};
+	Type_Ann   *type_annotation = NULL;
 	Ast_Declaration_Flags flags = 0;
 	
 	Token token = peek_token(&parser->lexer);
@@ -892,12 +743,12 @@ internal Ast_Declaration *parse_declaration_after_lhs(Parser *parser, String *id
 		// TODO: For now the only valid type annotations are identifiers.
 		
 		Token next_token = peek_token(&parser->lexer);
-		if (next_token.kind == TOKEN_IDENT) {
-			consume_token(&parser->lexer); // type ident
+		if (next_token.kind == TOKEN_IDENT ||
+			next_token.kind == '^' ||
+			next_token.kind == '[') {
 			
 			flags |= Ast_Declaration_Flag_TYPE_ANNOTATION;
-			type_annotation.kind  = Type_Ann_Kind_IDENT;
-			type_annotation.ident = lexeme_from_token(&parser->lexer, next_token);
+			type_annotation = parse_type_annotation(parser, parser->arena);
 		} else {
 			report_parse_error(parser, "Expected type annotation after :");
 		}
@@ -925,87 +776,21 @@ internal Ast_Declaration *parse_declaration_after_lhs(Parser *parser, String *id
 		
 		result = ast_declaration_alloc(parser->arena);
 		result->flags           = flags;
-		result->entity_count    = ident_count;
-		result->entities        = push_array(parser->arena, Entity, ident_count);
+		result->lhs             = lhs;
 		result->type_annotation = type_annotation;
 		
-		for (i64 i = 0; i < ident_count; i += 1) {
-			result->entities[i].kind  = Entity_Kind_UNKNOWN;
-			result->entities[i].ident = idents[i];
-			result->entities[i].location = ident_locations[i];
-		}
-		
 		if (parse_initializers) {
-			Scratch scratch = scratch_begin(&parser->arena, 1);
 			
-			typedef struct Initter_Node Initter_Node;
-			struct Initter_Node { Initter initter; Initter_Node *next; };
-			Initter_Node *first = NULL;
-			Initter_Node *last  = NULL;
-			
-			i64 count = 0;
-			for (;;) {
-				Initter initter = parse_declaration_rhs(parser);
-				if (initter.kind == Initter_Kind_NONE) {
-					assert(there_were_parse_errors(parser));
-					break;
-				}
-				
-				Initter_Node *node = push_type(scratch.arena, Initter_Node);
-				node->initter = initter;
-				
-				count += 1;
-				queue_push(first, last, node);
-				
-				token = peek_token(&parser->lexer);
-				if (token.kind == ',') {
-					consume_token(&parser->lexer);
-				} else {
-					break; // That was the last decl in the list
-				}
-			}
+			result->rhs = parse_expression(parser, parser->arena, PREC_NONE, Parse_Expr_Flags_REQUIRED|Parse_Expr_Flags_ALLOW_COMMA);
 			
 			// Do *NOT* report an error if ident_count != count: it's not the number of initializers
 			// that matters, but the number of values. One expression could yield multiple values,
 			// e.g. a function call with multiple returns.
-			
-			result->initter_count = count;
-			result->initters      = push_array(parser->arena, Initter, result->entity_count);
-			
-			i64 i = 0;
-			for (Initter_Node *node = first; node != NULL; node = node->next) {
-				result->initters[i] = node->initter;
-				i += 1;
-			}
-			
-			// TODO: location?
-			
-			scratch_end(scratch);
 		} else {
 			assert((flags & Ast_Declaration_Flag_TYPE_ANNOTATION) || there_were_parse_errors(parser));
 			
 			// The declaration only has a type annotation, without initializers.
-			// Make new declaration nodes from the given idents.
-			
-			// See if we can infer the entity/entities being declared by looking at the
-			// type annotation.
-			// If we can't (e.g. the annotation is a plain identifier), we'll infer it
-			// later during type-checking.
-			Entity_Kind entity = Entity_Kind_NULL;
-			switch (type_annotation.kind) {
-				case Type_Ann_Kind_IDENT: {
-					entity = Entity_Kind_UNKNOWN;
-				} break;
-				
-				// TODO: Other kinds of type annotations
-				
-				default: break;
-			}
-			
-			result->initter_count = 0;
-			result->initters      = NULL;
-			
-			// TODO: location?
+			// Leave rhs empty.
 		}
 	}
 	
@@ -1016,7 +801,8 @@ internal Ast_Declaration *parse_declaration_after_lhs(Parser *parser, String *id
 	return result;
 }
 
-internal Initter parse_declaration_rhs(Parser *parser) {
+#if 0
+internal Ast_Expression *parse_declaration_rhs(Parser *parser) {
 	Initter result = nil_initter;
 	
 	Token token = peek_token(&parser->lexer);
@@ -1070,7 +856,10 @@ internal Initter parse_declaration_rhs(Parser *parser) {
 	
 	return result;
 }
+#endif
 
+// TODO: This will be called by parse_type_annotation...
+#if 0
 internal Ast_Declaration *parse_proc_header(Parser *parser) {
 	Ast_Declaration *result = &nil_declaration;
 	Scratch scratch = scratch_begin(&parser->arena, 1);
@@ -1203,10 +992,12 @@ internal Ast_Declaration *parse_proc_header(Parser *parser) {
 	scratch_end(scratch);
 	return result;
 }
+#endif
 
 ////////////////////////////////
 //~ Program
 
+#if 0
 internal Ast_Declaration *parse_program(Parser *parser) {
 	Ast_Declaration *result = &nil_declaration;
 	
@@ -1226,6 +1017,7 @@ internal Ast_Declaration *parse_program(Parser *parser) {
 	
 	return result;
 }
+#endif
 
 ////////////////////////////////
 //~ Context
@@ -1310,6 +1102,7 @@ internal Ast_Statement *parse_statement_string(Arena *arena, String source) {
 	return parse_statement(&parser);
 }
 
+#if 0
 internal Ast_Declaration *parse_declaration_string(Arena *arena, String source) {
 	Parser parser = {0};
 	parser_init(&parser, arena, .text = source);
@@ -1323,5 +1116,6 @@ internal Ast_Declaration *parse_program_string(Arena *arena, String source) {
 	
 	return parse_program(&parser);
 }
+#endif
 
 #endif

@@ -38,7 +38,7 @@ typedef struct Ast_Declaration Ast_Declaration;
 
 typedef struct Symbol Symbol;
 typedef struct Entity Entity;
-typedef struct Initter Initter;
+// typedef struct Initter Initter;
 
 typedef struct Scope Scope;
 typedef struct Type_Ann Type_Ann;
@@ -48,6 +48,7 @@ typedef enum Type_Ann_Kind {
 	Type_Ann_Kind_IDENT,
 	Type_Ann_Kind_POINTER,
 	Type_Ann_Kind_SLICE,
+	Type_Ann_Kind_STRUCT,
 	Type_Ann_Kind_COUNT,
 } Type_Ann_Kind;
 
@@ -70,6 +71,7 @@ typedef enum Ast_Expression_Kind {
 	Ast_Expression_Kind_INT_LITERAL,
 	Ast_Expression_Kind_STRING_LITERAL,
 	Ast_Expression_Kind_COMPOUND_LITERAL,
+	// Ast_Expression_Kind_PROC_DEFN,
 	Ast_Expression_Kind_IDENT,
 	Ast_Expression_Kind_UNARY,
 	Ast_Expression_Kind_BINARY,
@@ -89,6 +91,12 @@ struct Ast_Expression {
 	union { Ast_Expression *left; Ast_Expression *subexpr; };
 	Ast_Expression *middle; // For ternaries
 	Ast_Expression *right;
+	
+	Ast_Statement  *body; // In case it is a proc definition
+	union {
+		struct { Ast_Declaration *first_param, *first_retval; };
+		Ast_Declaration *first_member;
+	};
 	
 	Range1DI32 location;
 	Type_Ann  *type_annotation;
@@ -162,11 +170,12 @@ struct Entity {
 	
 	Symbol *symbol;
 	
-	Initter *initter;
+	Ast_Expression *initter;
 	int initter_value_index;
 };
 
 
+#if 0
 typedef enum Initter_Kind {
 	Initter_Kind_NONE = 0,
 	Initter_Kind_EXPR,
@@ -185,6 +194,7 @@ struct Initter {
 	Ast_Statement  *body;
 	Ast_Expression *expr;
 };
+#endif
 
 
 typedef enum Ast_Declaration_Flags {
@@ -195,14 +205,19 @@ typedef enum Ast_Declaration_Flags {
 struct Ast_Declaration {
 	Ast_Declaration_Flags flags;
 	
+#if 0
 	i64      entity_count;
 	Entity  *entities;
 	
 	i64      initter_count;
 	Initter *initters;
+#else
+	Ast_Expression *lhs; // Symbols being declared
+	Ast_Expression *rhs; // Initializers
+#endif
 	
 	Range1DI32 location;
-	Type_Ann type_annotation;
+	Type_Ann  *type_annotation;
 	
 	Ast_Declaration *next;
 };
@@ -234,17 +249,19 @@ global read_only Ast_Statement nil_statement = {
 
 global read_only Ast_Declaration nil_declaration = {
 	.next = &nil_declaration,
+	// .initters = &nil_expression,
 };
 
 #define check_nil_declaration(p) ((p)==0||(p)==&nil_declaration)
 #define set_nil_declaration(p) ((p)=&nil_declaration)
 
+#if 0
 global read_only Initter nil_initter = {
 	.first_param = &nil_declaration,
 	.body = &nil_statement,
 	.expr = &nil_expression,
 };
-
+#endif
 
 #if 0
 // TODO: Parsing declarations in parameter lists, struct bodies or in a generic contexts have

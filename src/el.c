@@ -16,13 +16,13 @@
 #include "el_parse.h"
 
 #if EL_CHECK_SINGLE_PASS
-#include "el_check_single_pass.h"
+// #include "el_check_single_pass.h"
 #else
 #include "el_check.h"
 #endif
 
-#include "el_bcode.h"
-#include "el_masm.h"
+// #include "el_bcode.h"
+// #include "el_masm.h"
 
 #include "el_print.c"
 #include "el_type.c"
@@ -31,13 +31,13 @@
 #include "el_ast_print.c"
 
 #if EL_CHECK_SINGLE_PASS
-#include "el_check_single_pass.c"
+// #include "el_check_single_pass.c"
 #else
 #include "el_check.c"
 #endif
 
-#include "el_bcode.c"
-#include "el_masm.c"
+// #include "el_bcode.c"
+// #include "el_masm.c"
 
 #include "el_x64.c"
 #include "el_all_tests.c"
@@ -76,6 +76,7 @@ int main(int argc, char **argv) {
 		all_ok = false;
 	}
 	
+#if 0
 	// Parse
 	Ast_Declaration *program = &nil_declaration;
 	
@@ -142,6 +143,7 @@ int main(int argc, char **argv) {
 			system("build_generated.bat");
 		}
 	}
+#endif
 	
 	return 0;
 }

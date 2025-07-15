@@ -525,11 +525,8 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 		//
 		// Do not require an expression to begin with (it could be a "void" return),
 		// but require one more expression after each comma.
-		Ast_Expression *first = parse_expression(parser, parser->arena, PREC_NONE, Parse_Expr_Flags_ALLOW_COMMA);
-		
-		if (first != NULL) {
-			result = make_statement(parser, Ast_Statement_Kind_RETURN, location, .expr = first);
-		}
+		Ast_Expression *retvals = parse_expression(parser, parser->arena, PREC_NONE, Parse_Expr_Flags_ALLOW_COMMA);
+		result = make_statement(parser, Ast_Statement_Kind_RETURN, location, .expr = retvals);
 	} else {
 		// Do *NOT* consume the first token as it will be part of the first expression/lhs.
 		
@@ -542,34 +539,20 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 		//
 		// Do not require an expression to begin with (it could be the empty statement),
 		// but require one more expression after each comma.
-		
-		Ast_Expression *first = NULL;
-		// Ast_Expression *last  = NULL;
-		// i64 count = 0;
-		
-		first = parse_expression(parser, parser->arena, PREC_NONE, Parse_Expr_Flags_ALLOW_COMMA);
+		Ast_Expression *lhs = parse_expression(parser, parser->arena, PREC_NONE, Parse_Expr_Flags_ALLOW_COMMA);
 		
 		token = peek_token(&parser->lexer);
-		if (token_is_assigner(token))
-			kind = Ast_Statement_Kind_ASSIGNMENT;
-		if (token_is_declarator(token))
-			kind = Ast_Statement_Kind_DECLARATION;
+		if (token_is_assigner(token))   kind = Ast_Statement_Kind_ASSIGNMENT;
+		if (token_is_declarator(token)) kind = Ast_Statement_Kind_DECLARATION;
 		
 		if (kind == Ast_Statement_Kind_EXPR) {
-			
-			if (first != NULL) {
-				result = make_statement(parser, kind, location, .expr = first);
-			}
-			
+			result = make_statement(parser, kind, location, .expr = lhs);
 		} else if (kind == Ast_Statement_Kind_ASSIGNMENT) {
-			
 			// The parse_expression flags don't include REQUIRED because we want to allow
 			// the empty statement. This means that in order to check wether there were any expressions
 			// on the left of the assigner, check the root against NULL/nil_expression
 			// :AssignToNothing
-			
-			// if (count == 0) {
-			if (check_nil_expression(first)) {
+			if (check_nil_expression(lhs)) {
 				report_parse_error(parser, "Cannot assign to nothing. At least one expression must be on the left of the assignment");
 			}
 			
@@ -582,56 +565,17 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 			// they are all required. The list ends when there are no more commas after
 			// the expression.
 			Ast_Expression *rhs = parse_expression(parser, parser->arena, PREC_NONE, Parse_Expr_Flags_REQUIRED|Parse_Expr_Flags_ALLOW_COMMA);
-			
-			result = make_statement(parser, kind, assigner.loc, .assigner = assigner.kind,
-									.lhs = first, .rhs = rhs);
-			
+			result = make_statement(parser, kind, assigner.loc, .assigner = assigner.kind, .lhs = lhs, .rhs = rhs);
 		} else if (kind == Ast_Statement_Kind_DECLARATION) {
-			
 			// See above comment about this check
 			// :AssignToNothing
-			
-			// if (count == 0) {
-			if (check_nil_expression(first)) {
+			if (check_nil_expression(lhs)) {
 				report_parse_error(parser, "Cannot declare nothing. At least one identifier must be on the left of the declaration");
 			}
 			
-			// Check that all expressions on the left of the declarator are identifiers
-			// (you can only declare identifiers), while also storing them in an array
-			// for passing them to parse_declaration_after_lhs().
-			Scratch scratch = scratch_begin(&parser->arena, 1);
-			
-#if 0
-			i64 ident_count = 0;
-			String *idents  = push_array(scratch.arena, String, count);
-			Range1DI32 *ident_locations = push_array(scratch.arena, Range1DI32, count);
-			for (Ast_Expression *expr = first; expr != NULL && expr != &nil_expression; expr = expr->next) {
-				if (expr->kind == Ast_Expression_Kind_IDENT) {
-					ident_locations[ident_count] = expr->location;
-					idents[ident_count] = expr->ident;
-					ident_count += 1;
-				} else {
-					report_parse_error(parser, "Only identifiers are allowed on the left of a declaration");
-				}
-			}
-			
-			
-			if (count == ident_count) {
-				// Do *NOT* consume the declarator as it will be used in parse_declaration_after_lhs().
-				
-				Token declarator = peek_token(&parser->lexer);
-				assert(token_is_declarator(declarator));
-				
-				Ast_Declaration *decl = parse_declaration_after_lhs(parser, idents, ident_locations, ident_count);
-				result = make_statement(parser, kind, declarator.loc, .decl = decl);
-			} else {
-				assert(there_were_parse_errors(parser));
-			}
-#else
-			
-			// Do *NOT* consume the declarator as it will be used in parse_declaration_after_lhs().
 			Token declarator = token;
-			Ast_Expression *lhs = first;
+			// Do *NOT* consume the declarator as it will be used in parse_declaration_after_lhs().
+			
 			Ast_Declaration *decl = parse_declaration_after_lhs(parser, lhs);
 			result = make_statement(parser, kind, declarator.loc, .decl = decl);
 			
@@ -644,9 +588,7 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 #endif
 				}
 			}
-#endif
 			
-			scratch_end(scratch);
 		} else {
 			panic("Invalid codepath");
 		}

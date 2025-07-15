@@ -609,65 +609,6 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 
 //- Parser: Declarations
 
-#if 0
-internal Ast_Declaration *parse_declaration(Parser *parser) {
-	Ast_Declaration *result = &nil_declaration;
-	Scratch scratch = scratch_begin(&parser->arena, 1);
-	
-	typedef struct Token_Node Token_Node;
-	struct Token_Node { Token token; Token_Node *next; };
-	
-	Token_Node *ident_first = NULL;
-	Token_Node *ident_last  = NULL;
-	i64 ident_count = 0;
-	
-	Token token = {0};
-	for (;;) {
-		token = peek_token(&parser->lexer);
-		if (token.kind == TOKEN_IDENT) {
-			consume_token(&parser->lexer); // ident
-			
-			Token_Node *node = push_type(scratch.arena, Token_Node);
-			node->token = token;
-			
-			ident_count += 1;
-			queue_push(ident_first, ident_last, node);
-			token = peek_token(&parser->lexer);
-		} else {
-			report_parse_errorf(parser, "Expected identifier, got '%.*s'", string_expand(lexeme_from_token(&parser->lexer, token)));
-		}
-		
-		if (token_is_declarator(token)) break;
-		if (token.kind == ',') {
-			consume_token(&parser->lexer);
-		} else {
-			report_parse_errorf(parser, "Unexpected token '%.*s'", string_expand(lexeme_from_token(&parser->lexer, token)));
-			break;
-		}
-	}
-	
-	if (token_is_declarator(token)) {
-		String   *idents = push_array(scratch.arena, String, ident_count);
-		Range1DI32 *ident_locations = push_array(scratch.arena, Range1DI32, ident_count);
-		ident_count = 0;
-		for (Token_Node *node = ident_first; node != NULL; node = node->next) {
-			ident_locations[ident_count] = node->token.loc;
-			idents[ident_count] = lexeme_from_token(&parser->lexer, node->token);
-			ident_count += 1;
-		}
-		
-		result = parse_declaration_after_lhs(parser, idents, ident_locations, ident_count);
-	}
-	
-	if (there_were_parse_errors(parser)) {
-		assert(result == &nil_declaration);
-	}
-	
-	scratch_end(scratch);
-	return result;
-}
-#endif
-
 internal Ast_Declaration *parse_declaration_after_lhs(Parser *parser, Ast_Expression *lhs) {
 	Ast_Declaration *result = &nil_declaration;
 	
@@ -939,27 +880,24 @@ internal Ast_Declaration *parse_proc_header(Parser *parser) {
 ////////////////////////////////
 //~ Program
 
-#if 0
-internal Ast_Declaration *parse_program(Parser *parser) {
-	Ast_Declaration *result = &nil_declaration;
+internal Ast_Statement *parse_program(Parser *parser) {
+	Ast_Statement *result = &nil_statement;
 	
-	Ast_Declaration *first_decl = NULL;
-	Ast_Declaration *last_decl  = NULL;
+	Ast_Statement *first = NULL;
+	Ast_Statement *last  = NULL;
 	
 	for (Token token = peek_token(&parser->lexer); token.kind != TOKEN_EOI; token = peek_token(&parser->lexer)) {
-		Ast_Declaration *decl = parse_declaration(parser);
-		if (decl == NULL || decl == &nil_declaration) break;
+		Ast_Statement *stmt = parse_statement(parser);
+		if (check_nil_statement(stmt)) break;
 		
-		queue_push_nz(first_decl, last_decl, decl, next, check_nil_declaration, set_nil_declaration);
+		queue_push_nz(first, last, stmt, next, check_nil_statement, set_nil_statement);
 	}
 	
-	if (first_decl != NULL) result = first_decl;
+	if (first != NULL) result = first;
 	
 	consume_all_tokens(&parser->lexer);
-	
 	return result;
 }
-#endif
 
 ////////////////////////////////
 //~ Context
@@ -1051,13 +989,13 @@ internal Ast_Declaration *parse_declaration_string(Arena *arena, String source) 
 	
 	return parse_declaration(&parser);
 }
+#endif
 
-internal Ast_Declaration *parse_program_string(Arena *arena, String source) {
+internal Ast_Statement *parse_program_string(Arena *arena, String source) {
 	Parser parser = {0};
 	parser_init(&parser, arena, .text = source);
 	
 	return parse_program(&parser);
 }
-#endif
 
 #endif

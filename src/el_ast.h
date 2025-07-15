@@ -37,8 +37,6 @@ typedef struct Ast_Statement Ast_Statement;
 typedef struct Ast_Declaration Ast_Declaration;
 
 typedef struct Symbol Symbol;
-typedef struct Entity Entity;
-// typedef struct Initter Initter;
 
 typedef struct Scope Scope;
 typedef struct Type_Ann Type_Ann;
@@ -150,53 +148,6 @@ struct Ast_Statement {
 
 //- Declarations
 
-
-typedef enum Entity_Kind {
-	Entity_Kind_NULL = 0,
-	Entity_Kind_UNKNOWN, // For things that don't have an initializer but just a type annotation, or for when the initializer is a generic expression (of which we obviously don't know the type yet)
-	Entity_Kind_STRUCT,
-	Entity_Kind_VALUE,
-	Entity_Kind_PROCEDURE,
-	Entity_Kind_PROCEDURE_TYPE,
-	Entity_Kind_PROCEDURE_PROTO,
-	Entity_Kind_COUNT,
-} Entity_Kind;
-
-struct Entity {
-	Entity_Kind kind;
-	
-	String   ident;
-	Range1DI32 location;
-	
-	Symbol *symbol;
-	
-	Ast_Expression *initter;
-	int initter_value_index;
-};
-
-
-#if 0
-typedef enum Initter_Kind {
-	Initter_Kind_NONE = 0,
-	Initter_Kind_EXPR,
-	Initter_Kind_STRUCT,
-	Initter_Kind_PROCEDURE,
-	Initter_Kind_PROCEDURE_TYPE,
-	Initter_Kind_PROCEDURE_PROTO,
-	Initter_Kind_COUNT,
-} Initter_Kind;
-
-
-struct Initter {
-	Initter_Kind kind;
-	
-	union { Ast_Declaration *first_param; Ast_Declaration *first_member; };
-	Ast_Statement  *body;
-	Ast_Expression *expr;
-};
-#endif
-
-
 typedef enum Ast_Declaration_Flags {
 	Ast_Declaration_Flag_TYPE_ANNOTATION = (1<<0),
 	Ast_Declaration_Flag_CONSTANT = (1<<1),
@@ -205,16 +156,8 @@ typedef enum Ast_Declaration_Flags {
 struct Ast_Declaration {
 	Ast_Declaration_Flags flags;
 	
-#if 0
-	i64      entity_count;
-	Entity  *entities;
-	
-	i64      initter_count;
-	Initter *initters;
-#else
-	Ast_Expression *lhs; // Symbols being declared
-	Ast_Expression *rhs; // Initializers
-#endif
+	Ast_Expression *lhs;
+	Ast_Expression *rhs;
 	
 	Range1DI32 location;
 	Type_Ann  *type_annotation;
@@ -249,31 +192,9 @@ global read_only Ast_Statement nil_statement = {
 
 global read_only Ast_Declaration nil_declaration = {
 	.next = &nil_declaration,
-	// .initters = &nil_expression,
 };
 
 #define check_nil_declaration(p) ((p)==0||(p)==&nil_declaration)
 #define set_nil_declaration(p) ((p)=&nil_declaration)
-
-#if 0
-global read_only Initter nil_initter = {
-	.first_param = &nil_declaration,
-	.body = &nil_statement,
-	.expr = &nil_expression,
-};
-#endif
-
-#if 0
-// TODO: Parsing declarations in parameter lists, struct bodies or in a generic contexts have
-// very similar control flow. I wonder if it's convenient to abstract them all into one
-// implementation and switch on the details based on a context param.
-typedef enum Ast_Declaration_List_Context {
-	Ast_Declaration_List_Context_NONE = 0,
-	Ast_Declaration_List_Context_GENERIC,
-	Ast_Declaration_List_Context_STRUCT_OR_UNION_BODY,
-	Ast_Declaration_List_Context_PROC_HEADER,
-	Ast_Declaration_List_Context_COUNT,
-} Ast_Declaration_List_Context;
-#endif
 
 #endif

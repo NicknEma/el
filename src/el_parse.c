@@ -233,18 +233,19 @@ internal Ast_Expression *make_ternary_expression(Parser *parser, Ast_Expression 
 	return node;
 }
 
-internal Ast_Expression *make_compound_literal_expression(Parser *parser, Type_Ann *type_annotation, Ast_Expression *exprs, Range1DI32 loc) {
+internal Ast_Expression *make_compound_literal_expression(Parser *parser, Ast_Expression *type_annotation, Ast_Expression *exprs, Range1DI32 loc) {
 	Ast_Expression *expr = ast_expression_alloc(parser->arena);
 	
 	expr->location   = loc;
 	expr->kind       = Ast_Expression_Kind_COMPOUND_LITERAL;
 	expr->subexpr    = exprs;
-	expr->type_annotation = type_annotation;
+	expr->type_annotation_e = type_annotation;
 	
 	return expr;
 }
 
-internal Type_Ann *parse_type_annotation(Parser *parser) {
+#if 0
+internal Ast_Expression *parse_type_annotation(Parser *parser) {
 	Type_Ann *result = NULL;
 	
 	Token token = peek_token(&parser->lexer);
@@ -294,6 +295,7 @@ internal Type_Ann *parse_type_annotation(Parser *parser) {
 	
 	return result;
 }
+#endif
 
 internal Ast_Expression *parse_expression(Parser *parser, Precedence caller_precedence, Parse_Expr_Flags parse_flags) {
 	Ast_Expression *left = &nil_expression;
@@ -310,10 +312,14 @@ internal Ast_Expression *parse_expression(Parser *parser, Precedence caller_prec
 			if (token.kind == '{') { // It is a compound literal
 				consume_token(&parser->lexer); // {
 				
+#if 0
 				Type_Ann *type_annotation = push_type(parser->arena, Type_Ann);
 				type_annotation->kind  = Type_Ann_Kind_IDENT;
 				type_annotation->ident = lexeme_from_token(&parser->lexer, ident);
 				type_annotation->loc   = ident.loc;
+#else
+				Ast_Expression *type_annotation_e = make_atom_expression(parser, ident);
+#endif
 				
 				Ast_Expression *compound_exprs = parse_expression(parser, PREC_NONE, Parse_Expr_Flags_ALLOW_COMMA|Parse_Expr_Flags_ALLOW_TRAILING_COMMA);
 				
@@ -322,7 +328,7 @@ internal Ast_Expression *parse_expression(Parser *parser, Precedence caller_prec
 				
 				if (!there_were_parse_errors(parser)) {
 					Range1DI32 loc = range1di32_merge(ident.loc, token.loc);
-					left = make_compound_literal_expression(parser, type_annotation, compound_exprs, loc);
+					left = make_compound_literal_expression(parser, type_annotation_e, compound_exprs, loc);
 				}
 			} else {
 				left = make_atom_expression(parser, atom);
@@ -333,7 +339,8 @@ internal Ast_Expression *parse_expression(Parser *parser, Precedence caller_prec
 	} else if (token.kind == '[' || token.keyword == KEYWORD_STRUCT) { // Array/slice compound literal, or anonymous struct compound literal
 		// Do *NOT* consume the token as it will be used to parse the type annotation
 		
-		Type_Ann *type_annotation = parse_type_annotation(parser);
+		// Type_Ann *type_annotation = parse_type_annotation(parser);
+		Ast_Expression *type_annotation_e = parse_expression(parser, PREC_NONE, 0);
 		expect_token_kind(parser, '{', "Expected '{'");
 		
 		Ast_Expression *compound_exprs = parse_expression(parser, PREC_NONE, Parse_Expr_Flags_ALLOW_COMMA|Parse_Expr_Flags_ALLOW_TRAILING_COMMA);
@@ -342,8 +349,8 @@ internal Ast_Expression *parse_expression(Parser *parser, Precedence caller_prec
 		expect_token_kind(parser, '}', "Expected '}' closing compound literal");
 		
 		if (!there_were_parse_errors(parser)) {
-			Range1DI32 loc = range1di32_merge(type_annotation->loc, token.loc);
-			left = make_compound_literal_expression(parser, type_annotation, compound_exprs, loc);
+			Range1DI32 loc = range1di32_merge(type_annotation_e->location, token.loc);
+			left = make_compound_literal_expression(parser, type_annotation_e, compound_exprs, loc);
 		}
 	} else if (token_is_prefix(token)) {
 		consume_token(&parser->lexer); // prefix

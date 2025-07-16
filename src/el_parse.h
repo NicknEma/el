@@ -100,7 +100,7 @@ internal Ast_Declaration *parse_declaration_after_lhs(Parser *parser, Ast_Expres
 internal Ast_Expression  *parse_declaration_rhs(Parser *parser);
 
 internal Ast_Declaration *parse_proc_header(Parser *parser);
-internal Type_Ann        *parse_type_annotation(Parser *parser);
+// internal Type_Ann        *parse_type_annotation(Parser *parser);
 
 //- General/errors
 

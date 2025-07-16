@@ -39,27 +39,6 @@ typedef struct Ast_Declaration Ast_Declaration;
 typedef struct Symbol Symbol;
 
 typedef struct Scope Scope;
-typedef struct Type_Ann Type_Ann;
-
-typedef enum Type_Ann_Kind {
-	Type_Ann_Kind_NONE = 0,
-	Type_Ann_Kind_IDENT,
-	Type_Ann_Kind_POINTER,
-	Type_Ann_Kind_SLICE,
-	Type_Ann_Kind_STRUCT,
-	Type_Ann_Kind_COUNT,
-} Type_Ann_Kind;
-
-struct Type_Ann {
-	Type_Ann_Kind kind;
-	Range1DI32 loc;
-	
-	union {
-		String ident;
-		Type_Ann *pointed;
-		Type_Ann *elements;
-	};
-};
 
 //- Expressions
 
@@ -97,7 +76,7 @@ struct Ast_Expression {
 	};
 	
 	Range1DI32 location;
-	Type_Ann  *type_annotation;
+	Ast_Expression *type_annotation_e;
 	
 	union {
 		struct { String ident; Symbol *symbol; };

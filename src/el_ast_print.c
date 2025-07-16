@@ -101,6 +101,28 @@ internal void string_from_expression_tree_internal(Arena *arena, Ast_Expression 
 			string_list_push(arena, builder, string_from_lit(")"));
 		} break;
 		
+		case Ast_Expression_Kind_TYPE_MODIFIER: {
+			switch (root->modifier) {
+				case Type_Modifier_POINTER: {
+					string_list_push(arena, builder, string_from_lit("^"));
+					string_from_expression_tree_internal(arena, root->subexpr, builder);
+				} break;
+				
+				case Type_Modifier_SLICE: {
+					string_list_push(arena, builder, string_from_lit("[]"));
+					string_from_expression_tree_internal(arena, root->subexpr, builder);
+				} break;
+				
+				default: panic(); break;
+			}
+		} break;
+		
+		case Ast_Expression_Kind_STRUCT_DEFN: {
+			string_list_push(arena, builder, string_from_lit("struct {"));
+			// TODO: fields
+			string_list_push(arena, builder, string_from_lit("}"));
+		}
+		
 		default: break;
 	}
 	

@@ -42,16 +42,65 @@ typedef struct Scope Scope;
 
 //- Expressions
 
+// Some expr representations:
+//
+// 1 + 2
+// +
+//   1
+//   2
+//
+// foo(x, y)
+// CALL
+//   IDENT
+//   x -> y
+//
+// Foo{0}
+// COMPOUND
+//   IDENT
+//   0
+//
+// ^int
+// TYPE_MODIFIER of kind POINTER
+//   IDENT
+//
+// []int{0,0,}
+// COMPOUND
+//   TYPE_MODIFIER of kind SLICE
+//     IDENT
+//   0 -> 0
+//
+// struct{x:int}{0}
+// COMPOUND
+//   STRUCT_DEFN
+//   0 -> 0
+//
+// struct{x:int}
+// STRUCT_DEFN
+//
+// proc(x: int) -> float { return x * 0.5 }
+// PROC_DEFN
+
+
+typedef enum Type_Modifier {
+	Type_Modifier_NONE = 0,
+	Type_Modifier_POINTER,
+	Type_Modifier_SLICE,
+	Type_Modifier_COUNT,
+} Type_Modifier;
+
+
 typedef enum Ast_Expression_Kind {
 	Ast_Expression_Kind_NULL = 0,
 	Ast_Expression_Kind_BOOL_LITERAL,
 	Ast_Expression_Kind_INT_LITERAL,
 	Ast_Expression_Kind_STRING_LITERAL,
 	Ast_Expression_Kind_COMPOUND_LITERAL,
-	// Ast_Expression_Kind_PROC_DEFN,
 	Ast_Expression_Kind_IDENT,
 	Ast_Expression_Kind_UNARY,
 	Ast_Expression_Kind_BINARY,
+	Ast_Expression_Kind_TYPE_MODIFIER,
+	Ast_Expression_Kind_STRUCT_DEFN,
+	// Ast_Expression_Kind_PROC_DEFN,
 	Ast_Expression_Kind_COUNT,
 } Ast_Expression_Kind;
 
@@ -63,7 +112,7 @@ struct Ast_Expression {
 	Ast_Expression_Kind  kind;
 	Ast_Expression_Flags flags;
 	
-	union { Unary_Operator unary; Binary_Operator binary; };
+	union { Unary_Operator unary; Binary_Operator binary; Type_Modifier modifier; };
 	
 	union { Ast_Expression *left; Ast_Expression *subexpr; };
 	Ast_Expression *middle; // For ternaries
@@ -76,7 +125,7 @@ struct Ast_Expression {
 	};
 	
 	Range1DI32 location;
-	Ast_Expression *type_annotation_e;
+	Ast_Expression *type_annotation;
 	
 	union {
 		struct { String ident; Symbol *symbol; };

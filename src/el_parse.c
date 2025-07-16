@@ -239,7 +239,18 @@ internal Ast_Expression *make_compound_literal_expression(Parser *parser, Ast_Ex
 	expr->location   = loc;
 	expr->kind       = Ast_Expression_Kind_COMPOUND_LITERAL;
 	expr->subexpr    = exprs;
-	expr->type_annotation_e = type_annotation;
+	expr->type_annotation = type_annotation;
+	
+	return expr;
+}
+
+internal Ast_Expression *make_type_modifier(Parser *parser, Ast_Expression *subexpr, Type_Modifier mod, Range1DI32 loc) {
+	Ast_Expression *expr = ast_expression_alloc(parser->arena);
+	
+	expr->kind     = Ast_Expression_Kind_TYPE_MODIFIER;
+	expr->modifier = mod;
+	expr->subexpr  = subexpr;
+	expr->location = loc;
 	
 	return expr;
 }
@@ -312,15 +323,7 @@ internal Ast_Expression *parse_expression(Parser *parser, Precedence caller_prec
 			if (token.kind == '{') { // It is a compound literal
 				consume_token(&parser->lexer); // {
 				
-#if 0
-				Type_Ann *type_annotation = push_type(parser->arena, Type_Ann);
-				type_annotation->kind  = Type_Ann_Kind_IDENT;
-				type_annotation->ident = lexeme_from_token(&parser->lexer, ident);
-				type_annotation->loc   = ident.loc;
-#else
-				Ast_Expression *type_annotation_e = make_atom_expression(parser, ident);
-#endif
-				
+				Ast_Expression *type_annotation = make_atom_expression(parser, ident);
 				Ast_Expression *compound_exprs = parse_expression(parser, PREC_NONE, Parse_Expr_Flags_ALLOW_COMMA|Parse_Expr_Flags_ALLOW_TRAILING_COMMA);
 				
 				token = peek_token(&parser->lexer); // Save copy of } so we have the loc
@@ -328,7 +331,7 @@ internal Ast_Expression *parse_expression(Parser *parser, Precedence caller_prec
 				
 				if (!there_were_parse_errors(parser)) {
 					Range1DI32 loc = range1di32_merge(ident.loc, token.loc);
-					left = make_compound_literal_expression(parser, type_annotation_e, compound_exprs, loc);
+					left = make_compound_literal_expression(parser, type_annotation, compound_exprs, loc);
 				}
 			} else {
 				left = make_atom_expression(parser, atom);
@@ -336,22 +339,70 @@ internal Ast_Expression *parse_expression(Parser *parser, Precedence caller_prec
 		} else {
 			left = make_atom_expression(parser, atom);
 		}
-	} else if (token.kind == '[' || token.keyword == KEYWORD_STRUCT) { // Array/slice compound literal, or anonymous struct compound literal
-		// Do *NOT* consume the token as it will be used to parse the type annotation
+	} else if (token.kind == '[' || token.keyword == KEYWORD_STRUCT ||
+			   token.kind == '^') { // This is the beginning of a (nested) type annotation
 		
-		// Type_Ann *type_annotation = parse_type_annotation(parser);
-		Ast_Expression *type_annotation_e = parse_expression(parser, PREC_NONE, 0);
-		expect_token_kind(parser, '{', "Expected '{'");
+		// Consume the first token(s) so we can make the top node of the nest, then recursively call
+		// parse_expression
 		
-		Ast_Expression *compound_exprs = parse_expression(parser, PREC_NONE, Parse_Expr_Flags_ALLOW_COMMA|Parse_Expr_Flags_ALLOW_TRAILING_COMMA);
-		
-		token = peek_token(&parser->lexer); // Save copy of } so we have the loc
-		expect_token_kind(parser, '}', "Expected '}' closing compound literal");
-		
-		if (!there_were_parse_errors(parser)) {
-			Range1DI32 loc = range1di32_merge(type_annotation_e->location, token.loc);
-			left = make_compound_literal_expression(parser, type_annotation_e, compound_exprs, loc);
+		Ast_Expression *type_annotation = &nil_expression;
+		if (token.kind == '^') {
+			consume_token(&parser->lexer); // ^
+			
+			Ast_Expression *pointed = parse_expression(parser, PREC_NONE, 0);
+			type_annotation = make_type_modifier(parser, pointed, Type_Modifier_POINTER, token.loc);
+		} else if (token.kind == '[') {
+			consume_token(&parser->lexer); // [
+			
+			Token lbrack = token;
+			token = peek_token(&parser->lexer);
+			
+			if (token.kind == ']') {
+				consume_token(&parser->lexer); // ]
+				
+				Ast_Expression *elements = parse_expression(parser, PREC_NONE, 0);
+				type_annotation = make_type_modifier(parser, elements, Type_Modifier_SLICE, lbrack.loc);
+			} else {
+				report_parse_error(parser, "Expected ']' after '['"); // TODO: Other array kinds
+			}
+		} else {
+			consume_token(&parser->lexer); // struct
+			
+			Token struct_token = token;
+			token = peek_token(&parser->lexer);
+			if (token.kind == '{') {
+				// TODO: Temporarily consume all sturct fields. Implement actual struct parsing
+				while (peek_token(&parser->lexer).kind != '}') consume_token(&parser->lexer);
+				consume_token(&parser->lexer);
+				
+				type_annotation = ast_expression_alloc(parser->arena);
+				type_annotation->kind     = Ast_Expression_Kind_STRUCT_DEFN;
+				type_annotation->location = struct_token.loc;
+			} else {
+				report_parse_error(parser, "Expected '{' after 'struct' keyword");
+			}
 		}
+		
+		// We just parsed a type annotation. If the next token is a {, it means there's a compound literal
+		// and this was the annotation for that. Otherwise, it was a lone type annotation and we
+		// proceed as normal.
+		token = peek_token(&parser->lexer);
+		if (token.kind == '{') {
+			consume_token(&parser->lexer);
+			
+			Ast_Expression *compound_exprs = parse_expression(parser, PREC_NONE, Parse_Expr_Flags_ALLOW_COMMA|Parse_Expr_Flags_ALLOW_TRAILING_COMMA);
+			
+			token = peek_token(&parser->lexer); // Save copy of } so we have the loc
+			expect_token_kind(parser, '}', "Expected '}' closing compound literal");
+			
+			if (!there_were_parse_errors(parser)) {
+				Range1DI32 loc = range1di32_merge(type_annotation->location, token.loc);
+				left = make_compound_literal_expression(parser, type_annotation, compound_exprs, loc);
+			}
+		} else {
+			left = type_annotation;
+		}
+		
 	} else if (token_is_prefix(token)) {
 		consume_token(&parser->lexer); // prefix
 		Ast_Expression *right = parse_expression(parser, prefix_precedence_from_token(token), Parse_Expr_Flags_REQUIRED);

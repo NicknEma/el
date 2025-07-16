@@ -443,6 +443,8 @@ internal Ast_Expression *parse_expression(Parser *parser, Precedence caller_prec
 					left->next        = next;
 					left->next_count += next->next_count + 1;
 				}
+			} else {
+				break;
 			}
 		} else if (token_is_postfix(token)) {
 			Precedence precedence = postfix_precedence_from_token(token);

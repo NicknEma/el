@@ -244,10 +244,6 @@ internal Ast_Expression *make_compound_literal_expression(Parser *parser, Type_A
 	return expr;
 }
 
-internal Ast_Expression *parse_compound_literal_content(Parser *parser) {
-	return parse_expression(parser, PREC_NONE, Parse_Expr_Flags_ALLOW_COMMA|Parse_Expr_Flags_ALLOW_TRAILING_COMMA);
-}
-
 internal Type_Ann *parse_type_annotation(Parser *parser) {
 	Type_Ann *result = NULL;
 	

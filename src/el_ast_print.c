@@ -211,24 +211,6 @@ internal void string_from_declaration_tree_internal(Arena *arena, Ast_Declaratio
 	if (!check_nil_expression(root->rhs)) {
 		string_from_expression_tree_internal(arena, root->rhs, builder);
 	}
-	
-#if 0
-	switch (root->entity) {
-		case Ast_Declaration_Entity_PROCEDURE: {
-			string_list_pushf(arena, builder, "%.*s :: (", string_expand(root->ident));
-			
-			// TODO: Parameter list
-			
-			string_list_push(arena, builder, string_from_lit(") "));
-			
-			string_from_statement_tree_internal(arena, root->body, builder);
-		} break;
-		
-		default: break;
-	}
-#endif
-	
-	// string_list_push(arena, builder, string_from_lit("\n"));
 }
 
 internal String string_from_declaration_tree(Arena *arena, Ast_Declaration *root) {

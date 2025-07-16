@@ -16,36 +16,38 @@ internal void test_expression_parser(void) {
 	
 #if 0
 	// No errors
-	test_expression_parser_single((String)string_from_lit_const("1+2"));                    // 3
-	test_expression_parser_single((String)string_from_lit_const("5 - 4"));                  // 1
-	test_expression_parser_single((String)string_from_lit_const("(3 * 4) - (10 / 2) + 1")); // 8
-	test_expression_parser_single((String)string_from_lit_const("7 + (-2) - (3 - 1)"));     // 3
-	test_expression_parser_single((String)string_from_lit_const("5 + (+4)"));               // 9
-	test_expression_parser_single((String)string_from_lit_const("1++2"));                   // 3
-	test_expression_parser_single((String)string_from_lit_const("foo()"));
+	test_expression_parser_single(string_from_lit("1+2"));                    // 3
+	test_expression_parser_single(string_from_lit("5 - 4"));                  // 1
+	test_expression_parser_single(string_from_lit("(3 * 4) - (10 / 2) + 1")); // 8
+	test_expression_parser_single(string_from_lit("7 + (-2) - (3 - 1)"));     // 3
+	test_expression_parser_single(string_from_lit("5 + (+4)"));               // 9
+	test_expression_parser_single(string_from_lit("1++2"));                   // 3
+	test_expression_parser_single(string_from_lit("foo()"));
 	
-	test_expression_parser_single((String)string_from_lit_const("a?b:c"));
-	test_expression_parser_single((String)string_from_lit_const("a?b:c?d:e"));
-	test_expression_parser_single((String)string_from_lit_const("a?b?c:d:e"));
-	test_expression_parser_single((String)string_from_lit_const("a?b+c:d+e"));
-	test_expression_parser_single((String)string_from_lit_const("a+b?c:d"));
+	test_expression_parser_single(string_from_lit("a?b:c"));
+	test_expression_parser_single(string_from_lit("a?b:c?d:e"));
+	test_expression_parser_single(string_from_lit("a?b?c:d:e"));
+	test_expression_parser_single(string_from_lit("a?b+c:d+e"));
+	test_expression_parser_single(string_from_lit("a+b?c:d"));
 	
-	test_expression_parser_single((String)string_from_lit_const("true"));
-	test_expression_parser_single((String)string_from_lit_const("true + false"));
+	test_expression_parser_single(string_from_lit("true"));
+	test_expression_parser_single(string_from_lit("true + false"));
 #endif
 	
 	// Compound literals
-	test_expression_parser_single((String)string_from_lit_const("int{}"));
-	test_expression_parser_single((String)string_from_lit_const("int{0}"));
-	test_expression_parser_single((String)string_from_lit_const("int{0,0}"));
-	test_expression_parser_single((String)string_from_lit_const("int{0,}"));
-	test_expression_parser_single((String)string_from_lit_const("[]int{}"));
+	test_expression_parser_single(string_from_lit("int{}"));
+	test_expression_parser_single(string_from_lit("int{0}"));
+	test_expression_parser_single(string_from_lit("int{0,0}"));
+	test_expression_parser_single(string_from_lit("int{0,}"));
+	test_expression_parser_single(string_from_lit("[]int{}"));
 	
 #if 0
 	// With errors
-	test_expression_parser_single((String)string_from_lit_const("+"));
-	test_expression_parser_single((String)string_from_lit_const("(4 + 1"));
-	test_expression_parser_single((String)string_from_lit_const("foo("));
+	test_expression_parser_single(string_from_lit("1,"));
+	test_expression_parser_single(string_from_lit("+"));
+	test_expression_parser_single(string_from_lit("*"));
+	test_expression_parser_single(string_from_lit("(4 + 1"));
+	test_expression_parser_single(string_from_lit("foo("));
 #endif
 	
 #if 0
@@ -83,40 +85,40 @@ test_statement_parser(void) {
 	
 #if 0
 	// Simple statements
-	test_statement_parser_single((String)string_from_lit_const("1 + 2;"));
+	test_statement_parser_single(string_from_lit("1 + 2;"));
 #endif
 	
-	test_statement_parser_single((String)string_from_lit_const("return;"));
-	test_statement_parser_single((String)string_from_lit_const("return 0;"));
-	test_statement_parser_single((String)string_from_lit_const("return 1 + 2;"));
-	test_statement_parser_single((String)string_from_lit_const("return (1 + 2);"));
+	test_statement_parser_single(string_from_lit("return;"));
+	test_statement_parser_single(string_from_lit("return 0;"));
+	test_statement_parser_single(string_from_lit("return 1 + 2;"));
+	test_statement_parser_single(string_from_lit("return (1 + 2);"));
 	
 #if 0
-	test_statement_parser_single((String)string_from_lit_const("{ return; return; }"));
-	test_statement_parser_single((String)string_from_lit_const("{ ;; }"));
+	test_statement_parser_single(string_from_lit("{ return; return; }"));
+	test_statement_parser_single(string_from_lit("{ ;; }"));
 	
 	// Simple statements with errors
-	test_statement_parser_single((String)string_from_lit_const("1 + 2"));
-	test_statement_parser_single((String)string_from_lit_const("{ return } "));
-	test_statement_parser_single((String)string_from_lit_const("{ return; "));
+	test_statement_parser_single(string_from_lit("1 + 2"));
+	test_statement_parser_single(string_from_lit("{ return } "));
+	test_statement_parser_single(string_from_lit("{ return; "));
 #endif
 	
 	// Assignments and declarations
-	test_statement_parser_single((String)string_from_lit_const("a = 0;"));
-	test_statement_parser_single((String)string_from_lit_const("a, b = 0;"));
-	test_statement_parser_single((String)string_from_lit_const("a, b = 0, 0;"));
-	test_statement_parser_single((String)string_from_lit_const("a := 0;"));
-	test_statement_parser_single((String)string_from_lit_const("a : int = 0;"));
-	test_statement_parser_single((String)string_from_lit_const("a : ^int = 0;"));
-	test_statement_parser_single((String)string_from_lit_const("a : []int = 0;"));
-	test_statement_parser_single((String)string_from_lit_const("a := struct{x:int}{0};"));
+	test_statement_parser_single(string_from_lit("a = 0;"));
+	test_statement_parser_single(string_from_lit("a, b = 0;"));
+	test_statement_parser_single(string_from_lit("a, b = 0, 0;"));
+	test_statement_parser_single(string_from_lit("a := 0;"));
+	test_statement_parser_single(string_from_lit("a : int = 0;"));
+	test_statement_parser_single(string_from_lit("a : ^int = 0;"));
+	test_statement_parser_single(string_from_lit("a : []int = 0;"));
+	test_statement_parser_single(string_from_lit("a := struct{x:int}{0};"));
 	
-	test_statement_parser_single((String)string_from_lit_const("a := struct{x:int};"));
+	test_statement_parser_single(string_from_lit("a := struct{x:int};"));
 	
 #if 0
-	test_statement_parser_single((String)string_from_lit_const("a :: proc();"));
-	test_statement_parser_single((String)string_from_lit_const("a :: proc() ---;"));
-	test_statement_parser_single((String)string_from_lit_const("a :: proc() {}"));
+	test_statement_parser_single(string_from_lit("a :: proc();"));
+	test_statement_parser_single(string_from_lit("a :: proc() ---;"));
+	test_statement_parser_single(string_from_lit("a :: proc() {}"));
 #endif
 	
 #if 0
@@ -154,36 +156,36 @@ internal void test_declaration_parser(void) {
 	
 #if 0
 	// Single
-	test_declaration_parser_single((String)string_from_lit_const("a :: proc() {}"));
-	test_declaration_parser_single((String)string_from_lit_const("a :: proc() {;}"));
-	test_declaration_parser_single((String)string_from_lit_const("a :: 4;"));
-	// test_declaration_parser_single((String)string_from_lit_const("a : : 4;"));
-	test_declaration_parser_single((String)string_from_lit_const("a : int;"));
-	test_declaration_parser_single((String)string_from_lit_const("a : int = 4;"));
-	test_declaration_parser_single((String)string_from_lit_const("a : int = proc() {};"));
+	test_declaration_parser_single(string_from_lit("a :: proc() {}"));
+	test_declaration_parser_single(string_from_lit("a :: proc() {;}"));
+	test_declaration_parser_single(string_from_lit("a :: 4;"));
+	// test_declaration_parser_single(string_from_lit("a : : 4;"));
+	test_declaration_parser_single(string_from_lit("a : int;"));
+	test_declaration_parser_single(string_from_lit("a : int = 4;"));
+	test_declaration_parser_single(string_from_lit("a : int = proc() {};"));
 #endif
 	
 	// Multiple lhs
-	test_declaration_parser_single((String)string_from_lit_const("a, b := 4;"));
-	test_declaration_parser_single((String)string_from_lit_const("a, b : int = 4;"));
+	test_declaration_parser_single(string_from_lit("a, b := 4;"));
+	test_declaration_parser_single(string_from_lit("a, b : int = 4;"));
 	
 	// Multiple rhs
-	test_declaration_parser_single((String)string_from_lit_const("a := 4, 5;"));
-	test_declaration_parser_single((String)string_from_lit_const("a := 4, proc();"));
-	test_declaration_parser_single((String)string_from_lit_const("a := proc(), 4;"));
+	test_declaration_parser_single(string_from_lit("a := 4, 5;"));
+	test_declaration_parser_single(string_from_lit("a := 4, proc();"));
+	test_declaration_parser_single(string_from_lit("a := proc(), 4;"));
 	
 	// Procedures
-	test_declaration_parser_single((String)string_from_lit_const("a := proc();"));
-	test_declaration_parser_single((String)string_from_lit_const("a := proc() {};"));
-	test_declaration_parser_single((String)string_from_lit_const("a := proc() ---;"));
-	test_declaration_parser_single((String)string_from_lit_const("a := proc() -> int;"));
-	test_declaration_parser_single((String)string_from_lit_const("a := proc() -> int {};"));
-	test_declaration_parser_single((String)string_from_lit_const("a := proc() -> int ---;"));
-	test_declaration_parser_single((String)string_from_lit_const("a := proc() -> int, int;"));
-	test_declaration_parser_single((String)string_from_lit_const("a := proc() -> int, int {};"));
-	test_declaration_parser_single((String)string_from_lit_const("a := proc() -> int, int ---;"));
+	test_declaration_parser_single(string_from_lit("a := proc();"));
+	test_declaration_parser_single(string_from_lit("a := proc() {};"));
+	test_declaration_parser_single(string_from_lit("a := proc() ---;"));
+	test_declaration_parser_single(string_from_lit("a := proc() -> int;"));
+	test_declaration_parser_single(string_from_lit("a := proc() -> int {};"));
+	test_declaration_parser_single(string_from_lit("a := proc() -> int ---;"));
+	test_declaration_parser_single(string_from_lit("a := proc() -> int, int;"));
+	test_declaration_parser_single(string_from_lit("a := proc() -> int, int {};"));
+	test_declaration_parser_single(string_from_lit("a := proc() -> int, int ---;"));
 	
-	test_declaration_parser_single((String)string_from_lit_const("foo :: ("));
+	test_declaration_parser_single(string_from_lit("foo :: ("));
 	
 #if 0
 	Scratch scratch = scratch_begin(0, 0);

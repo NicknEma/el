@@ -66,7 +66,7 @@ internal Ast_Expression *make_unary_expression(Parser *parser, Token unary, Ast_
 internal Ast_Expression *make_binary_expression(Parser *parser, Token binary, Ast_Expression *left, Ast_Expression *right);
 internal Ast_Expression *make_ternary_expression(Parser *parser, Ast_Expression *left, Ast_Expression *middle, Ast_Expression *right);
 
-internal Ast_Expression *parse_expression(Parser *parser, Arena *arena, Precedence caller_precedence, Parse_Expr_Flags parse_flags);
+internal Ast_Expression *parse_expression(Parser *parser, Precedence caller_precedence, Parse_Expr_Flags parse_flags);
 
 //- Statements
 
@@ -100,7 +100,7 @@ internal Ast_Declaration *parse_declaration_after_lhs(Parser *parser, Ast_Expres
 internal Ast_Expression  *parse_declaration_rhs(Parser *parser);
 
 internal Ast_Declaration *parse_proc_header(Parser *parser);
-internal Type_Ann        *parse_type_annotation(Parser *parser, Arena *arena);
+internal Type_Ann        *parse_type_annotation(Parser *parser);
 
 //- General/errors
 

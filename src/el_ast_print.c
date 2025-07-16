@@ -202,7 +202,7 @@ internal void string_from_declaration_tree_internal(Arena *arena, Ast_Declaratio
 	
 	if (root->flags & Ast_Declaration_Flag_TYPE_ANNOTATION) {
 		string_list_push(arena, builder, string_from_lit(":"));
-		string_list_push(arena, builder, string_from_lit("<type>")); // TODO: Actual type
+		string_from_expression_tree_internal(arena, root->type_annotation, builder);
 		string_list_push(arena, builder, string_from_lit("="));
 	} else {
 		string_list_push(arena, builder, string_from_lit(":="));

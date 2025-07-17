@@ -246,6 +246,7 @@ internal void begin_lookahead(Lexer *lexer) {
 internal void end_lookahead(Lexer *lexer) {
 	assert(lexer->index >= lexer->lookahead_index, "Lexer index went *back* during lookahead, somehow");
 	lexer->index = lexer->lookahead_index;
+	lexer->token = make_token(lexer);
 }
 
 internal void report_lex_error(Lexer *lexer, char *message) {

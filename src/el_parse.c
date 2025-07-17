@@ -1092,11 +1092,11 @@ internal u64 estimate_ast_arena_size(String source) {
 
 //- Wrappers
 
-internal Ast_Expression *parse_expression_string(Arena *arena, String source) {
+internal Ast_Expression *parse_expression_string(Arena *arena, String source, Parse_Expr_Flags flags) {
 	Parser parser = {0};
 	parser_init(&parser, arena, .text = source);
 	
-	return parse_expression(&parser, PREC_NONE, Parse_Expr_Flags_REQUIRED);
+	return parse_expression(&parser, PREC_NONE, flags);
 }
 
 internal Ast_Statement *parse_statement_string(Arena *arena, String source) {

@@ -59,6 +59,10 @@ typedef enum Parse_Expr_Flags {
 	Parse_Expr_Flags_REQUIRED             = 1 << 0,
 	Parse_Expr_Flags_ALLOW_COMMA          = 1 << 1,
 	Parse_Expr_Flags_ALLOW_TRAILING_COMMA = 1 << 2,
+	Parse_Expr_Flags_ALLOW_ASSIGNMENT     = 1 << 3,
+	
+	Parse_Expr_Flags_DEFAULT     = Parse_Expr_Flags_REQUIRED,
+	Parse_Expr_Flags_RETURN_EXPR = Parse_Expr_Flags_ALLOW_COMMA,
 } Parse_Expr_Flags;
 
 internal Ast_Expression *make_atom_expression(Parser *parser, Token token);

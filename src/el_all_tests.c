@@ -1,11 +1,11 @@
 #ifndef EL_ALL_TESTS_C
 #define EL_ALL_TESTS_C
 
-internal void test_expression_parser_single(String source) {
+internal void test_expression_parser_single(String source, Parse_Expr_Flags flags) {
 	Scratch scratch = scratch_begin(0, 0);
 	
 	printf("Parsing sample expression %.*s:\n", string_expand(source));
-	Ast_Expression *tree = parse_expression_string(scratch.arena, source);
+	Ast_Expression *tree = parse_expression_string(scratch.arena, source, flags);
 	print_expression_tree(tree);
 	
 	scratch_end(scratch);
@@ -14,40 +14,49 @@ internal void test_expression_parser_single(String source) {
 internal void test_expression_parser(void) {
 	printf("### Testing expression parser ###\n\n");
 	
+	Parse_Expr_Flags def_flags = Parse_Expr_Flags_REQUIRED;
+	
 #if 0
 	// No errors
-	test_expression_parser_single(string_from_lit("1+2"));                    // 3
-	test_expression_parser_single(string_from_lit("5 - 4"));                  // 1
-	test_expression_parser_single(string_from_lit("(3 * 4) - (10 / 2) + 1")); // 8
-	test_expression_parser_single(string_from_lit("7 + (-2) - (3 - 1)"));     // 3
-	test_expression_parser_single(string_from_lit("5 + (+4)"));               // 9
-	test_expression_parser_single(string_from_lit("1++2"));                   // 3
-	test_expression_parser_single(string_from_lit("foo()"));
+	test_expression_parser_single(string_from_lit("1+2"), def_flags);                    // 3
+	test_expression_parser_single(string_from_lit("5 - 4"), def_flags);                  // 1
+	test_expression_parser_single(string_from_lit("(3 * 4) - (10 / 2) + 1"), def_flags); // 8
+	test_expression_parser_single(string_from_lit("7 + (-2) - (3 - 1)"), def_flags);     // 3
+	test_expression_parser_single(string_from_lit("5 + (+4)"), def_flags);               // 9
+	test_expression_parser_single(string_from_lit("1++2"), def_flags);                   // 3
+	test_expression_parser_single(string_from_lit("foo()"), def_flags);
 	
-	test_expression_parser_single(string_from_lit("a?b:c"));
-	test_expression_parser_single(string_from_lit("a?b:c?d:e"));
-	test_expression_parser_single(string_from_lit("a?b?c:d:e"));
-	test_expression_parser_single(string_from_lit("a?b+c:d+e"));
-	test_expression_parser_single(string_from_lit("a+b?c:d"));
+	test_expression_parser_single(string_from_lit("a?b:c"), def_flags);
+	test_expression_parser_single(string_from_lit("a?b:c?d:e"), def_flags);
+	test_expression_parser_single(string_from_lit("a?b?c:d:e"), def_flags);
+	test_expression_parser_single(string_from_lit("a?b+c:d+e"), def_flags);
+	test_expression_parser_single(string_from_lit("a+b?c:d"), def_flags);
 	
-	test_expression_parser_single(string_from_lit("true"));
-	test_expression_parser_single(string_from_lit("true + false"));
+	test_expression_parser_single(string_from_lit("true"), def_flags);
+	test_expression_parser_single(string_from_lit("true + false"), def_flags);
 #endif
 	
 	// Compound literals
-	test_expression_parser_single(string_from_lit("int{}"));
-	test_expression_parser_single(string_from_lit("int{0}"));
-	test_expression_parser_single(string_from_lit("int{0,0}"));
-	test_expression_parser_single(string_from_lit("int{0,}"));
-	test_expression_parser_single(string_from_lit("[]int{}"));
+	test_expression_parser_single(string_from_lit("int{}"), def_flags);
+	test_expression_parser_single(string_from_lit("int{0}"), def_flags);
+	test_expression_parser_single(string_from_lit("int{0,0}"), def_flags);
+	test_expression_parser_single(string_from_lit("int{0,}"), def_flags);
+	test_expression_parser_single(string_from_lit("[]int{}"), def_flags);
 	
-#if 0
+#if 1
 	// With errors
-	test_expression_parser_single(string_from_lit("1,"));
-	test_expression_parser_single(string_from_lit("+"));
-	test_expression_parser_single(string_from_lit("*"));
-	test_expression_parser_single(string_from_lit("(4 + 1"));
-	test_expression_parser_single(string_from_lit("foo("));
+	test_expression_parser_single(string_from_lit("1,"), def_flags);
+	test_expression_parser_single(string_from_lit("+"), def_flags);
+	test_expression_parser_single(string_from_lit("*"), def_flags);
+	test_expression_parser_single(string_from_lit("(4 + 1"), def_flags);
+	test_expression_parser_single(string_from_lit("foo("), def_flags);
+#endif
+	
+#if 1
+	// Assignments
+	test_expression_parser_single(string_from_lit("a=0"), Parse_Expr_Flags_ALLOW_ASSIGNMENT|Parse_Expr_Flags_ALLOW_COMMA);
+	test_expression_parser_single(string_from_lit("=0"), Parse_Expr_Flags_ALLOW_ASSIGNMENT|Parse_Expr_Flags_ALLOW_COMMA);
+	test_expression_parser_single(string_from_lit("a="), Parse_Expr_Flags_ALLOW_ASSIGNMENT|Parse_Expr_Flags_ALLOW_COMMA);
 #endif
 	
 #if 0

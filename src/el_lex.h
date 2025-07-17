@@ -109,6 +109,7 @@ struct Lexer {
 	String source;
 	i64    index;
 	
+	i64 lookahead_index;
 	Token  token;
 	
 	int error_count;
@@ -122,6 +123,9 @@ internal Token peek_token(Lexer *lexer);
 internal Token make_token(Lexer *lexer);
 internal void  consume_token(Lexer *lexer);
 internal void  consume_all_tokens(Lexer *lexer);
+
+internal void  begin_lookahead(Lexer *lexer);
+internal void  end_lookahead(Lexer *lexer);
 
 internal bool  expect_and_consume_token(Lexer *lexer, Token_Kind kind);
 

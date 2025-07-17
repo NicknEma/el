@@ -238,6 +238,16 @@ internal Token make_token(Lexer *lexer) {
 	return token;
 }
 
+internal void begin_lookahead(Lexer *lexer) {
+	Token token = peek_token(lexer);
+	lexer->lookahead_index = token.loc.start;
+}
+
+internal void end_lookahead(Lexer *lexer) {
+	assert(lexer->index >= lexer->lookahead_index, "Lexer index went *back* during lookahead, somehow");
+	lexer->index = lexer->lookahead_index;
+}
+
 internal void report_lex_error(Lexer *lexer, char *message) {
 	if (lexer->error_count < max_printed_lex_errors) {
 		// String span = lexeme_from_token(lexer, lexer->token);

@@ -151,6 +151,7 @@ zchk(p) ? (zset((n)->prev), (n)->next = (f), (zchk(f) ? (0) : ((f)->prev = (n)))
 ((zchk((p)->next) ? (0) : (((p)->next->prev) = (n))), (n)->next = (p)->next, (n)->prev = (p), (p)->next = (n),\
 ((p) == (l) ? (l) = (n) : (0))))
 #define dll_push_back_npz(first,last,elem,next_ident,prev_ident,zero_check,zero_set) dll_insert_npz(first,last,last,elem,next_ident,prev_ident,zero_check,zero_set)
+#define dll_push_front_npz(first,last,elem,next_ident,prev_ident,zero_check,zero_set) dll_push_back_npz(last,first,elem,prev_ident,next_ident,zero_check,zero_set)
 #define dll_remove_npz(f,l,n,next,prev,zchk,zset) (void)(((f)==(n))?\
 ((f)=(f)->next, (zchk(f) ? (zset(l)) : zset((f)->prev))):\
 ((l)==(n))?\

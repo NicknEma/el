@@ -1,5 +1,5 @@
-#ifndef EL_AST_H
-#define EL_AST_H
+#ifndef EL_CORE_H
+#define EL_CORE_H
 
 ////////////////////////////////
 //~ Operators

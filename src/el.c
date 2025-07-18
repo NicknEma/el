@@ -11,7 +11,7 @@
 
 #include "el_type.h"
 #include "el_lex.h"
-#include "el_ast.h"
+#include "el_core.h"
 #include "el_parse.h"
 
 #if EL_CHECK_SINGLE_PASS

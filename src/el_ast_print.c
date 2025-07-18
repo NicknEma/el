@@ -36,7 +36,22 @@ internal char char_from_binary_op(Binary_Operator op) {
 	return 0;
 }
 
+internal Ast_Expression *next_expr(Ast_Expression *expr, Ast_Expression *stop) {
+	if (expr->next != stop) return expr->next;
+	else return &nil_expression;
+}
+
 internal void string_from_declaration_tree_internal(Arena *arena, Ast_Declaration *root, String_List *builder);
+internal void string_from_expression_tree_internal(Arena *arena, Ast_Expression *root, String_List *builder);
+
+internal void string_from_expr_list_internal(Arena *arena, Ast_Expression *first, Ast_Expression *last, String_List *builder) {
+	for (Ast_Expression *expr = first; !check_nil_expression(expr) && expr != last; expr = expr->next) {
+		if (expr != first) {
+			string_list_push(arena, builder, string_from_lit(","));
+		}
+		string_from_expression_tree_internal(arena, expr, builder);
+	}
+}
 
 internal void string_from_expression_tree_internal(Arena *arena, Ast_Expression *root, String_List *builder) {
 	switch (root->kind) {
@@ -53,10 +68,9 @@ internal void string_from_expression_tree_internal(Arena *arena, Ast_Expression 
 		} break;
 		
 		case Ast_Expression_Kind_COMPOUND_LITERAL: {
-			string_from_expression_tree_internal(arena, root->type_annotation, builder);
-			
+			string_from_expression_tree_internal(arena, root->expr_first, builder);
 			string_list_push(arena, builder, string_from_lit("{"));
-			string_from_expression_tree_internal(arena, root->subexpr, builder);
+			string_from_expr_list_internal(arena, root->expr_first->next, &nil_expression, builder);
 			string_list_push(arena, builder, string_from_lit("}"));
 		} break;
 		
@@ -69,13 +83,13 @@ internal void string_from_expression_tree_internal(Arena *arena, Ast_Expression 
 				case Unary_Operator_PLUS:
 				case Unary_Operator_MINUS: {
 					string_list_pushf(arena, builder, "%c(", char_from_unary_op(root->unary));
-					string_from_expression_tree_internal(arena, root->left, builder);
+					string_from_expression_tree_internal(arena, root->expr_first, builder);
 					string_list_push(arena, builder, string_from_lit(")"));
 				} break;
 				
 				case Unary_Operator_DEREFERENCE: {
 					string_list_push(arena, builder, string_from_lit("("));
-					string_from_expression_tree_internal(arena, root->left, builder);
+					string_from_expression_tree_internal(arena, root->expr_first, builder);
 					string_list_pushf(arena, builder, ")^");
 				} break;
 				
@@ -85,16 +99,16 @@ internal void string_from_expression_tree_internal(Arena *arena, Ast_Expression 
 		
 		case Ast_Expression_Kind_BINARY: {
 			string_list_push(arena, builder, string_from_lit("("));
-			string_from_expression_tree_internal(arena, root->left, builder);
+			string_from_expression_tree_internal(arena, root->expr_first, builder);
 			string_list_pushf(arena, builder, ")%c(", char_from_binary_op(root->binary));
 			
 			if (root->binary != Binary_Operator_TERNARY) {
-				string_from_expression_tree_internal(arena, root->right, builder);
+				string_from_expression_tree_internal(arena, root->expr_last, builder);
 			} else {
 				string_list_push(arena, builder, string_from_lit("("));
-				string_from_expression_tree_internal(arena, root->middle, builder);
+				string_from_expression_tree_internal(arena, root->expr_first->next, builder);
 				string_list_push(arena, builder, string_from_lit("):("));
-				string_from_expression_tree_internal(arena, root->right, builder);
+				string_from_expression_tree_internal(arena, root->expr_last, builder);
 				string_list_push(arena, builder, string_from_lit(")"));
 			}
 			
@@ -105,12 +119,12 @@ internal void string_from_expression_tree_internal(Arena *arena, Ast_Expression 
 			switch (root->modifier) {
 				case Type_Modifier_POINTER: {
 					string_list_push(arena, builder, string_from_lit("^"));
-					string_from_expression_tree_internal(arena, root->subexpr, builder);
+					string_from_expression_tree_internal(arena, root->expr_first, builder);
 				} break;
 				
 				case Type_Modifier_SLICE: {
 					string_list_push(arena, builder, string_from_lit("[]"));
-					string_from_expression_tree_internal(arena, root->subexpr, builder);
+					string_from_expression_tree_internal(arena, root->expr_first, builder);
 				} break;
 				
 				default: panic(); break;
@@ -126,10 +140,13 @@ internal void string_from_expression_tree_internal(Arena *arena, Ast_Expression 
 		default: break;
 	}
 	
-	if (!check_nil_expression(root->next)) {
+#if 0
+	Ast_Expression *next = next_expr(root, root->expr_sep);
+	if (!check_nil_expression(next)) {
 		string_list_push(arena, builder, string_from_lit(","));
-		string_from_expression_tree_internal(arena, root->next, builder);
+		string_from_expression_tree_internal(arena, next, builder);
 	}
+#endif
 }
 
 internal String string_from_expression_tree(Arena *arena, Ast_Expression *root) {
@@ -159,18 +176,18 @@ internal void print_statement_tree(Ast_Statement *root);
 internal void string_from_statement_tree_internal(Arena *arena, Ast_Statement *root, String_List *builder) {
 	switch (root->kind) {
 		case Ast_Statement_Kind_EXPR: {
-			string_from_expression_tree_internal(arena, root->expr, builder);
+			string_from_expression_tree_internal(arena, root->expr_first, builder);
 		} break;
 		
 		case Ast_Statement_Kind_RETURN: {
 			string_list_push(arena, builder, string_from_lit("return "));
-			string_from_expression_tree_internal(arena, root->expr, builder);
+			string_from_expression_tree_internal(arena, root->expr_first, builder);
 		} break;
 		
 		case Ast_Statement_Kind_ASSIGNMENT: {
-			string_from_expression_tree_internal(arena, root->lhs, builder);
+			string_from_expr_list_internal(arena, root->expr_first, root->expr_sep, builder);
 			string_list_push(arena, builder, string_from_lit(" = "));
-			string_from_expression_tree_internal(arena, root->rhs, builder);
+			string_from_expr_list_internal(arena, root->expr_sep, &nil_expression, builder);
 		} break;
 		
 		case Ast_Statement_Kind_DECLARATION: {
@@ -180,7 +197,7 @@ internal void string_from_statement_tree_internal(Arena *arena, Ast_Statement *r
 		case Ast_Statement_Kind_BLOCK: {
 			string_list_push(arena, builder, string_from_lit("{ "));
 			
-			for (Ast_Statement *stat = root->block; stat != NULL && stat != &nil_statement; stat = stat->next) {
+			for (Ast_Statement *stat = root->stmt_first; !check_nil_statement(stat); stat = stat->next) {
 				string_from_statement_tree_internal(arena, stat, builder);
 			}
 			
@@ -220,7 +237,7 @@ internal String string_from_declaration_tree(Arena *arena, Ast_Declaration *root
 internal void print_declaration_tree(Ast_Declaration *root);
 
 internal void string_from_declaration_tree_internal(Arena *arena, Ast_Declaration *root, String_List *builder) {
-	string_from_expression_tree_internal(arena, root->lhs, builder);
+	string_from_expression_tree_internal(arena, root->expr_first, builder);
 	
 	if (root->flags & Ast_Declaration_Flag_TYPE_ANNOTATION) {
 		string_list_push(arena, builder, string_from_lit(":"));
@@ -230,9 +247,7 @@ internal void string_from_declaration_tree_internal(Arena *arena, Ast_Declaratio
 		string_list_push(arena, builder, string_from_lit(":="));
 	}
 	
-	if (!check_nil_expression(root->rhs)) {
-		string_from_expression_tree_internal(arena, root->rhs, builder);
-	}
+	string_from_expression_tree_internal(arena, root->expr_sep, builder);
 }
 
 internal String string_from_declaration_tree(Arena *arena, Ast_Declaration *root) {

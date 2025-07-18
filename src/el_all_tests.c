@@ -1,7 +1,7 @@
 #ifndef EL_ALL_TESTS_C
 #define EL_ALL_TESTS_C
 
-internal void test_expression_parser_single(String source, Parse_Expr_Flags flags) {
+internal void test_expression_parser_single(String source, Parse_Flags flags) {
 	Scratch scratch = scratch_begin(0, 0);
 	
 	printf("Parsing sample expression %.*s:\n", string_expand(source));
@@ -14,7 +14,7 @@ internal void test_expression_parser_single(String source, Parse_Expr_Flags flag
 internal void test_expression_parser(void) {
 	printf("### Testing expression parser ###\n\n");
 	
-	Parse_Expr_Flags def_flags = Parse_Expr_Flags_REQUIRED;
+	Parse_Flags def_flags = Parse_Flags_EXPR_DEFAULT;
 	
 #if 0
 	// No errors
@@ -52,7 +52,7 @@ internal void test_expression_parser(void) {
 	test_expression_parser_single(string_from_lit("foo("), def_flags);
 #endif
 	
-#if 1
+#if 0
 	// Assignments
 	test_expression_parser_single(string_from_lit("a=0"), Parse_Expr_Flags_ALLOW_ASSIGNMENT|Parse_Expr_Flags_ALLOW_COMMA);
 	test_expression_parser_single(string_from_lit("=0"), Parse_Expr_Flags_ALLOW_ASSIGNMENT|Parse_Expr_Flags_ALLOW_COMMA);

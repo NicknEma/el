@@ -55,45 +55,43 @@ internal bool token_is_assigner(Token token);
 
 //- Expressions
 
-typedef enum Parse_Expr_Flags {
-	Parse_Expr_Flags_REQUIRED             = 1 << 0,
-	Parse_Expr_Flags_ALLOW_COMMA          = 1 << 1,
-	Parse_Expr_Flags_ALLOW_TRAILING_COMMA = 1 << 2,
-	Parse_Expr_Flags_ALLOW_ASSIGNMENT     = 1 << 3,
+// There's only 1 type of parse flags, valid for all parsing routines. The flags that do not apply to that
+// node kind are simply ignored. This allows for flags to be passed down eterogeneous routines without
+// weird context shenanigans.
+typedef enum Parse_Flags {
+	// expr flags
+	Parse_Flags_EXPR_REQUIRED                  = 1 << 0,
+	Parse_Flags_EXPR_ALLOW_ASSIGNMENT          = 1 << 1,
 	
-	Parse_Expr_Flags_DEFAULT     = Parse_Expr_Flags_REQUIRED,
-	Parse_Expr_Flags_RETURN_EXPR = Parse_Expr_Flags_ALLOW_COMMA,
-} Parse_Expr_Flags;
+	// expr lists flags
+	Parse_Flags_EXPR_LIST_ALLOW_TRAILING_COMMA = 1 << 2,
+	
+	// useful combinations
+	Parse_Flags_EXPR_DEFAULT = Parse_Flags_EXPR_REQUIRED,
+	Parse_Flags_RETURN_VALS  = 0,
+	Parse_Flags_CALL_ARGS    = Parse_Flags_EXPR_LIST_ALLOW_TRAILING_COMMA|Parse_Flags_EXPR_ALLOW_ASSIGNMENT,
+	Parse_Flags_COMPOUND_LIT = Parse_Flags_EXPR_LIST_ALLOW_TRAILING_COMMA|Parse_Flags_EXPR_ALLOW_ASSIGNMENT,
+} Parse_Flags;
 
 internal Ast_Expression *make_atom_expression(Parser *parser, Token token);
 internal Ast_Expression *make_unary_expression(Parser *parser, Token unary, Ast_Expression *subexpr);
 internal Ast_Expression *make_binary_expression(Parser *parser, Token binary, Ast_Expression *left, Ast_Expression *right);
 internal Ast_Expression *make_ternary_expression(Parser *parser, Ast_Expression *left, Ast_Expression *middle, Ast_Expression *right);
 
-internal Ast_Expression *parse_expression(Parser *parser, Precedence caller_precedence, Parse_Expr_Flags parse_flags);
+internal Ast_Expression *parse_expression(Parser *parser, Precedence caller_precedence, Parse_Flags parse_flags);
 
 //- Statements
 
-typedef struct Make_Statement_Params Make_Statement_Params;
-struct Make_Statement_Params {
-	Token_Kind assigner;
-	
-	Ast_Statement   *block;
-	union { Ast_Expression *expr; Ast_Expression *lhs; };
-	Ast_Expression  *rhs;
-	Ast_Declaration *decl;
+typedef struct Stmt_List Stmt_List;
+struct Stmt_List {
+	Ast_Statement *first, *last;
 };
 
-#define make_statement(parser, kind, location, ...) \
-make_statement_(parser, kind, location, (Make_Statement_Params){ \
-.assigner = 0,\
-.block    = &nil_statement,  \
-.lhs      = &nil_expression, \
-.rhs      = &nil_expression, \
-.decl     = &nil_declaration,\
-__VA_ARGS__\
-})
-internal Ast_Statement *make_statement_(Parser *parser, Ast_Statement_Kind kind, Range1DI32 location, Make_Statement_Params params);
+internal Ast_Statement *make_expr_stmt(Parser *parser, Ast_Expression *expr, Range1DI32 loc);
+internal Ast_Statement *make_block_stmt(Parser *parser, Stmt_List block, Range1DI32 loc);
+internal Ast_Statement *make_return_stmt(Parser *parser, Expr_List retvals, Range1DI32 loc);
+internal Ast_Statement *make_assignment_stmt(Parser *parser, Expr_List lhs, Expr_List rhs, Token_Kind assigner, Range1DI32 loc);
+internal Ast_Statement *make_decl_stmt(Parser *parser, Ast_Declaration *decl, Range1DI32 loc);
 
 internal Ast_Statement *parse_statement(Parser *parser);
 
@@ -104,7 +102,6 @@ internal Ast_Declaration *parse_declaration_after_lhs(Parser *parser, Ast_Expres
 internal Ast_Expression  *parse_declaration_rhs(Parser *parser);
 
 internal Ast_Declaration *parse_proc_header(Parser *parser);
-// internal Type_Ann        *parse_type_annotation(Parser *parser);
 
 //- General/errors
 

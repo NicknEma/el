@@ -507,41 +507,8 @@ internal String string_from_builder(String_Builder builder);
 ////////////////////////////////
 //~ Variadic functions helpers
 
-inline u64 va_arg_to_u64(int length, va_list *args) {
-	u64 result = 0;
-	switch (length) {
-		case 1: result = va_arg(*args,  u8); break;
-		case 2: result = va_arg(*args, u16); break;
-		case 4: result = va_arg(*args, u32); break;
-		case 8: result = va_arg(*args, u64); break;
-		default: assert(false);
-	}
-	
-	return result;
-}
-
-inline i64 va_arg_to_s64(int length, va_list *args) {
-	i64 result = 0;
-	switch (length) {
-		case 1: result = va_arg(*args,  i8); break;
-		case 2: result = va_arg(*args, i16); break;
-		case 4: result = va_arg(*args, i32); break;
-		case 8: result = va_arg(*args, i64); break;
-		default: assert(false);
-	}
-	
-	return result;
-}
-
-inline f64 va_arg_to_f64(int length, va_list *args) {
-	f64 result = 0;
-	switch (length) {
-		case 4: result = va_arg(*args, f32); break;
-		case 8: result = va_arg(*args, f64); break;
-		default: assert(false);
-	}
-	
-	return result;
-}
+internal u64 va_arg_to_u64(int length, va_list *args);
+internal i64 va_arg_to_s64(int length, va_list *args);
+internal f64 va_arg_to_f64(int length, va_list *args);
 
 #endif

@@ -41,11 +41,6 @@ typedef SSIZE_T ssize_t;
 #endif
 
 ////////////////////////////////
-//~ fsize
-
-static size_t fsize(FILE *fp);
-
-////////////////////////////////
 //~ Core
 
 //- Keywords
@@ -510,5 +505,14 @@ internal String string_from_builder(String_Builder builder);
 internal u64 va_arg_to_u64(int length, va_list *args);
 internal i64 va_arg_to_i64(int length, va_list *args);
 internal f64 va_arg_to_f64(int length, va_list *args);
+
+////////////////////////////////
+//~ File IO
+
+typedef struct String_And_Bool String_And_Bool;
+struct String_And_Bool { String str; bool ok; };
+
+internal size_t fsize(FILE *fp);
+internal String_And_Bool load_file_string(Arena *arena, char *name);
 
 #endif

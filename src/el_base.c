@@ -2,32 +2,6 @@
 #define EL_BASE_C
 
 ////////////////////////////////
-//~ fsize
-
-// Sets EBADF if fp is not a seekable stream
-// EINVAL if fp was NULL
-static size_t fsize(FILE *fp) {
-	size_t fs = 0;
-	
-	if (fp) {
-		fseek(fp, 0L, SEEK_END);
-		
-		if (errno == 0) {
-			fs = ftell(fp);
-			
-			// If fseek succeeded before, it means that fp was
-			// a seekable stream, so we don't check the error again.
-			
-			fseek(fp, 0L, SEEK_SET);
-		}
-	} else {
-		errno = EINVAL;
-	}
-	
-	return fs;
-}
-
-////////////////////////////////
 //~ Core
 
 //- Assertions
@@ -784,5 +758,63 @@ internal f64 va_arg_to_f64(int length, va_list *args) {
 	
 	return result;
 }
+
+////////////////////////////////
+//~ File IO
+
+// Sets EBADF if fp is not a seekable stream
+// EINVAL if fp was NULL
+static size_t fsize(FILE *fp) {
+	size_t fs = 0;
+	
+	if (fp) {
+		fseek(fp, 0L, SEEK_END);
+		
+		if (errno == 0) {
+			fs = ftell(fp);
+			
+			// If fseek succeeded before, it means that fp was
+			// a seekable stream, so we don't check the error again.
+			
+			fseek(fp, 0L, SEEK_SET);
+		}
+	} else {
+		errno = EINVAL;
+	}
+	
+	return fs;
+}
+
+internal String_And_Bool load_file_string(Arena *arena, char *name) {
+	String_And_Bool result = {0};
+	
+	FILE *file = fopen(name, "rb");
+	if (file) {
+		size_t file_size = fsize(file);
+		u8    *file_data = push_nozero(arena, file_size);
+		
+		if (fread(file_data, sizeof(u8), file_size, file) == file_size) {
+			result.str = make_string(file_data, file_size);
+			result.ok  = true;
+		} else {
+			perror("fread");
+		}
+		
+		fclose(file);
+	} else {
+		perror("fopen");
+	}
+	
+	return result;
+}
+
+////////////////////////////////
+//~ OS-Specific
+
+#if OS_WINDOWS
+#include "el_base_windows.c"
+#else
+#include "el_base_linux.c"
+#endif
 
 #endif

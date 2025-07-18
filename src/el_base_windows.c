@@ -1,5 +1,5 @@
-#ifndef EL_OS_WINDOWS_C
-#define EL_OS_WINDOWS_C
+#ifndef EL_BASE_WINDOWS_C
+#define EL_BASE_WINDOWS_C
 
 ////////////////////////////////
 //~ Memory

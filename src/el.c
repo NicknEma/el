@@ -3,11 +3,9 @@
 #include "el_ctx_crack.h"
 #include "el_base.h"
 #include "el_print.h"
-#include "el_os.h"
 
 #include "el_base.c"
 #include "el_print.c"
-#include "el_os.c"
 
 #define EL_CHECK_SINGLE_PASS 1
 

@@ -764,7 +764,7 @@ internal f64 va_arg_to_f64(int length, va_list *args) {
 
 // Sets EBADF if fp is not a seekable stream
 // EINVAL if fp was NULL
-static size_t fsize(FILE *fp) {
+internal size_t fsize(FILE *fp) {
 	size_t fs = 0;
 	
 	if (fp) {

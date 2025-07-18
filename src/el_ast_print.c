@@ -90,7 +90,7 @@ internal void string_from_expression_tree_internal(Arena *arena, Ast_Expression 
 				case Unary_Operator_DEREFERENCE: {
 					string_list_push(arena, builder, string_from_lit("("));
 					string_from_expression_tree_internal(arena, root->expr_first, builder);
-					string_list_pushf(arena, builder, ")^");
+					string_list_push(arena, builder, string_from_lit(")^"));
 				} break;
 				
 				default: break;

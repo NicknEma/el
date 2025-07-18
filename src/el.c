@@ -1,4 +1,6 @@
+#if __has_include("raddbg_markup.h")
 #include "raddbg_markup.h"
+#endif
 
 #include "el_ctx_crack.h"
 #include "el_base.h"

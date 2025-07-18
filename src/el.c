@@ -1,17 +1,16 @@
 #include "raddbg_markup.h"
 
-#include "el_base/el_ctx_crack.h"
-#include "el_base/el_base.h"
-#include "el_base/el_print.h"
-#include "el_os/el_os.h"
+#include "el_ctx_crack.h"
+#include "el_base.h"
+#include "el_print.h"
+#include "el_os.h"
 
-#include "el_base/el_base.c"
-#include "el_base/el_print.c"
-#include "el_os/el_os.c"
+#include "el_base.c"
+#include "el_print.c"
+#include "el_os.c"
 
 #define EL_CHECK_SINGLE_PASS 1
 
-// #include "el_print.h"
 #include "el_type.h"
 #include "el_lex.h"
 #include "el_ast.h"
@@ -26,7 +25,6 @@
 // #include "el_bcode.h"
 // #include "el_masm.h"
 
-// #include "el_print.c"
 #include "el_type.c"
 #include "el_lex.c"
 #include "el_parse.c"

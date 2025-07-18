@@ -1,8 +1,8 @@
 
- global char lowercase_hex_digits[] = "0123456789abcdef";
+global char lowercase_hex_digits[] = "0123456789abcdef";
 global char uppercase_hex_digits[] = "0123456789ABCDEF";
 
-WRITER_PROC(string_builder_writer) {
+WRITER_PROC(string_builder_writer_proc) {
 	String_Builder *dest_ = cast(String_Builder *) dest;
 	
 	for (; dest_->len < dest_->cap && *source && count > 0; dest_->len++, count--) {
@@ -12,12 +12,32 @@ WRITER_PROC(string_builder_writer) {
 	return dest_;
 }
 
-WRITER_PROC(libc_file_writer) {
+WRITER_PROC(libc_file_writer_proc) {
 	fwrite(source, sizeof(char), count, cast(FILE *) dest);
 	return dest;
 }
 
-WRITER_PROC(print_counter) {
+WRITER_PROC(debugger_writer_proc) {
+#if OS_WINDOWS
+	char buf[256];
+	while (count && source) {
+		char *buf_ptr = buf;
+		for (; buf_ptr - buf < array_count(buf) && source && count; count--) {
+			*buf_ptr++ = *source++;
+		}
+		
+		*buf_ptr = '\0';
+		
+		OutputDebugStringA(buf);
+	}
+	
+	return dest;
+#else
+	return dest;
+#endif
+}
+
+WRITER_PROC(print_counter_proc) {
 	usize *accumulator = cast(usize *) dest;
 	*accumulator += count;
 	return accumulator;
@@ -177,7 +197,7 @@ internal String bsprint_va_list(SliceU8 buffer, char *format, va_list args) {
 	String_Builder builder;
 	string_builder_init(&builder, buffer);
 	
-	write_formatted_string(string_builder_writer, &builder, format, args);
+	write_formatted_string(string_builder_writer_proc, &builder, format, args);
 	
 	return string_from_builder(builder);
 }
@@ -192,7 +212,7 @@ internal String bsprint(SliceU8 buffer, char *format, ...) {
 }
 
 internal void fprint_va_list(FILE *stream, char *format, va_list args) {
-	write_formatted_string(libc_file_writer, stream, format, args);
+	write_formatted_string(libc_file_writer_proc, stream, format, args);
 }
 
 internal void fprint(FILE *stream, char *format, ...) {
@@ -203,7 +223,7 @@ internal void fprint(FILE *stream, char *format, ...) {
 }
 
 internal void print_va_list(char *format, va_list args) {
-	write_formatted_string(libc_file_writer, stdout, format, args);
+	write_formatted_string(libc_file_writer_proc, stdout, format, args);
 }
 
 internal void print(char *format, ...) {
@@ -214,7 +234,7 @@ internal void print(char *format, ...) {
 }
 
 internal void eprint_va_list(char *format, va_list args) {
-	write_formatted_string(libc_file_writer, stderr, format, args);
+	write_formatted_string(libc_file_writer_proc, stderr, format, args);
 }
 
 internal void eprint(char *format, ...) {
@@ -225,7 +245,7 @@ internal void eprint(char *format, ...) {
 }
 
 internal void dprint_va_list(char *format, va_list args) {
-	write_formatted_string(debugger_writer, 0, format, args);
+	write_formatted_string(debugger_writer_proc, 0, format, args);
 }
 
 internal void dprint(char *format, ...) {
@@ -237,7 +257,7 @@ internal void dprint(char *format, ...) {
 
 internal usize nprint_va_list(char *format, va_list args) {
 	usize result = 0;
-	result = *cast(usize *) write_formatted_string(print_counter, &result, format, args);
+	result = *cast(usize *) write_formatted_string(print_counter_proc, &result, format, args);
 	return result;
 }
 

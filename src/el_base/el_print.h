@@ -4,6 +4,11 @@
 #define WRITER_PROC(name) void *name(void *dest, char *source, usize count)
 typedef WRITER_PROC(Writer_Proc);
 
+internal WRITER_PROC(string_builder_writer_proc);
+internal WRITER_PROC(libc_file_writer_proc);
+internal WRITER_PROC(debugger_writer_proc);
+internal WRITER_PROC(print_counter_proc);
+
 ////////////////////////////////
 //~ Compiler-specific printing utilities
 

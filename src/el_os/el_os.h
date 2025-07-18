@@ -6,6 +6,4 @@ struct String_And_Bool { String str; bool ok; };
 
 internal String_And_Bool load_file_string(Arena *arena, char *name);
 
-WRITER_PROC(debugger_writer);
-
 #endif

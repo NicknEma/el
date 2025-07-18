@@ -183,6 +183,12 @@ typedef  int16_t i16;
 typedef  int32_t i32;
 typedef  int64_t i64;
 
+typedef  size_t usize;
+typedef unsigned int uint;
+
+typedef float  f32;
+typedef double f64;
+
 #define  U8_MAX 0xFFU;
 #define U16_MAX 0xFFFFU;
 #define U32_MAX 0xFFFFFFFFU;
@@ -495,5 +501,45 @@ internal void string_builder_init(String_Builder *builder, SliceU8 backing);
 internal i64  string_builder_append(String_Builder *builder, String s);
 
 internal String string_from_builder(String_Builder builder);
+
+////////////////////////////////
+//~ Variadic functions helpers
+
+inline u64 va_arg_to_u64(int length, va_list *args) {
+	u64 result = 0;
+	switch (length) {
+		case 1: result = va_arg(*args,  u8); break;
+		case 2: result = va_arg(*args, u16); break;
+		case 4: result = va_arg(*args, u32); break;
+		case 8: result = va_arg(*args, u64); break;
+		default: assert(false);
+	}
+	
+	return result;
+}
+
+inline i64 va_arg_to_s64(int length, va_list *args) {
+	i64 result = 0;
+	switch (length) {
+		case 1: result = va_arg(*args,  i8); break;
+		case 2: result = va_arg(*args, i16); break;
+		case 4: result = va_arg(*args, i32); break;
+		case 8: result = va_arg(*args, i64); break;
+		default: assert(false);
+	}
+	
+	return result;
+}
+
+inline f64 va_arg_to_f64(int length, va_list *args) {
+	f64 result = 0;
+	switch (length) {
+		case 4: result = va_arg(*args, f32); break;
+		case 8: result = va_arg(*args, f64); break;
+		default: assert(false);
+	}
+	
+	return result;
+}
 
 #endif

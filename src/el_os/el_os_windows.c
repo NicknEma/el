@@ -65,4 +65,23 @@ internal bool mem_release(void *ptr, u64 size) {
 	return VirtualFree(ptr, 0, MEM_RELEASE);
 }
 
+////////////////////////////////
+//~ Writer procs
+
+WRITER_PROC(debugger_writer) {
+	char buf[256];
+	while (count && source) {
+		char *buf_ptr = buf;
+		for (; buf_ptr - buf < array_count(buf) && source && count; count--) {
+			*buf_ptr++ = *source++;
+		}
+		
+		*buf_ptr = '\0';
+		
+		OutputDebugStringA(buf);
+	}
+	
+	return dest;
+}
+
 #endif

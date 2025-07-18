@@ -7,6 +7,7 @@
 #if OS_WINDOWS
 # define WIN32_LEAN_AND_MEAN
 # include <windows.h>
+typedef SSIZE_T ssize_t;
 #elif OS_LINUX
 # include <sys/mman.h>
 # include <sys/ioctl.h>
@@ -184,6 +185,7 @@ typedef  int32_t i32;
 typedef  int64_t i64;
 
 typedef  size_t usize;
+typedef ssize_t ssize;
 typedef unsigned int uint;
 
 typedef float  f32;

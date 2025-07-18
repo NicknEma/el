@@ -121,7 +121,7 @@ internal void _arena_init(Arena *arena, Arena_Init_Params params) {
 		arena->peak = 0;
 		arena->commit_pos = 0;
 	} else if (params.reserve_size > 0) {
-		panic("Invalid codepath");
+		panic("mem_reserve should never return NULL");
 	}
 }
 
@@ -325,7 +325,7 @@ void *libc_heap_proc(void *old_ptr, u64 old_size, u64 size, Heap_Mode mode) {
 			result = 0;
 		} break;
 		
-		default: panic();
+		default: panic("Invalid value for Heap_Mode"); break;
 	}
 	
 	return result;

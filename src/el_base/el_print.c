@@ -95,7 +95,7 @@ internal void *write_formatted_string(Writer_Proc writer, void *dest, char *form
 				case 'i':
 				case 'd':
 				case 's': {
-					i64 val = va_arg_to_s64(integer_size, &args);
+					i64 val = va_arg_to_i64(integer_size, &args);
 					u64 unsigned_val = 0;
 					char prefix = 0;
 					

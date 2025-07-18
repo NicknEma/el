@@ -508,7 +508,7 @@ internal String string_from_builder(String_Builder builder);
 //~ Variadic functions helpers
 
 internal u64 va_arg_to_u64(int length, va_list *args);
-internal i64 va_arg_to_s64(int length, va_list *args);
+internal i64 va_arg_to_i64(int length, va_list *args);
 internal f64 va_arg_to_f64(int length, va_list *args);
 
 #endif

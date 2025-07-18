@@ -761,7 +761,7 @@ internal u64 va_arg_to_u64(int length, va_list *args) {
 	return result;
 }
 
-internal i64 va_arg_to_s64(int length, va_list *args) {
+internal i64 va_arg_to_i64(int length, va_list *args) {
 	i64 result = 0;
 	switch (length) {
 		case 1: result = va_arg(*args,  i8); break;

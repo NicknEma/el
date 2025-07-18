@@ -42,18 +42,11 @@
 
 /*
 ** TODO(ema):
-** [ ] Change initialization of parser/checker/builder so that they own their arena
-** [ ] Make parse_* take an arena param so we can allocate nodes on scratch arenas
-** [ ] Type annotations are stored by pointer
-** [ ] More 'recursive' compound literal parsing ([]int vs [][]int etc.)
 **
 ** [ ] Store pseudo-registers in the Symbol struct
 **     https://godbolt.org/z/G1e4d8M3M
 ** [ ] Symbol_Kind (local var, global var, function, etc) so we can either store a stack offset or an address
 ** [ ] Assigner and Declarator types
-** [ ] Refactor Expr, Stat and Decl from lists into arrays
-** [ ] Printer
-** [ ] Input reading
 */
 
 int main(int argc, char **argv) {

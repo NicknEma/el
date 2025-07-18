@@ -1,5 +1,5 @@
-#ifndef EL_BASE_WINDOWS_C
-#define EL_BASE_WINDOWS_C
+#ifndef EL_OS_WINDOWS_C
+#define EL_OS_WINDOWS_C
 
 ////////////////////////////////
 //~ Memory
@@ -62,7 +62,6 @@ internal bool mem_decommit(void *ptr, u64 size) {
 
 internal bool mem_release(void *ptr, u64 size) {
 	(void)size; // Not needed on Windows
-	
 	return VirtualFree(ptr, 0, MEM_RELEASE);
 }
 

@@ -1,5 +1,5 @@
-#ifndef EL_BASE_LINUX_C
-#define EL_BASE_LINUX_C
+#ifndef EL_OS_LINUX_C
+#define EL_OS_LINUX_C
 
 ////////////////////////////////
 //~ Memory

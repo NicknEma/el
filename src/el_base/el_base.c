@@ -1,12 +1,6 @@
 #ifndef EL_BASE_C
 #define EL_BASE_C
 
-#if OS_WINDOWS
-# include "el_base_windows.c"
-#elif OS_LINUX
-# include "el_base_linux.c"
-#endif
-
 ////////////////////////////////
 //~ fsize
 

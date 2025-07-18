@@ -1,6 +1,12 @@
 #ifndef EL_OS_C
 #define EL_OS_C
 
+#if OS_WINDOWS
+#include "el_os_windows.c"
+#else
+#include "el_os_linux.c"
+#endif
+
 internal String_And_Bool load_file_string(Arena *arena, char *name) {
 	String_And_Bool result = {0};
 	

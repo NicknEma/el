@@ -20,7 +20,7 @@ internal Range1DI32 make_range1di32(i32 start, i32 end) {
 		i32 t = start; start = end; end = t;
 	}
 	
-	Range1DI32 result = { .start = start, .end = end, };
+	Range1DI32 result = {.start = start, .end = end};
 	return result;
 }
 
@@ -28,7 +28,7 @@ internal Range1DI32 range1di32_merge(Range1DI32 a, Range1DI32 b) {
 	i32 start = min(a.start, b.start);
 	i32 end   = max(a.end, b.end);
 	
-	Range1DI32 result = { .start = start, .end = end, };
+	Range1DI32 result = {.start = start, .end = end};
 	return result;
 }
 
@@ -129,7 +129,7 @@ internal bool arena_fini(Arena *arena) {
 	assert(arena != NULL);
 	
 	bool released = mem_release(arena->ptr, arena->cap);
-	memset(arena, 0, sizeof(Arena));
+	memset(arena, 0, sizeof(*arena));
 	
 	return released;
 }
@@ -175,7 +175,7 @@ internal void *push_nozero_aligned(Arena *arena, u64 size, u64 alignment) {
 				void *commit_base = arena->ptr + arena->commit_pos;
 				u64   commit_size = new_commit_pos - arena->commit_pos;
 				
-				(void)mem_commit(commit_base, commit_size);
+				(void) mem_commit(commit_base, commit_size);
 				arena->commit_pos = new_commit_pos;
 			}
 			
@@ -191,9 +191,7 @@ internal void *push_nozero_aligned(Arena *arena, u64 size, u64 alignment) {
 
 internal void *push_zero_aligned(Arena *arena, u64 size, u64 alignment) {
 	void *result = push_nozero_aligned(arena, size, alignment);
-	if (result != NULL) {
-		memset(result, 0, size);
-	}
+	if (result != NULL) memset(result, 0, size);
 	
 	return result;
 }
@@ -316,8 +314,7 @@ void *libc_heap_proc(void *old_ptr, u64 old_size, u64 size, Heap_Mode mode) {
 		} break;
 		
 		case Heap_Mode_FREE: {
-			free(old_ptr);
-			(void) old_size;
+			free(old_ptr); (void) old_size;
 		} break;
 		
 		case Heap_Mode_FREE_ALL: {
@@ -362,7 +359,8 @@ internal SliceU8 sliceu8_from_string(String s) {
 }
 
 internal SliceU8 sliceu8_clone(Arena *arena, SliceU8 s) {
-	// We don't call push_sliceu8() because that clears memory to 0 and we don't need that here.
+	// We don't call push_sliceu8() because that clears memory to 0
+	// and we don't need that here.
 	SliceU8 result = {
 		.data = push_nozero(arena, s.len),
 		.len  = s.len,
@@ -397,6 +395,7 @@ internal String push_stringf(Arena *arena, char *fmt, ...) {
 	va_start(args, fmt);
 	String result = push_stringf_va_list(arena, fmt, args);
 	va_end(args);
+	
 	return result;
 }
 
@@ -416,7 +415,8 @@ internal String string_from_sliceu8(SliceU8 s) {
 }
 
 internal String string_clone(Arena *arena, String s) {
-	// We don't call push_string() because that clears memory to 0 and we don't need that here.
+	// We don't call push_string() because that clears memory to 0
+	// and we don't need that here.
 	String result = {
 		.data = push_nozero(arena, s.len),
 		.len  = s.len,
@@ -428,9 +428,8 @@ internal String string_clone(Arena *arena, String s) {
 
 internal String strings_concat_(Arena *arena, String *strings, i64 string_count, Strings_Concat_Params params) {
 	i64 total_len = 0;
-	for (i64 i = 0; i < string_count; i += 1) {
+	for (i64 i = 0; i < string_count; i += 1)
 		total_len += strings[i].len;
-	}
 	
 	total_len += params.pre.len;
 	total_len += params.sep.len * (string_count - 1);
@@ -522,9 +521,8 @@ internal i64 string_find_first(String s, u8 c) {
 internal i64 string_count_occurrences(String s, u8 c) {
 	i64 result = 0;
 	for (i64 i = 0; i < s.len; i += 1) {
-		if (s.data[i] == c) {
+		if (s.data[i] == c)
 			result += 1;
-		}
 	}
 	return result;
 }
@@ -535,9 +533,8 @@ internal i64 string_contains(String s, u8 c) {
 }
 
 internal String string_skip(String s, i64 amount) {
-	if (amount > s.len) {
+	if (amount > s.len)
 		amount = s.len;
-	}
 	
 	s.data += amount;
 	s.len  -= amount;
@@ -546,9 +543,8 @@ internal String string_skip(String s, i64 amount) {
 }
 
 internal String string_chop(String s, i64 amount) {
-	if (amount > s.len) {
+	if (amount > s.len)
 		amount = s.len;
-	}
 	
 	s.len -= amount;
 	
@@ -556,9 +552,8 @@ internal String string_chop(String s, i64 amount) {
 }
 
 internal String string_stop(String s, i64 index) {
-	if (index < s.len && index > -1) {
+	if (index < s.len && index > -1)
 		s.len = index;
-	}
 	
 	return s;
 }

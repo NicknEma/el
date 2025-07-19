@@ -2,9 +2,7 @@
 #define EL_CORE_H
 
 ////////////////////////////////
-//~ Operators
-
-//- Operators types
+//~ Misc types
 
 typedef enum Unary_Operator {
 	Unary_Operator_NONE = 0,
@@ -30,6 +28,16 @@ typedef enum Binary_Operator {
 	Binary_Operator_COUNT,
 } Binary_Operator;
 
+typedef enum Type_Modifier {
+	Type_Modifier_NONE = 0,
+	Type_Modifier_POINTER,
+	Type_Modifier_SLICE,
+	Type_Modifier_COUNT,
+} Type_Modifier;
+
+typedef struct Symbol Symbol;
+typedef struct Scope  Scope;
+
 ////////////////////////////////
 //~ AST
 
@@ -38,10 +46,8 @@ typedef struct Ast_Statement Ast_Statement;
 typedef struct Ast_Declaration Ast_Declaration;
 
 typedef struct Expr_List Expr_List;
-
-typedef struct Symbol Symbol;
-
-typedef struct Scope Scope;
+typedef struct Stmt_List Stmt_List;
+typedef struct Decl_List Decl_List;
 
 //- Expressions
 
@@ -83,15 +89,6 @@ typedef struct Scope Scope;
 // proc(x: int) -> float { return x * 0.5 }
 // PROC_DEFN
 
-
-typedef enum Type_Modifier {
-	Type_Modifier_NONE = 0,
-	Type_Modifier_POINTER,
-	Type_Modifier_SLICE,
-	Type_Modifier_COUNT,
-} Type_Modifier;
-
-
 typedef enum Ast_Expression_Kind {
 	Ast_Expression_Kind_NULL = 0,
 	
@@ -119,7 +116,6 @@ typedef enum Ast_Expression_Flags {
 	Ast_Expression_Flag_CONSTANT = (1<<0),
 } Ast_Expression_Flags;
 
-
 struct Expr_List {
 	Ast_Expression *first;
 	Ast_Expression *last;
@@ -130,21 +126,6 @@ struct Ast_Expression {
 	Ast_Expression_Flags flags;
 	
 	union { Unary_Operator unary; Binary_Operator binary; Type_Modifier modifier; Token_Kind assigner; };
-	
-#if 0
-	union { Ast_Expression *left; Ast_Expression *subexpr; };
-	union {
-		Ast_Expression *middle; // For ternaries
-		Ast_Expression *type_annotation; // For compound literals
-	};
-	Ast_Expression *right;
-	
-	Ast_Statement  *body; // In case it is a proc definition
-	union {
-		struct { Ast_Declaration *first_param, *first_retval; };
-		Ast_Declaration *first_member;
-	};
-#endif
 	
 	Ast_Expression  *next;
 	Ast_Expression  *prev;
@@ -168,11 +149,6 @@ struct Ast_Expression {
 	};
 	
 	Type_Array types;
-	
-#if 0
-	Ast_Expression *next;
-	i64             next_count;
-#endif
 };
 
 typedef struct Ast_Expression_Array Ast_Expression_Array;
@@ -192,6 +168,10 @@ typedef enum Ast_Statement_Kind {
 	Ast_Statement_Kind_DECLARATION,
 	Ast_Statement_Kind_COUNT,
 } Ast_Statement_Kind;
+
+struct Stmt_List {
+	Ast_Statement *first, *last;
+};
 
 struct Ast_Statement {
 	Ast_Statement_Kind kind;
@@ -228,6 +208,9 @@ typedef enum Ast_Declaration_Flags {
 	Ast_Declaration_Flag_CONSTANT = (1<<1),
 } Ast_Declaration_Flags;
 
+	Ast_Declaration *first, *last;
+};
+
 struct Ast_Declaration {
 	Ast_Declaration_Flags flags;
 	
@@ -243,6 +226,7 @@ struct Ast_Declaration {
 
 ////////////////////////////////
 //~ Nil objects
+//- Nil objects
 
 global read_only Ast_Expression  nil_expression;
 global read_only Ast_Statement   nil_statement;

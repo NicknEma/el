@@ -106,6 +106,8 @@ struct Token {
 };
 
 struct Lexer {
+	String source_name;
+	
 	String source;
 	i64    index;
 	

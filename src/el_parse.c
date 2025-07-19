@@ -1153,14 +1153,15 @@ internal bool there_were_parse_errors(Parser *parser) {
 	return parser->error_count > 0;
 }
 
-internal void parser_init_(Parser *parser, Arena *ast_arena, Parser_Init_Params init_params) {
-	assert(arena_initted(*ast_arena), "Ast arena must be manually initialized");
+internal void parser_init(Parser *parser, Arena *arena, String source, String name) {
+	assert(arena_initted(*arena), "Ast arena must be manually initialized");
 	
 	memset(parser, 0, sizeof(*parser));
-	parser->arena = ast_arena;
+	parser->lexer.source_name = name;
+	parser->arena = arena;
 	
-	if (init_params.text.len > 0) {
-		parser_set_source(parser, init_params.text);
+	if (source.len > 0) {
+		parser_set_source(parser, source);
 	}
 }
 
@@ -1185,34 +1186,60 @@ internal u64 estimate_ast_arena_size(String source) {
 
 //- Wrappers
 
-internal Ast_Expression *parse_expression_string(Arena *arena, String source, Parse_Flags flags) {
+internal Ast_Expression *expr_from_string(Arena *arena, String source, String name, Parse_Flags flags) {
 	Parser parser = {0};
-	parser_init(&parser, arena, .text = source);
+	parser_init(&parser, arena, source, name);
 	
-	return parse_expression(&parser, PREC_NONE, flags);
+	Arena_Restore_Point temp = arena_begin_temp_region(arena);
+	Ast_Expression *expr = parse_expression(&parser, PREC_NONE, flags);
+	
+	if (there_were_parse_errors(&parser)) {
+		arena_end_temp_region(temp);
+		expr = &nil_expression;
+	}
+	
+	return expr;
 }
 
-internal Ast_Statement *parse_statement_string(Arena *arena, String source) {
+internal Ast_Statement *stmt_from_string(Arena *arena, String source, String name) {
 	Parser parser = {0};
-	parser_init(&parser, arena, .text = source);
+	parser_init(&parser, arena, source, name);
 	
-	return parse_statement(&parser);
+	Arena_Restore_Point temp = arena_begin_temp_region(arena);
+	Ast_Statement *stmt = parse_statement(&parser);
+	
+	if (there_were_parse_errors(&parser)) {
+		arena_end_temp_region(temp);
+		stmt = &nil_statement;
+	}
+	
+	return stmt;
 }
 
 #if 0
-internal Ast_Declaration *parse_declaration_string(Arena *arena, String source) {
+internal Ast_Declaration *decl_from_string(Arena *arena, String source, String name) {
 	Parser parser = {0};
-	parser_init(&parser, arena, .text = source);
+	parser_init(&parser, arena, source, name);
 	
-	return parse_declaration(&parser);
+	Arena_Restore_Point temp = arena_begin_temp_region(arena);
+	Ast_Declaration *decl = parse_declaration(&parser);
+	
+	if (there_were_parse_errors(&parser)) {
+		arena_end_temp_region(temp);
+		decl = &nil_declaration;
+	}
+	
+	return decl;
 }
 #endif
 
-internal Ast_Statement *parse_program_string(Arena *arena, String source) {
+#if 0
+internal Ast_Statement *unit_from_string(Arena *arena, String source, String name) {
 	Parser parser = {0};
-	parser_init(&parser, arena, .text = source);
+	parser_init(&parser, arena, source, name);
 	
 	return parse_program(&parser);
 }
+#endif
 
 #endif

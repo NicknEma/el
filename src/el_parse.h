@@ -3,6 +3,14 @@
 
 //- Parser
 
+//
+// The parser is a "temporary" data structure, meaning that it is only useful during a part of the
+// compilation. It doesn't "belong" to anywhere except for the calling code's local stack.
+//
+// Each calling location can (and should) choose the appropriate reserve size for the parser's arena,
+// depending on the context (test code vs actual compiler).
+//
+
 typedef struct Parser Parser;
 struct Parser {
 	// The arena is stored as a pointer because its lifetime should extend beyound the one of the
@@ -82,11 +90,6 @@ internal Ast_Expression *parse_expression(Parser *parser, Precedence caller_prec
 
 //- Statements
 
-typedef struct Stmt_List Stmt_List;
-struct Stmt_List {
-	Ast_Statement *first, *last;
-};
-
 internal Ast_Statement *make_expr_stmt(Parser *parser, Ast_Expression *expr, Range1DI32 loc);
 internal Ast_Statement *make_block_stmt(Parser *parser, Stmt_List block, Range1DI32 loc);
 internal Ast_Statement *make_return_stmt(Parser *parser, Expr_List retvals, Range1DI32 loc);
@@ -114,12 +117,7 @@ internal void expect_token_kind(Parser *parser, Token_Kind kind, char *message);
 
 internal bool there_were_parse_errors(Parser *parser);
 
-typedef struct Parser_Init_Params Parser_Init_Params;
-struct Parser_Init_Params { String text; String file_name; };
-
-internal void parser_init_(Parser *parser, Arena *ast_arena, Parser_Init_Params init_params);
-#define parser_init(parser, arena, ...) \
-parser_init_(parser, arena, (Parser_Init_Params){ .text = {0}, .file_name = {0}, __VA_ARGS__ });
+internal void parser_init(Parser *parser, Arena *arena, String source, String name);
 
 internal void parser_set_source(Parser *parser, String source);
 internal u64  estimate_ast_arena_size(String source);

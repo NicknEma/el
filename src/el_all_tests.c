@@ -4,12 +4,46 @@
 internal void test_expression_parser_single(String source, Parse_Flags flags) {
 	Scratch scratch = scratch_begin(0, 0);
 	
-	printf("Parsing sample expression %.*s:\n", string_expand(source));
-	Ast_Expression *tree = parse_expression_string(scratch.arena, source, flags);
-	print_expression_tree(tree);
+	static int expr_count = 0;
+	String name = push_stringf(scratch.arena, "expr_%d", expr_count);
 	
+	printf("Parsing sample expression \"%.*s\":\n", string_expand(source));
+	Ast_Expression *expr = expr_from_string(scratch.arena, source, name, flags);
+	print_expression_tree(expr);
+	
+	expr_count += 1;
 	scratch_end(scratch);
 }
+
+internal void test_statement_parser_single(String source) {
+	Scratch scratch = scratch_begin(0, 0);
+	
+	static int stmt_count = 0;
+	String name = push_stringf(scratch.arena, "stmt_%d", stmt_count);
+	
+	printf("Parsing sample statement %.*s:\n", string_expand(source));
+	Ast_Statement *stmt = stmt_from_string(scratch.arena, source, name);
+	print_statement_tree(stmt);
+	
+	stmt_count += 1;
+	scratch_end(scratch);
+}
+
+#if 0
+internal void test_declaration_parser_single(String source) {
+	Scratch scratch = scratch_begin(0, 0);
+	
+	static int decl_count = 0;
+	String name = push_stringf(scratch.arena, "decl_%d", decl_count);
+	
+	printf("Parsing sample declaration %.*s:\n", string_expand(source));
+	Ast_Declaration *decl = decl_from_string(scratch.arena, source, name);
+	print_declaration_tree(decl);
+	
+	decl_count += 1;
+	scratch_end(scratch);
+}
+#endif
 
 internal void test_expression_parser(void) {
 	printf("### Testing expression parser ###\n\n");
@@ -78,16 +112,6 @@ internal void test_expression_parser(void) {
 	printf("\n");
 }
 
-internal void test_statement_parser_single(String source) {
-	Scratch scratch = scratch_begin(0, 0);
-	
-	printf("Parsing sample statement %.*s:\n", string_expand(source));
-	Ast_Statement *tree = parse_statement_string(scratch.arena, source);
-	print_statement_tree(tree);
-	
-	scratch_end(scratch);
-}
-
 internal void
 test_statement_parser(void) {
 	printf("### Testing statement parser ###\n\n");
@@ -150,16 +174,6 @@ test_statement_parser(void) {
 }
 
 #if 0
-internal void test_declaration_parser_single(String source) {
-	Scratch scratch = scratch_begin(0, 0);
-	
-	printf("Parsing sample declaration %.*s:\n", string_expand(source));
-	Ast_Declaration *tree = parse_declaration_string(scratch.arena, source);
-	print_declaration_tree(tree);
-	
-	scratch_end(scratch);
-}
-
 internal void test_declaration_parser(void) {
 	printf("### Testing declaration parser ###\n\n");
 	
@@ -219,15 +233,9 @@ internal void test_declaration_parser(void) {
 internal void test_all(void) {
 	
 	{
-		// max_printed_lex_errors   = 0;
-		// max_printed_parse_errors = 0;
-		
 		test_expression_parser();
 		test_statement_parser();
 		// test_declaration_parser();
-		
-		// max_printed_lex_errors   = I64_MAX;
-		// max_printed_parse_errors = 1;
 	}
 	
 	// x64_test();

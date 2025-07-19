@@ -132,7 +132,7 @@ internal bool token_is_assigner(Token token) {
 }
 
 ////////////////////////////////
-//~ AST
+//~ AST Nodes
 
 internal Ast_Expression *push_expr(Arena *arena) {
 	Ast_Expression *expr = push_type(arena, Ast_Expression);
@@ -268,24 +268,20 @@ internal Expr_List parse_expr_list(Parser *parser, Parse_Flags parse_flags) {
 	exprs.first = parse_expression(parser, PREC_NONE, parse_flags);
 	exprs.last  = exprs.first;
 	
+	// If trailing comma is allowed, simply flag all subsequent calls to
+	// parse_expression as not required.
 	Parse_Flags subexpr_parse_flags = parse_flags;
 	if (parse_flags & Parse_Flags_EXPR_LIST_ALLOW_TRAILING_COMMA) {
 		subexpr_parse_flags &= ~Parse_Flags_EXPR_REQUIRED;
 	}
 	
-	for (Token token = peek_token(&parser->lexer);; token = peek_token(&parser->lexer)) {
-		if (token.kind == ',') {
-			consume_token(&parser->lexer);
-			
-			Ast_Expression *subexpr = parse_expression(parser, PREC_NONE, subexpr_parse_flags);
-			
-			if (!check_nil_expression(subexpr)) {
-				dll_push_back_npz(exprs.first, exprs.last, subexpr, next, prev, check_nil_expression, set_nil_expression);
-			} else {
-				// break;
-			}
-		} else {
-			break;
+	for (Token token = peek_token(&parser->lexer); token.kind == ','; token = peek_token(&parser->lexer)) {
+		consume_token(&parser->lexer);
+		
+		Ast_Expression *subexpr = parse_expression(parser, PREC_NONE, subexpr_parse_flags);
+		if (!check_nil_expression(subexpr)) {
+			dll_push_back_npz(exprs.first, exprs.last, subexpr, next, prev,
+							  check_nil_expression, set_nil_expression);
 		}
 	}
 	

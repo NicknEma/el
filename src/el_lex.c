@@ -252,7 +252,7 @@ internal void end_lookahead(Lexer *lexer) {
 internal void report_lex_error(Lexer *lexer, char *message) {
 	if (lexer->error_count < max_printed_lex_errors) {
 		// String span = lexeme_from_token(lexer, lexer->token);
-		fprintf(stderr, "Syntax error (%i..%i): %s.\n", lexer->token.loc.start, lexer->token.loc.end, message);
+		fprintf(stderr, "%.*s:%i..%i: Syntax error: %s.\n", string_expand(lexer->source_name), lexer->token.loc.start, lexer->token.loc.end, message);
 	}
 	lexer->error_count += 1;
 }

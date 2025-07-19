@@ -26,14 +26,12 @@ struct Parser {
 
 typedef enum Precedence {
 	PREC_NONE = 0,
-	
-	// The comma "operator" is not the same as the C comma operator; it is just a way
-	// to encode a list of expressions without requiring an additional *next member
-	// and additional code paths.  :CommaOperator
 	// PREC_COMMA,
-	// PREC_ASSIGNMENT,
+	PREC_ASSIGNMENT,
 	PREC_TERNARY,
-	PREC_LOGICAL,
+	PREC_LOGICAL_OR,
+	PREC_LOGICAL_AND,
+	PREC_LOGICAL_NOT,
 	PREC_RELATIONAL,
 	PREC_ADDITIVE,
 	PREC_MULTIPLICATIVE,

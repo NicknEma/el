@@ -90,6 +90,10 @@ internal Token make_token(Lexer *lexer) {
 		{ string_from_lit_const("~"),  '~',  },
 		
 		{ string_from_lit_const("=="),  TOKEN_DOUBLE_EQUALS  },
+		{ string_from_lit_const("&&"),  TOKEN_DOUBLE_AMPER   },
+		{ string_from_lit_const("||"),  TOKEN_DOUBLE_PIPE    },
+		{ string_from_lit_const(".."),  TOKEN_DOUBLE_DOT     },
+		
 		{ string_from_lit_const("+="),  TOKEN_PLUS_EQUALS    },
 		{ string_from_lit_const("-="),  TOKEN_DASH_EQUALS    },
 		{ string_from_lit_const("*="),  TOKEN_STAR_EQUALS    },
@@ -100,6 +104,9 @@ internal Token make_token(Lexer *lexer) {
 		{ string_from_lit_const("&="),  TOKEN_AMPER_EQUALS   },
 		{ string_from_lit_const("~="),  TOKEN_TILDE_EQUALS   },
 		{ string_from_lit_const(":="),  TOKEN_COLON_EQUALS   },
+		
+		{ string_from_lit_const("<="),  TOKEN_LESS_THAN_EQUALS    },
+		{ string_from_lit_const(">="),  TOKEN_GREATER_THAN_EQUALS },
 		
 		{ string_from_lit_const("::"),  TOKEN_DOUBLE_COLON   },
 		{ string_from_lit_const("---"), TOKEN_TRIPLE_DASH    },

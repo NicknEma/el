@@ -7,30 +7,15 @@
 //- Parsing helpers: Prefix/Infix/Postfix
 
 internal bool token_is_prefix(Token token) {
-	bool result = false;
-	switch (token.kind) {
-		case '+':
-		case '-': result = true; break;
-		default: break;
-	}
-	return result;
+	return token.kind == '+' || token.kind == '-';
 }
 
 internal bool token_is_postfix(Token token) {
-	bool result = false;
-	switch (token.kind) {
-		case '^': result = true; break;
-		default: break;
-	}
-	return result;
+	return token.kind == '^';
 }
 
 internal bool token_is_infix(Token token) {
-	bool result = false;
-	if (token.kind == '?' || binary_from_token(token) != Binary_Operator_NONE) {
-		result = true;
-	}
-	return result;
+	return token.kind == '?' || binary_from_token(token) != Binary_Operator_NONE;
 }
 
 //- Parsing helpers: Unary/Binary
@@ -40,14 +25,14 @@ internal Unary_Operator unary_from_token(Token token) {
 }
 
 internal Unary_Operator unary_from_token_kind(Token_Kind kind) {
-	Unary_Operator unary = Unary_Operator_NONE;
 	switch (kind) {
-		case '+': { unary = Unary_Operator_PLUS; } break;
-		case '-': { unary = Unary_Operator_MINUS; } break;
-		case '^': { unary = Unary_Operator_DEREFERENCE; } break;
-		default: break;
+		case '+': return Unary_Operator_PLUS;
+		case '-': return Unary_Operator_MINUS;
+		case '^': return Unary_Operator_DEREFERENCE;
+		default:  break;
 	}
-	return unary;
+	
+	return Unary_Operator_NONE;
 }
 
 internal Binary_Operator binary_from_token(Token token) {
@@ -55,85 +40,71 @@ internal Binary_Operator binary_from_token(Token token) {
 }
 
 internal Binary_Operator binary_from_token_kind(Token_Kind kind) {
-	Binary_Operator binary = Binary_Operator_NONE;
 	switch (kind) {
-		case '+':    { binary = Binary_Operator_PLUS; } break;
-		case '-':    { binary = Binary_Operator_MINUS; } break;
-		case '*':    { binary = Binary_Operator_TIMES; } break;
-		case '/':   { binary = Binary_Operator_DIVIDE; } break;
-		case '%': { binary = Binary_Operator_MODULUS; } break;
-		case '?': { binary = Binary_Operator_TERNARY; } break;
-		// case ',':   { binary = Binary_Operator_COMMA; } break;
-		case '.':     { binary = Binary_Operator_MEMBER; } break;
-		case '(':  { binary = Binary_Operator_CALL; } break;
-		case '[':  { binary = Binary_Operator_ARRAY_ACCESS; } break;
+		case '+': return Binary_Operator_PLUS;
+		case '-': return Binary_Operator_MINUS;
+		case '*': return Binary_Operator_TIMES;
+		case '/': return Binary_Operator_DIVIDE;
+		case '%': return Binary_Operator_MODULUS;
+		case '?': return Binary_Operator_TERNARY;
+		// case ',': return Binary_Operator_COMMA;
+		case '.': return Binary_Operator_MEMBER;
+		case '(': return Binary_Operator_CALL;
+		case '[': return Binary_Operator_ARRAY_ACCESS;
 		
-#if 0
-		case '=':
-		case TOKEN_PLUS_EQUALS:
-		case TOKEN_DASH_EQUALS:
-		case TOKEN_STAR_EQUALS:
-		case TOKEN_SLASH_EQUALS: {
-			binary = Binary_Operator_ASSIGNMENT;
-		} break;
-#endif
-		
-		default: break;
+		// Only check for '=' and not for the other assignment tokens (like += or &=),
+		// since only '=' is allowed in expressions.
+		case '=': return Binary_Operator_ASSIGNMENT;
+		default:  break;
 	}
-	return binary;
+	
+	return Binary_Operator_NONE;
 }
 
 //- Parsing helpers: Precedence
 
 internal Precedence infix_precedence_from_token(Token token) {
-	Precedence precedence = PREC_NONE;
 	switch (token.kind) {
 		// case ',': precedence = PREC_COMMA; break;
 		
-#if 0
-		case '=':
-		case TOKEN_PLUS_EQUALS:
-		case TOKEN_DASH_EQUALS:
-		case TOKEN_STAR_EQUALS:
-		case TOKEN_SLASH_EQUALS: precedence = PREC_ASSIGNMENT; break;
-#endif
+		case '=': return PREC_ASSIGNMENT;
+		case '?': return PREC_TERNARY;
 		
-		case '?': precedence = PREC_TERNARY; break;
+		case TOKEN_DOUBLE_AMPER: return PREC_LOGICAL_AND;
+		case TOKEN_DOUBLE_PIPE: return PREC_LOGICAL_OR;
+		case TOKEN_EMARK: return PREC_LOGICAL_NOT;
 		
-		// case TOKEN_LOGICAL_AND: precedence = PREC_LOGICAL; break;
-		
-		// case TOKEN_DOUBLE_EQUALS: precedence = PREC_RELATIONAL; break;
+		case '<':
+		case '>':
+		case TOKEN_LESS_THAN_EQUALS:
+		case TOKEN_GREATER_THAN_EQUALS:
+		case TOKEN_DOUBLE_EQUALS:
+		case TOKEN_EMARK_EQUALS: return PREC_RELATIONAL;
 		
 		case '+':
-		case '-': precedence = PREC_ADDITIVE; break;
+		case '-': return PREC_ADDITIVE;
 		
 		case '*':
 		case '/':
-		case '%': precedence = PREC_MULTIPLICATIVE; break;
+		case '%': return PREC_MULTIPLICATIVE;
 		
-		case '(': precedence = PREC_CALL_OR_ARRAY_ACCESS; break;
+		case '(': return PREC_CALL_OR_ARRAY_ACCESS;
+		case '.': return PREC_MEMBER;
 		
-		// case '.': precedence = PREC_MEMBER; break;
-		
-		default: break;
+		default:  break;
 	}
-	return precedence;
+	
+	return PREC_NONE; // TODO: Bit operators
 }
 
 internal Precedence prefix_precedence_from_token(Token token) {
-	Precedence precedence = PREC_NONE;
-	if (token_is_prefix(token)) {
-		precedence = PREC_UNARY_PREFIX;
-	}
-	return precedence;
+	if (token_is_prefix(token))  return PREC_UNARY_PREFIX;
+	return PREC_NONE;
 }
 
 internal Precedence postfix_precedence_from_token(Token token) {
-	Precedence precedence = PREC_NONE;
-	if (token_is_postfix(token)) {
-		precedence = PREC_UNARY_POSTFIX;
-	}
-	return precedence;
+	if (token_is_postfix(token)) return PREC_UNARY_POSTFIX;
+	return PREC_NONE;
 }
 
 //- Parsing helpers: Misc
@@ -165,21 +136,21 @@ internal bool token_is_assigner(Token token) {
 
 internal Ast_Expression *ast_expression_alloc(Arena *arena) {
 	Ast_Expression *expr = push_type(arena, Ast_Expression);
-	memcpy(expr, &nil_expression, sizeof(Ast_Expression));
+	memcpy(expr, &nil_expression, sizeof(*expr));
 	
 	return expr;
 }
 
 internal Ast_Statement *ast_statement_alloc(Arena *arena) {
 	Ast_Statement *stat = push_type(arena, Ast_Statement);
-	memcpy(stat, &nil_statement, sizeof(Ast_Statement));
+	memcpy(stat, &nil_statement, sizeof(*stat));
 	
 	return stat;
 }
 
 internal Ast_Declaration *ast_declaration_alloc(Arena *arena) {
 	Ast_Declaration *decl = push_type(arena, Ast_Declaration);
-	memcpy(decl, &nil_declaration, sizeof(Ast_Declaration));
+	memcpy(decl, &nil_declaration, sizeof(*decl));
 	
 	return decl;
 }

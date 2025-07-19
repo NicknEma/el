@@ -21,7 +21,7 @@ typedef enum Binary_Operator {
 	Binary_Operator_MODULUS,
 	Binary_Operator_TERNARY,
 	// Binary_Operator_COMMA,
-	// Binary_Operator_ASSIGNMENT,
+	Binary_Operator_ASSIGNMENT,
 	Binary_Operator_MEMBER,
 	Binary_Operator_CALL,
 	Binary_Operator_ARRAY_ACCESS,
@@ -208,6 +208,7 @@ typedef enum Ast_Declaration_Flags {
 	Ast_Declaration_Flag_CONSTANT = (1<<1),
 } Ast_Declaration_Flags;
 
+struct Decl_List {
 	Ast_Declaration *first, *last;
 };
 
@@ -224,8 +225,6 @@ struct Ast_Declaration {
 	Ast_Declaration *next;
 };
 
-////////////////////////////////
-//~ Nil objects
 //- Nil objects
 
 global read_only Ast_Expression  nil_expression;

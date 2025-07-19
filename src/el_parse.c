@@ -134,21 +134,21 @@ internal bool token_is_assigner(Token token) {
 ////////////////////////////////
 //~ AST
 
-internal Ast_Expression *ast_expression_alloc(Arena *arena) {
+internal Ast_Expression *push_expr(Arena *arena) {
 	Ast_Expression *expr = push_type(arena, Ast_Expression);
 	memcpy(expr, &nil_expression, sizeof(*expr));
 	
 	return expr;
 }
 
-internal Ast_Statement *ast_statement_alloc(Arena *arena) {
+internal Ast_Statement *push_stat(Arena *arena) {
 	Ast_Statement *stat = push_type(arena, Ast_Statement);
 	memcpy(stat, &nil_statement, sizeof(*stat));
 	
 	return stat;
 }
 
-internal Ast_Declaration *ast_declaration_alloc(Arena *arena) {
+internal Ast_Declaration *push_decl(Arena *arena) {
 	Ast_Declaration *decl = push_type(arena, Ast_Declaration);
 	memcpy(decl, &nil_declaration, sizeof(*decl));
 	
@@ -158,7 +158,7 @@ internal Ast_Declaration *ast_declaration_alloc(Arena *arena) {
 //- Parser: Expressions
 
 internal Ast_Expression *make_atom_expression(Parser *parser, Token token) {
-	Ast_Expression *node = ast_expression_alloc(parser->arena);
+	Ast_Expression *node = push_expr(parser->arena);
 	
 	node->location = token.loc;
 	
@@ -180,7 +180,7 @@ internal Ast_Expression *make_atom_expression(Parser *parser, Token token) {
 }
 
 internal Ast_Expression *make_unary_expression(Parser *parser, Token unary, Ast_Expression *subexpr) {
-	Ast_Expression *node = ast_expression_alloc(parser->arena);
+	Ast_Expression *node = push_expr(parser->arena);
 	
 	node->kind       = Ast_Expression_Kind_UNARY;
 	node->unary      = unary_from_token(unary);
@@ -193,7 +193,7 @@ internal Ast_Expression *make_unary_expression(Parser *parser, Token unary, Ast_
 }
 
 internal Ast_Expression *make_binary_expression(Parser *parser, Token binary, Ast_Expression *left, Ast_Expression *right) {
-	Ast_Expression *node = ast_expression_alloc(parser->arena);
+	Ast_Expression *node = push_expr(parser->arena);
 	
 	node->kind       = Ast_Expression_Kind_BINARY;
 	node->binary     = binary_from_token(binary);
@@ -209,7 +209,7 @@ internal Ast_Expression *make_binary_expression(Parser *parser, Token binary, As
 }
 
 internal Ast_Expression *make_ternary_expression(Parser *parser, Ast_Expression *left, Ast_Expression *middle, Ast_Expression *right) {
-	Ast_Expression *node = ast_expression_alloc(parser->arena);
+	Ast_Expression *node = push_expr(parser->arena);
 	
 	node->kind       = Ast_Expression_Kind_BINARY;
 	node->binary     = Binary_Operator_TERNARY;
@@ -225,7 +225,7 @@ internal Ast_Expression *make_ternary_expression(Parser *parser, Ast_Expression 
 }
 
 internal Ast_Expression *make_compound_literal_expression(Parser *parser, Ast_Expression *type_annotation, Expr_List exprs, Range1DI32 loc) {
-	Ast_Expression *expr = ast_expression_alloc(parser->arena);
+	Ast_Expression *expr = push_expr(parser->arena);
 	
 	expr->kind       = Ast_Expression_Kind_COMPOUND_LITERAL;
 	expr->expr_first = exprs.first;
@@ -238,7 +238,7 @@ internal Ast_Expression *make_compound_literal_expression(Parser *parser, Ast_Ex
 }
 
 internal Ast_Expression *make_type_modifier(Parser *parser, Ast_Expression *subexpr, Type_Modifier mod, Range1DI32 loc) {
-	Ast_Expression *expr = ast_expression_alloc(parser->arena);
+	Ast_Expression *expr = push_expr(parser->arena);
 	
 	expr->kind       = Ast_Expression_Kind_TYPE_MODIFIER;
 	expr->modifier   = mod;
@@ -250,7 +250,7 @@ internal Ast_Expression *make_type_modifier(Parser *parser, Ast_Expression *sube
 }
 
 internal Ast_Expression *make_call_expr(Parser *parser, Ast_Expression *callee, Ast_Expression *first_arg, Ast_Expression *last_arg, Range1DI32 loc) {
-	Ast_Expression *expr = ast_expression_alloc(parser->arena);
+	Ast_Expression *expr = push_expr(parser->arena);
 	
 	expr->kind       = Ast_Expression_Kind_BINARY;
 	expr->binary     = Binary_Operator_CALL;
@@ -359,7 +359,7 @@ internal Ast_Expression *parse_expression(Parser *parser, Precedence caller_prec
 				while (peek_token(&parser->lexer).kind != '}') consume_token(&parser->lexer);
 				consume_token(&parser->lexer);
 				
-				type_annotation = ast_expression_alloc(parser->arena);
+				type_annotation = push_expr(parser->arena);
 				type_annotation->kind     = Ast_Expression_Kind_STRUCT_DEFN;
 				type_annotation->location = struct_token.loc;
 			} else {
@@ -459,7 +459,7 @@ internal Ast_Expression *parse_expression(Parser *parser, Precedence caller_prec
 //- Parser: Statements
 
 internal Ast_Statement *make_expr_stmt(Parser *parser, Ast_Expression *expr, Range1DI32 loc) {
-	Ast_Statement *stmt = ast_statement_alloc(parser->arena);
+	Ast_Statement *stmt = push_stat(parser->arena);
 	
 	stmt->kind       = Ast_Statement_Kind_EXPR;
 	stmt->expr_first = expr;
@@ -470,7 +470,7 @@ internal Ast_Statement *make_expr_stmt(Parser *parser, Ast_Expression *expr, Ran
 }
 
 internal Ast_Statement *make_block_stmt(Parser *parser, Stmt_List block, Range1DI32 loc) {
-	Ast_Statement *stmt = ast_statement_alloc(parser->arena);
+	Ast_Statement *stmt = push_stat(parser->arena);
 	
 	stmt->kind       = Ast_Statement_Kind_BLOCK;
 	stmt->stmt_first = block.first;
@@ -481,7 +481,7 @@ internal Ast_Statement *make_block_stmt(Parser *parser, Stmt_List block, Range1D
 }
 
 internal Ast_Statement *make_return_stmt(Parser *parser, Expr_List retvals, Range1DI32 loc) {
-	Ast_Statement *stmt = ast_statement_alloc(parser->arena);
+	Ast_Statement *stmt = push_stat(parser->arena);
 	
 	stmt->kind       = Ast_Statement_Kind_RETURN;
 	stmt->expr_first = retvals.first;
@@ -493,7 +493,7 @@ internal Ast_Statement *make_return_stmt(Parser *parser, Expr_List retvals, Rang
 
 #if 0
 internal Expr_List expr_list_join(Parser *parser, Expr_List a, Expr_List b) {
-	Ast_Expression *sep = ast_expression_alloc(parser->arena);
+	Ast_Expression *sep = push_expr(parser->arena);
 	memset(sep, 0, sizeof(*sep));
 	
 	sep->prev = a.last;
@@ -520,7 +520,7 @@ internal Expr_List expr_list_join(Expr_List a, Expr_List b) {
 #endif
 
 internal Ast_Statement *make_assignment_stmt(Parser *parser, Expr_List lhs, Expr_List rhs, Token_Kind assigner, Range1DI32 loc) {
-	Ast_Statement *stmt = ast_statement_alloc(parser->arena);
+	Ast_Statement *stmt = push_stat(parser->arena);
 	
 	// Expr_List joined = expr_list_join(parser, lhs, rhs);
 	Expr_List joined = expr_list_join(lhs, rhs);
@@ -536,7 +536,7 @@ internal Ast_Statement *make_assignment_stmt(Parser *parser, Expr_List lhs, Expr
 }
 
 internal Ast_Statement *make_decl_stmt(Parser *parser, Ast_Declaration *decl, Range1DI32 loc) {
-	Ast_Statement *stmt = ast_statement_alloc(parser->arena);
+	Ast_Statement *stmt = push_stat(parser->arena);
 	
 	stmt->kind       = Ast_Statement_Kind_DECLARATION;
 	stmt->decl       = decl;
@@ -713,7 +713,7 @@ internal Ast_Statement *parse_statement(Parser *parser) {
 				// Build the declaration: either by parsing the initializers,
 				// or by looking at the type annotation.
 				
-				decl = ast_declaration_alloc(parser->arena);
+				decl = push_decl(parser->arena);
 				decl->flags           = flags;
 				decl->expr_first      = lhs.first;
 				decl->expr_last       = lhs.last;
@@ -844,7 +844,7 @@ internal Ast_Declaration *parse_declaration_after_lhs(Parser *parser, Ast_Expres
 		// Build the declaration: either by parsing the initializers,
 		// or by looking at the type annotation.
 		
-		result = ast_declaration_alloc(parser->arena);
+		result = push_decl(parser->arena);
 		result->flags           = flags;
 		result->lhs             = lhs;
 		result->type_annotation = type_annotation;
@@ -1007,7 +1007,7 @@ internal Ast_Declaration *parse_proc_header(Parser *parser) {
 			assert(type_annotation_present);
 			
 			for (String_Node *arg_name = arg_names.first; arg_name != NULL; arg_name = arg_name->next) {
-				Ast_Declaration *decl = ast_declaration_alloc(parser->arena);
+				Ast_Declaration *decl = push_decl(parser->arena);
 				decl->entity = Ast_Declaration_Entity_UNKNOWN;
 				decl->ident  = arg_name->str;
 				decl->type_annotation = type_annotation;
